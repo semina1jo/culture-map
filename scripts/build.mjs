@@ -1,0 +1,13 @@
+import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+const out = join(process.cwd(), "dist");
+await mkdir(out, { recursive: true });
+await cp("index.html", join(out, "index.html"));
+await cp("src", join(out, "src"), { recursive: true });
+await cp("public", out, { recursive: true });
+const env = { googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || process.env.MANUS_API_BROWSER_KEY || "", mapsScriptUrl: process.env.MANUS_API_URL && process.env.MANUS_API_BROWSER_KEY ? `${process.env.MANUS_API_URL}/v1/maps/proxy/maps/api/js?key=${encodeURIComponent(process.env.MANUS_API_BROWSER_KEY)}&libraries=geometry` : "", SUPABASE_URL: process.env.SUPABASE_URL || "", SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || "" };
+await writeFile(join(out, "env.js"), `window.__ENV__=${JSON.stringify(env)};\n`);
+let html = await readFile(join(out, "index.html"), "utf8");
+html = html.replace("/env.js", "/env.js");
+await writeFile(join(out, "index.html"), html);
+console.log(`built ${out}`);

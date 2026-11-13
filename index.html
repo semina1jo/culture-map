@@ -1,0 +1,1637 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#ffffff"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="컬처맵"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>컬처맵 · 가성비 문화 혜택 지도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+/* Layout: 전체 화면 지도 위에 헤더·필터칩·떠 있는 버튼·하단 메뉴. 다른 탭은 지도 위 전체 페이지, 카드·시트는 아래에서 올라옴 */
+:root{
+  color-scheme:light;
+  --ink:#141414; --ink2:#3a3a3a; --muted:#8a8a8a; --line:#ececec; --chip:#f4f4f4; --white:#fff; --outer:#d9d9d9;
+  --gold:#d9a441; --gold-soft:#fbf1dc; --green:#3fae6b; --green-soft:#e3f4ea; --blue:#4a6cf0; --blue-soft:#e6ebfd; --red:#e5484d; --red-soft:#fde8e8;
+  --map-land:#f3f2ee; --map-road:#fff; --map-case:#e4e1da; --map-park:#d6ead0; --map-water:#cde2f4; --map-label:#9a9a9a;
+  --f:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--outer);color:var(--ink);font-family:var(--f);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  padding-block:12px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:disabled{opacity:.45;cursor:default}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+.app{position:relative;height:100%;max-height:880px;max-width:420px;margin:0 auto;overflow:hidden;border-radius:24px;background:var(--map-land);box-shadow:0 10px 40px rgba(0,0,0,.18)}
+/* 휴대폰에서는 가상 폰 테두리 없이 화면 전체를 쓴다 */
+@media (max-width:520px), (max-height:500px) and (pointer:coarse){
+  body{padding:0}
+  .app{max-width:none;max-height:none;height:100%;border-radius:0;box-shadow:none}
+}
+.map{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:grab;outline:none}
+.gmap{position:absolute;inset:0 0 70px;background:var(--map-land);z-index:0}
+.gmap.ready{background:transparent}
+.mapStatus{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);z-index:1;background:rgba(255,255,255,.92);border-radius:12px;padding:9px 12px;color:var(--ink2);font-size:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.1);max-width:230px}
+.world{z-index:2;pointer-events:none}
+.pin{pointer-events:auto}
+.me-dot{position:absolute;width:20px;height:20px;transform:translate(-50%,-50%) scale(var(--inv,1));z-index:3;pointer-events:none}
+.me-dot i{position:relative;display:block;width:100%;height:100%;border-radius:50%;background:#2f7bf6;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.3);box-sizing:border-box}
+.me-dot::before{content:"";position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:rgba(47,123,246,.18);animation:mePulse 2s ease-out infinite}
+.me-dot.demo i{background:#7a5cf0}
+.me-dot.demo::before{background:rgba(122,92,240,.18)}
+@keyframes mePulse{0%{transform:scale(.4);opacity:1}100%{transform:scale(1);opacity:0}}
+.map.drag{cursor:grabbing}
+.world{position:absolute;left:0;top:0;width:1000px;height:1400px;transform-origin:0 0;will-change:transform}
+.world svg{position:absolute;left:0;top:0;width:1000px;height:1400px}
+.r-case{stroke:var(--map-case);fill:none;stroke-linecap:round}
+.r-road{stroke:var(--map-road);fill:none;stroke-linecap:round}
+.park{fill:var(--map-park)} .water{fill:var(--map-water)}
+.lbl{fill:var(--map-label);font-size:11px;font-family:var(--f)}
+.stn{fill:#fff;stroke:#666;stroke-width:1.5}
+
+.head{position:absolute;top:0;left:0;right:0;z-index:5;padding:14px 16px 10px;background:linear-gradient(#fff 72%,rgba(255,255,255,0))}
+.title{display:flex;align-items:center;justify-content:space-between}
+.title h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.03em}
+.demo{font-size:10.5px;color:var(--muted);margin-left:8px;font-weight:500;vertical-align:middle;border:1px solid var(--line);border-radius:6px;padding:1px 5px;letter-spacing:0}
+.round{width:44px;height:44px;border-radius:50%;border:0;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.12);display:grid;place-items:center;position:relative}
+.round svg{width:22px;height:22px;stroke:var(--ink);fill:none;stroke-width:2}
+.layers{display:flex;gap:16px;margin:10px 2px 8px}
+.layers button{border:0;background:none;padding:2px 0;font-size:15px;font-weight:700;color:var(--muted);position:relative}
+.layers button[aria-pressed="true"]{color:var(--ink)}
+.layers button[aria-pressed="true"]::after{content:"";position:absolute;left:0;right:0;bottom:-4px;height:2.5px;border-radius:2px;background:var(--ink)}
+.new{font-size:9.5px;font-weight:800;color:#fff;background:var(--red);border-radius:5px;padding:0 4px;margin-left:3px;vertical-align:3px}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px 2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:0;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.13);border-radius:12px;height:38px;padding:0 12px;font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.chip svg{width:16px;height:16px;stroke:var(--ink);fill:none;stroke-width:2}
+.chip .car{width:12px;height:12px;stroke-width:2.4}
+.chip.icon{width:38px;padding:0;justify-content:center}
+.chip.on{background:var(--ink);color:#fff}
+.chip.on svg{stroke:#fff}
+
+.pin{position:absolute;transform:translate(-50%,-50%) scale(var(--inv,1));border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;z-index:2}
+.pin .p{display:flex;align-items:center;gap:5px;background:#fff;border:2px solid var(--bd);border-radius:999px;padding:3px 11px 3px 5px;font-weight:800;font-size:14px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.12);font-variant-numeric:tabular-nums}
+.pin .e{width:22px;height:22px;border-radius:50%;background:var(--bg2);display:grid;place-items:center;font-size:12px}
+.pin .s{margin-top:-3px;background:var(--bg2);border:1px solid var(--bd);border-radius:999px;padding:0 7px;font-size:11px;font-weight:700;color:var(--ink2)}
+.pin.sel{z-index:4}
+.pin.sel .p{background:var(--ink);color:#fff;border-color:var(--ink)}
+.pin.rep .p{border-style:dashed}
+/* 문화 탭: 예시(데모) 데이터는 연하게, 공공 API 데이터가 위로 */
+.pin.demo{opacity:.75;z-index:1}
+.pin.demo.sel{opacity:1;z-index:4}
+.listitem.demo{opacity:.75}
+.t-free{--bd:var(--green);--bg2:var(--green-soft)}
+.t-low{--bd:var(--gold);--bg2:var(--gold-soft)}
+.t-mid{--bd:var(--blue);--bg2:var(--blue-soft)}
+.t-unknown{--bd:#aaa;--bg2:#f1f1f1}
+.more{position:absolute;left:50%;top:205px;transform:translateX(-50%);z-index:4;border:0;background:var(--ink);color:#fff;border-radius:999px;padding:7px 14px;font-weight:700;font-size:13px}
+.stack{position:absolute;right:12px;top:200px;z-index:4;display:flex;flex-direction:column;gap:8px}
+.dot{position:absolute;top:6px;right:7px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid #fff}
+.bottomctl{position:absolute;left:12px;right:12px;bottom:76px;z-index:4;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none}
+.bottomctl > *{pointer-events:auto}
+.plus{width:52px;height:52px;border-radius:16px;border:0;background:var(--ink);display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.plus svg{width:24px;height:24px;stroke:#fff;stroke-width:2.4;fill:none}
+.plus-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.plus-wrap span{font-size:11px;font-weight:700;background:#fff;border-radius:999px;padding:1px 8px;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.legend{position:absolute;left:12px;bottom:138px;z-index:3;background:#fff;border-radius:10px;padding:4px 9px;font-size:11px;color:var(--ink2);box-shadow:0 1px 5px rgba(0,0,0,.12);display:flex;gap:8px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;border:2px solid var(--bd);background:var(--bg2);vertical-align:-1px}
+
+.nav{position:absolute;left:0;right:0;bottom:0;z-index:9;background:#fff;border-top:1px solid var(--line);display:grid;grid-auto-flow:column;grid-auto-columns:1fr;padding:8px 0 12px}
+.nav button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;color:var(--muted);font-weight:500}
+.nav svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.9}
+.nav button[aria-current="page"]{color:var(--ink);font-weight:700}
+
+.peek{position:absolute;left:12px;right:12px;bottom:76px;z-index:7;background:#fff;border-radius:18px;box-shadow:0 6px 24px rgba(0,0,0,.18);padding:14px 16px;display:grid;grid-template-columns:72px 1fr;gap:4px 14px}
+.peek .ph{grid-row:span 2;width:72px;height:72px;border-radius:12px;display:grid;place-items:center;font-size:30px;background:var(--bg2)}
+.peek .nm{font-weight:800;font-size:17px;display:flex;justify-content:space-between;gap:8px;min-width:0}
+.peek .nm span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.x{border:0;background:none;padding:0;width:26px;height:26px;flex:none;display:grid;place-items:center}
+.x svg{width:20px;height:20px;stroke:var(--ink);stroke-width:2;fill:none}
+.peek .sub{display:flex;justify-content:space-between;align-items:baseline;gap:8px;min-width:0}
+.peek .sub small{color:var(--ink2);font-size:12.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.peek .sub b{font-size:21px;font-weight:800;white-space:nowrap}
+.peek .foot{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px}
+.peek .foot span{color:var(--muted);font-size:12.5px}
+.blk{border:0;background:var(--ink);color:#fff;font-weight:700;border-radius:12px;padding:11px 16px}
+.out{border:1px solid var(--line);background:#fff;font-weight:700;border-radius:12px;padding:11px 16px}
+.out.on{border-color:var(--ink);background:var(--chip)}
+.sm{padding:7px 12px;font-size:13px;border-radius:10px}
+
+.scrim{position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.35);display:flex;align-items:flex-end}
+.sheet{width:100%;max-height:88%;overflow-y:auto;background:#fff;border-radius:22px 22px 0 0;padding:8px 18px 22px}
+.grab{width:38px;height:4px;border-radius:2px;background:#d5d5d5;margin:2px auto 14px}
+.scrim.detail-scrim{background:transparent;pointer-events:none}
+.detail-scrim .place-sheet{height:50%;max-height:100%;overflow-y:hidden;pointer-events:auto;overscroll-behavior:contain;touch-action:none;transition:height .2s ease}
+.detail-scrim .place-sheet.full{height:100%;overflow-y:auto;touch-action:pan-y}
+.place-sheet .grab{touch-action:none;cursor:grab}
+.benefit-prompt{width:100%;display:flex;align-items:center;justify-content:center}
+.sh-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.sh-h h2{margin:0;font-size:21px;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+.addr{color:var(--ink2);font-size:13.5px;margin:4px 0 12px}
+.hero{height:132px;min-height:132px;max-height:132px;border-radius:14px;background:var(--bg2);display:grid;place-items:center;font-size:52px;position:relative;overflow:hidden;isolation:isolate}
+.hero .badge{position:absolute;left:10px;top:10px;background:#fff;border-radius:8px;padding:2px 8px;font-size:12px;font-weight:700;z-index:1}
+.hero .price{position:absolute;right:12px;bottom:10px;background:#fff;border-radius:10px;padding:2px 10px;font-size:20px;font-weight:800;z-index:1}
+.hero img{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:center;border-radius:14px;z-index:0}
+.adds{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
+.adds button{border:0;background:none;font-size:13px;font-weight:500;color:var(--ink2);padding:2px 0;margin-right:6px}
+.rows{border-top:1px solid var(--line);margin-top:10px}
+.rowi{display:grid;grid-template-columns:22px 1fr;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+.rowi svg{width:18px;height:18px;stroke:var(--ink);fill:none;stroke-width:2;margin-top:1px}
+.rowi small{display:block;color:var(--muted);font-size:12px}
+.sec{margin-top:18px}
+.sec h3{margin:0 0 8px;font-size:15px;font-weight:800;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sec h3 span{font-size:12px;font-weight:500;color:var(--muted)}
+.cmt{background:var(--chip);border-radius:12px;padding:9px 12px;font-size:13.5px;margin-bottom:6px}
+.cmt small{display:block;color:var(--muted);font-size:11.5px}
+.addc{display:flex;gap:6px;margin-top:8px}
+.cmt-star{color:#f5a623;font-weight:800}
+.addr-star{color:var(--gold);font-weight:800}
+.addr-cnt{color:var(--muted);margin-left:2px}
+.sr-top{display:flex;align-items:center;gap:10px;position:sticky;top:-1px;background:var(--bg,#fff);padding:4px 0 10px;z-index:2}
+.sr-field{flex:1;display:flex;align-items:center;gap:8px;background:var(--chip);border-radius:12px;padding:0 12px}
+.sr-field svg{width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:2;flex:none}
+.sr-field input{flex:1;border:0;background:none;padding:12px 0;font-size:15px;outline:none;min-width:0}
+.sr-cancel{border:0;background:none;font-weight:700;color:var(--ink2);padding:8px 2px}
+.sr-h{display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:13px;color:var(--ink2);margin:14px 0 6px}
+.sr-h span{color:var(--muted);font-weight:700;margin-left:4px;margin-right:auto}
+.sr-clear{border:0;background:none;color:var(--muted);font-size:12px}
+.sr-chips{display:flex;flex-wrap:wrap;gap:6px}
+#srRes{min-height:62vh}
+.rv-sum{display:flex;align-items:center;gap:14px;background:var(--gold-soft);border-radius:14px;padding:14px 16px;margin:4px 0 12px}
+.rv-avg{font-size:40px;line-height:1;font-weight:800;letter-spacing:-.02em}
+.rv-avg.muted{color:var(--muted)}
+.rv-sum-stars{color:var(--gold);font-size:22px;letter-spacing:2px;line-height:1.1}
+.rv-sum small{color:var(--ink2);font-size:13px;font-weight:600}
+.rv-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 8px}
+.rv-bar .seg2{margin:0;flex:0 0 150px}
+.rv-bar .seg2 button{padding:6px 0;font-size:12.5px}
+.rv{border-bottom:1px solid var(--line);padding:10px 0}
+.rv-h{display:flex;align-items:center;gap:8px}
+.rv-h b,.rv.mini b{font-size:13.5px}
+.rv-star{color:var(--gold);letter-spacing:1px;font-size:13px}
+.rv p{margin:4px 0 2px;font-size:14px;line-height:1.5;white-space:pre-wrap}
+.rv-f{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.rv small{color:var(--muted);font-size:12px}
+.rv.mini{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
+.rv.mini .rv-acts{margin-left:auto}
+.rv-acts{display:inline-flex;align-items:center;gap:6px}
+.rv-btn{border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;color:var(--ink2)}
+.rv-btn.on{border-color:#e0245e;color:#e0245e}
+.rv-btn:disabled{opacity:.5}
+.rv-sample{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 5px}
+.rv-likes{font-size:12px;color:var(--muted)}
+.wallet.guest .row{display:none}
+.g-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px}
+.g-logo{width:18px;height:18px;flex:none}
+.or-line{display:flex;align-items:center;gap:10px;margin:14px 0 6px;color:var(--muted);font-size:12px}
+.or-line::before,.or-line::after{content:"";flex:1;height:1px;background:var(--line)}
+.addc input{flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff}
+.votes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.votes.two{grid-template-columns:1fr 1fr}
+.votes button{border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px 2px;font-size:12px;font-weight:500}
+.votes b{display:block;font-size:16px;font-weight:800}
+.status{margin-top:8px;font-size:12.5px;background:var(--green-soft);color:#1e6b41;border-radius:10px;padding:7px 10px}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}
+.acts .w{grid-column:1/-1}
+.acts .share-icon{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;vertical-align:-3px;margin-right:5px}
+.linkbtn{border:0;background:none;color:var(--muted);font-size:12.5px;text-decoration:underline;padding:6px 0;margin-top:6px}
+.listitem{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:12px 0}
+.listitem .ph{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-size:22px;background:var(--bg2)}
+[data-report-kind] .ph svg{width:22px;height:22px;stroke:var(--ink);fill:none;stroke-width:2}
+.listitem b{display:block;font-size:15px;min-width:0}
+.listitem small{color:var(--muted);font-size:12px}
+.listitem .pr{font-weight:800;font-size:16px;white-space:nowrap;text-align:right}
+.listitem .pr small{display:block;font-weight:500}
+.rank{width:34px;font-size:12px;font-weight:800;background:var(--chip);border-radius:8px;text-align:center;padding:2px 0}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:0 6px;margin-right:4px;background:var(--chip);color:var(--ink2)}
+.tag.red{background:var(--red-soft);color:var(--red)}
+.tag.grn{background:var(--green-soft);color:#1e6b41}
+.tag.lv{background:var(--blue-soft);color:var(--blue)}
+.seg2{display:grid;grid-template-columns:1fr 1fr;background:var(--chip);border-radius:12px;padding:3px;margin:12px 0 4px}
+.seg2 button{border:0;background:none;border-radius:9px;padding:8px 0;font-weight:700;color:var(--muted)}
+.seg2 button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.opt{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 14px}
+.opt button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font-weight:700;font-size:13.5px}
+.opt button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.lab{font-size:13px;font-weight:700;margin:14px 0 2px}
+form label,.flab{display:block;font-size:12.5px;font-weight:700;color:var(--ink2);margin:12px 0 4px}
+form input,form select,form textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff}
+form textarea{min-height:110px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.err{color:var(--red);font-size:12.5px;min-height:1.2em;margin-top:8px}
+.note{color:var(--muted);font-size:12px}
+.prev{margin-top:8px;width:100%;max-height:140px;object-fit:cover;border-radius:12px}
+.noti{display:grid;grid-template-columns:10px 1fr;gap:10px;padding:12px 0;border:0;border-bottom:1px solid var(--line);width:100%;text-align:left;background:none}
+.noti i{width:8px;height:8px;border-radius:50%;background:var(--red);margin-top:7px}
+.noti i.read{background:transparent}
+.noti b{font-size:12px;color:var(--ink2)}
+.noti p{margin:1px 0;font-size:14px;font-weight:500}
+.noti time{font-size:11.5px;color:var(--muted)}
+.sw{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.sw input{appearance:none;width:44px;height:26px;border-radius:999px;background:#ddd;position:relative;border:0;transition:background .15s;flex:none;margin:0}
+.sw input::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.sw input:checked{background:var(--ink)}
+.sw input:checked::after{transform:translateX(18px)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.stat{background:var(--chip);border-radius:12px;padding:12px}
+.stat small{display:block;color:var(--muted);font-size:12px}
+.stat b{font-size:22px;font-weight:800}
+.stars{display:flex;gap:4px}
+.stars button{border:0;background:none;font-size:26px;padding:0;color:#d5d5d5;line-height:1}
+.stars button.on{color:var(--gold)}
+.verify{text-align:center;padding:10px 0 4px}
+.verify .big{font-size:44px;line-height:1.2}
+.verify p{margin:6px 0;font-size:15px;font-weight:700}
+.spin{width:36px;height:36px;border-radius:50%;border:4px solid var(--chip);border-top-color:var(--ink);margin:8px auto;animation:sp 0.8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.adbox{background:var(--chip);border-radius:14px;padding:18px;text-align:center;margin-top:10px}
+.bar{height:6px;border-radius:3px;background:#ddd;overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;width:0;background:var(--blue);transition:width 1.6s linear}
+
+.page{position:absolute;left:0;right:0;top:0;bottom:62px;z-index:8;background:#fff;overflow-y:auto;padding:16px 16px 90px}
+.page h1{margin:0 0 4px;font-size:24px;font-weight:800;letter-spacing:-.03em;display:flex;justify-content:space-between;align-items:center}
+.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:12px -16px 8px;padding:0 16px}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;border:0;background:none;padding:6px 10px;border-radius:8px;font-weight:700;color:var(--muted);font-size:14px}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.post{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:13px 0}
+.post b{display:block;font-size:15px;margin:3px 0}
+.post small{color:var(--muted);font-size:12px}
+.fabp{position:absolute;right:16px;bottom:78px;z-index:10;width:52px;height:52px;border-radius:50%;border:0;background:var(--ink);display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.fabp svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2}
+.card{border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:10px}
+.card h3{margin:0 0 6px;font-size:15px;font-weight:800;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.wallet{background:var(--ink);color:#fff;border-radius:18px;padding:16px}
+.wallet small{opacity:.72}
+.wallet .big{font-size:32px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.wallet .row{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.task{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.task:last-child{border-bottom:0}
+.task div{min-width:0}
+.task small{display:block;color:var(--muted);font-size:12px}
+.deal{display:grid;grid-template-columns:1fr auto;gap:2px 10px;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:12px 0}
+.deal b{font-size:15px}
+.deal .pr{font-weight:800;font-size:16px;text-align:right}
+.deal small{color:var(--muted);font-size:12px}
+.vote{display:flex;gap:6px;grid-column:1/-1;margin-top:4px}
+.vote button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:2px 9px;font-size:12px;font-weight:700}
+.toast{position:absolute;left:16px;right:16px;bottom:84px;z-index:30;background:rgba(20,20,20,.92);color:#fff;border-radius:12px;padding:11px 14px;font-size:13.5px;font-weight:500}
+
+.cal{margin:6px 0 4px}
+.cal-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.cal-h b{font-size:16px}
+.cal-h button{border:1px solid var(--line);background:#fff;border-radius:10px;width:34px;height:34px;font-size:16px;font-weight:700}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}
+.cal-g .wd{font-size:11.5px;color:var(--muted);padding:4px 0}
+.cal-g .wd:first-child{color:var(--red)}
+.cal-g button{border:0;background:none;border-radius:10px;height:40px;font-weight:700;font-size:14px;position:relative;font-variant-numeric:tabular-nums}
+.cal-g button.today{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.cal-g button.on{background:var(--ink);color:#fff}
+.cal-g button.has::after{content:"";position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--green)}
+.cal-g button.on.has::after{background:#fff}
+.range{margin:4px 0 12px}
+.range-h{display:flex;justify-content:space-between;align-items:baseline}
+.range-h b{font-size:20px;font-weight:800}
+.range input{width:100%;accent-color:var(--ink);height:28px}
+.range-s{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)}
+.dc{border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-top:8px;display:grid;grid-template-columns:44px 1fr auto;gap:2px 12px;align-items:center}
+.dc .ph{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:20px;background:var(--bg2);grid-row:span 2}
+.dc b{font-size:14.5px;display:block}
+.dc small{color:var(--muted);font-size:12px}
+.dc .pr{text-align:right;white-space:nowrap}
+.dc .pr s{color:var(--muted);font-size:12px}
+.dc .pr b{font-size:17px}
+.dc .pct{color:var(--red);font-weight:800;font-size:13px;margin-right:4px}
+.dc .go button{white-space:nowrap;flex:none}
+.dc .go{grid-column:2/-1;gap:8px;display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.secline{display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 2px}
+.secline b{font-size:16px;font-weight:800}
+.secline span{font-size:12px;color:var(--muted)}
+.zoom{display:flex;flex-direction:column;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);overflow:hidden}
+.zoom button{border:0;background:#fff;width:44px;height:38px;font-size:20px;font-weight:700}
+.zoom button+button{border-top:1px solid var(--line)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+.chip.ben .mini{width:26px;height:15px;border-radius:999px;background:#ccc;position:relative;flex:none}
+.chip.ben .mini::after{content:"";position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#fff;transition:transform .15s}
+.chip.ben .mini.on{background:#3ddc84}.chip.ben .mini.on::after{transform:translateX(11px)}
+.benok{margin:10px 0 0;padding:10px 12px;border-radius:12px;background:#eafaf0;color:#156b39;font-size:13px;line-height:1.45}
+.benrow{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+.benrow.ok{color:var(--ink);font-weight:700}.benrow.ok b{color:#156b39}
+form select,form input[type=date],form input#prG{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff;font:inherit}
+form .sw{margin:0}
+.votes button.on{border-color:var(--ink);background:var(--ink);color:#fff}
+.votes.ro div{border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px 2px;font-size:12px;text-align:center;color:var(--muted)}
+.votes.ro b{color:var(--ink)}
+#vSt{text-align:left}
+#rF .report-submit{display:flex;align-items:center;justify-content:center}
+#rF .report-permanent{display:flex;align-items:center;gap:8px}
+#rF .report-permanent input{width:18px;height:18px;margin:0;padding:0;accent-color:var(--ink)}
+#rF input:disabled{background:var(--chip);color:var(--muted);cursor:not-allowed}
+</style>
+<div class="app" id="app">
+  <div class="map" id="map" tabindex="0" aria-label="홍대입구역 주변 지도. 끌어서 이동, 휠이나 두 손가락으로 확대"><div id="gmap" class="gmap" aria-hidden="true"></div><div class="mapStatus" id="mapStatus" role="status"></div><div class="world" id="world"></div></div>
+
+  <header class="head" id="head">
+    <div class="title">
+      <h1>컬처맵<span class="demo">컨셉 데모</span><span class="demo" id="demoModeBadge">시연 모드</span></h1>
+      <button class="round" id="searchBtn" aria-label="검색"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>
+    </div>
+    <div class="chips" id="chips"></div>
+  </header>
+
+  <div id="mapUi">
+    <div class="stack">
+      <button class="round" id="savedBtn" aria-label="찜 목록"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/></svg></button>
+      <button class="round" id="notiBtn" aria-label="문화 알림"><svg viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15L6 16Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="dot" id="notiDot"></span></button>
+      <div class="zoom" role="group" aria-label="확대·축소"><button id="zIn" aria-label="확대">＋</button><button id="zOut" aria-label="축소">－</button></div>
+    </div>
+    <div class="bottomctl" id="bottomctl">
+      <button class="round" id="locBtn" aria-label="내 위치로 이동"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+      <div class="plus-wrap"><button class="plus" id="plusBtn" aria-label="제보하기"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><span id="plusLabel">제보하기</span></div>
+      <button class="round" id="listBtn" aria-label="목록"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button>
+    </div>
+    <div class="peek" id="peek" hidden></div>
+  </div>
+
+  <section class="page" id="page" hidden></section>
+
+  <nav class="nav" aria-label="메뉴">
+    <button data-tab="map" aria-current="page"><svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg>맵</button>
+    <button data-tab="me"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>설정</button>
+  </nav>
+
+  <div class="scrim" id="scrim" hidden></div>
+  <div class="toast" id="toast" role="status" hidden></div>
+</div>
+
+<script src="/env.js"></script>
+<script src="/src/data/cultureEvents.js"></script>
+<script src="/src/services/dataService.js"></script>
+<script src="/src/services/price.js"></script>
+<script src="/src/services/maps.js"></script>
+<script src="/src/ui/placeSheet.js"></script>
+<script>
+/* ===== 기준값 ===== */
+const TODAY = "2026-11-02";
+const FILTER_TODAY = window.dataService.today();
+const CAL_MIN = "2026-11", CAL_MAX = "2026-12";
+/* 티끌 단위 (티끌 상자 100티끌, 광고 시청 10~150티끌 랜덤) */
+const T = {visit:100, adMin:10, adMax:150, box:100, report:100, review:30, judge:20};
+const EMOJI = {전시:"🖼️",공연:"🎤",체험:"🧴",축제:"🎪"};
+const W = 1000, H = 1400, M_PER_UNIT = 2.6;   /* 지도 1단위 ≈ 2.6m, 가로 약 2.6km */
+
+/* ===== 샘플 데이터 (가상, 성수동 일대) ===== */
+const events = [
+  {id:"e1",name:"빛과 종이 사진전",genre:"전시",price:0,ref:12000,start:"2026-11-01",end:"2026-11-30",hours:"화–일 11:00–19:00 (월 휴관)",place:"성수동2가 · 연무장길 빛공장 갤러리 2층",reserve:false,entry:"예약 없이 바로 입장",x:470,y:612,src:"예시 데이터",
+   comments:[{t:"20분 전",c:"평일 오후라 한산했어요. 다 보는 데 40분 정도"},{t:"1시간 전",c:"포토존 줄 10분, 2층 창가 자리 좋아요"},{t:"어제",c:"엽서 무료 배포는 오후 5시쯤 소진됐어요"}]},
+  {id:"e2",name:"서울숲 가을 버스킹",genre:"공연",price:0,ref:20000,start:"2026-11-07",end:"2026-11-08",hours:"토·일 15:00–17:00",place:"성수동1가 · 서울숲 야외무대",reserve:false,entry:"자유 관람",x:262,y:960,src:"예시 데이터",
+   comments:[{t:"3일 전",c:"잔디밭이라 돗자리 있으면 편해요"},{t:"3일 전",c:"비 오면 취소, 당일 오전 공지 확인"},{t:"5일 전",c:"2시 반쯤 가면 앞쪽 자리 잡아요"}]},
+  {id:"e3",name:"향 만들기 체험 팝업",genre:"체험",price:0,ref:25000,start:"2026-11-01",end:"2026-11-09",hours:"매일 12:00–20:00",place:"성수동2가 · 로컬 팝업 B동",reserve:true,entry:"현장 대기 명단, 하루 선착순 30명",x:540,y:548,src:"예시 데이터",
+   comments:[{t:"10분 전",c:"1시 기준 대기 40분, 명단 거의 찼어요"},{t:"2시간 전",c:"만든 향은 작은 병에 담아 가져가요"},{t:"어제",c:"주말엔 오전에 마감됐대요"}]},
+  {id:"e4",name:"저녁 북토크: 동네에서 사는 법",genre:"체험",price:0,ref:10000,start:"2026-11-04",end:"2026-11-04",hours:"수 19:30–21:00",place:"성수동1가 · 마을도서관 3층",reserve:true,entry:"온라인 사전 신청, 40명",x:226,y:520,src:"예시 데이터",
+   comments:[{t:"2일 전",c:"신청 링크는 도서관 공지에 있어요"},{t:"2일 전",c:"지난번엔 다과도 나왔어요"},{t:"4일 전",c:"퇴근하고 가기 좋은 시간"}]},
+  {id:"e5",name:"신진 작가 판화전",genre:"전시",price:3000,ref:8000,ben:[{t:"ageMax",v:24,p:0,l:"만 24세 이하 무료"},{t:"ageMin",v:65,p:0,l:"만 65세 이상 무료"}],start:"2026-10-20",end:"2026-11-04",hours:"11:00–18:00",place:"성수동1가 · 작은판화방",reserve:false,entry:"바로 입장",x:360,y:560,src:"예시 데이터",
+   comments:[{t:"어제",c:"작은 공간이라 20분이면 충분해요"},{t:"2일 전",c:"작품 엽서 1장 증정"},{t:"6일 전",c:"작가님이 직접 설명해 주셨어요"}]},
+  {id:"e6",name:"낭독 공연 〈창밖의 계절〉",genre:"공연",price:9000,ref:30000,ben:[{t:"student",v:"univ",p:6300,l:"대학생 30% 할인"},{t:"student",v:"school",p:4500,l:"초·중·고생 50% 할인"}],start:"2026-11-06",end:"2026-11-15",hours:"금·토 19:30, 일 16:00",place:"성수동2가 · 소극장 숲",reserve:true,entry:"온라인 예매, 회차당 60석",x:640,y:350,src:"예시 데이터",
+   comments:[{t:"1일 전",c:"예매는 11월 3일 오전 10시 오픈"},{t:"3일 전",c:"작년 시즌 금방 매진됐어요"},{t:"3일 전",c:"러닝타임 80분"}]},
+  {id:"e7",name:"성수 필름나잇 단편 상영회",genre:"공연",price:5000,ref:12000,start:"2026-11-08",end:"2026-11-08",hours:"일 18:00",place:"성수동2가 · 커뮤니티홀",reserve:true,entry:"사전 예약, 현장 판매 일부",x:612,y:712,src:"예시 데이터",
+   comments:[{t:"2일 전",c:"감독과의 대화 30분 포함"},{t:"4일 전",c:"좌석이 좁은 편"},{t:"5일 전",c:"현장표는 30분 전부터"}]},
+  {id:"e8",name:"뚝섬 한강 야간 플리마켓",genre:"축제",price:0,ref:10000,start:"2026-11-07",end:"2026-11-08",hours:"토·일 14:00–21:00",place:"자양동 · 뚝섬한강공원 수변광장",reserve:false,entry:"자유 입장",x:790,y:1140,src:"예시 데이터",
+   comments:[{t:"3일 전",c:"저녁 7시 이후 소규모 공연 있어요"},{t:"4일 전",c:"강바람 세요, 겉옷 챙기세요"},{t:"6일 전",c:"현금만 받는 셀러 꽤 있어요"}]},
+  {id:"e10",name:"어린이 그림책 인형극",genre:"공연",price:0,ref:15000,start:"2026-11-07",end:"2026-11-07",hours:"토 11:00, 14:00",place:"성수동1가 · 구립 어린이도서관",reserve:true,entry:"사전 신청, 회차당 30가족",x:200,y:700,src:"예시 데이터",
+   comments:[{t:"2일 전",c:"5~7세 아이들이 제일 좋아해요"},{t:"3일 전",c:"신청 열리자마자 마감 직전이었어요"}]},
+  {id:"e11",name:"서울숲 생태 해설 산책",genre:"체험",price:0,ref:8000,start:"2026-11-01",end:"2026-11-29",hours:"토·일 10:00 (60분)",place:"성수동1가 · 서울숲 방문자센터 앞",reserve:true,entry:"사전 신청, 회차당 20명",x:318,y:1062,src:"예시 데이터",
+   comments:[{t:"1주 전",c:"단풍 시기라 사진 찍기 좋아요"},{t:"2주 전",c:"해설사님 설명이 재밌어요"}]},
+  {id:"e12",name:"건대 앞 거리 버스킹 존",genre:"공연",price:0,ref:15000,start:"2026-11-01",end:"2026-11-30",hours:"금·토 18:00–22:00",place:"화양동 · 건대입구역 2번 출구 광장",reserve:false,entry:"자유 관람",x:888,y:532,src:"예시 데이터",
+   comments:[{t:"어제",c:"토요일 저녁이 제일 북적여요"},{t:"4일 전",c:"앉을 자리는 거의 없어요"}]},
+  {id:"e13",name:"옛 공장 리모델링 아트 전시",genre:"전시",price:5000,ref:15000,ben:[{t:"ageMax",v:24,p:0,l:"만 24세 이하 무료"},{t:"gu",v:"마포구",p:0,l:"성동구 주민 무료"}],start:"2026-11-10",end:"2026-11-30",hours:"화–일 12:00–20:00",place:"성수동2가 · 공장 갤러리 3동",reserve:false,entry:"현장 발권",x:722,y:238,src:"예시 데이터",
+   comments:[{t:"방금 등록",c:"오픈 첫 주는 굿즈 증정한대요"}]},
+  {id:"e14",name:"성수 로컬 수공예 마켓",genre:"축제",price:0,ref:5000,start:"2026-11-14",end:"2026-11-15",hours:"토·일 12:00–18:00",place:"성수동1가 · 공영주차장 광장",reserve:false,entry:"자유 입장",x:430,y:735,src:"예시 데이터",
+   comments:[{t:"2주 전",c:"지난달엔 셀러 40팀 정도 나왔어요"}]},
+  {id:"e15",name:"대학 졸업 작품 전시회",genre:"전시",price:0,ref:8000,start:"2026-12-01",end:"2026-12-10",hours:"10:00–18:00",place:"화양동 · 대학 예술관 1층",reserve:false,entry:"누구나 입장",x:900,y:362,src:"예시 데이터",
+   comments:[{t:"작년",c:"작품 수가 많아서 1시간은 잡아야 해요"}]},
+  {id:"e16",name:"한강 노을 요가",genre:"체험",price:0,ref:20000,start:"2026-11-14",end:"2026-11-14",hours:"토 16:30–17:30",place:"자양동 · 뚝섬한강공원 잔디마당",reserve:true,entry:"사전 신청, 50명 (매트 개인 지참)",x:660,y:1132,src:"예시 데이터",
+   comments:[{t:"1주 전",c:"매트 없으면 큰 수건도 괜찮아요"}]},
+  {id:"e17",name:"동네 재즈 라이브",genre:"공연",price:8000,ref:20000,ben:[{t:"soldier",p:4000,l:"현역 장병 50% 할인"}],start:"2026-11-02",end:"2026-11-30",hours:"월·목 20:00",place:"성수동2가 · 지하 라이브바",reserve:true,entry:"예약 우선, 잔여석 현장 판매",x:752,y:618,src:"예시 데이터",
+   comments:[{t:"3일 전",c:"음료 1잔 포함 가격이에요"},{t:"1주 전",c:"자리 좁아서 일찍 가는 게 좋아요"}]},
+  {id:"e18",name:"구립 미술관 기획전 〈도시의 빛〉",genre:"전시",price:12000,ref:12000,start:"2026-11-01",end:"2026-12-20",hours:"화–일 10:00–19:00",place:"성수동1가 · 구립 미술관 2층",reserve:false,entry:"현장 발권",x:330,y:390,src:"예시 데이터",
+   ben:[{t:"ageMax",v:24,p:0,l:"만 24세 이하 무료"},{t:"ageMin",v:65,p:0,l:"만 65세 이상 무료"},{t:"disabled",p:0,l:"등록 장애인 무료 (동반 1인 포함)"},{t:"merit",p:0,l:"국가유공자 무료"},{t:"income",v:["basic","near"],p:0,l:"기초생활수급·차상위 무료"},{t:"gu",v:"성동구",p:6000,l:"성동구 주민 50% 할인"},{t:"multi",p:6000,l:"다자녀 가정 50% 할인"}],
+   comments:[{t:"어제",c:"신분증 보여주면 바로 무료 발권돼요"},{t:"3일 전",c:"2층 전시실 동선이 길어요"}]},
+  {id:"e19",name:"구민회관 실내악 콘서트",genre:"공연",price:20000,ref:20000,start:"2026-11-13",end:"2026-11-14",hours:"금·토 19:30",place:"화양동 · 구민회관 대공연장",reserve:true,entry:"온라인 예매",x:770,y:400,src:"예시 데이터",
+   ben:[{t:"student",v:"univ",p:10000,l:"대학생 50% 할인"},{t:"student",v:"school",p:6000,l:"초·중·고생 70% 할인"},{t:"soldier",p:10000,l:"현역 장병 50% 할인"},{t:"multi",p:10000,l:"다자녀 가정 50% 할인"},{t:"income",v:["basic","near"],p:4000,l:"기초생활수급·차상위 80% 할인"},{t:"gu",v:"광진구",p:14000,l:"광진구 주민 30% 할인"}],
+   comments:[{t:"1주 전",c:"학생증 지참 필수예요"}]},
+  {id:"e20",name:"미디어아트 상설전",genre:"전시",price:18000,ref:18000,start:"2026-11-01",end:"2026-12-31",hours:"매일 10:00–20:00",place:"성수동1가 · 미디어 전시관",reserve:false,entry:"현장 발권, 온라인 할인 없음",x:610,y:830,src:"예시 데이터",
+   ben:[{t:"ageMax",v:18,p:9000,l:"만 18세 이하 50% 할인"},{t:"soldier",p:9000,l:"현역 장병 50% 할인"},{t:"disabled",p:9000,l:"등록 장애인 50% 할인"},{t:"ageMin",v:65,p:9000,l:"만 65세 이상 50% 할인"}],
+   comments:[{t:"2일 전",c:"주말 오후는 30분 대기"}]},
+  {id:"e21",name:"국악 상설 공연 〈한강의 소리〉",genre:"공연",price:15000,ref:15000,start:"2026-11-07",end:"2026-11-28",hours:"토 15:00",place:"자양동 · 한강 문화 마당",reserve:true,entry:"사전 예약",x:860,y:840,src:"예시 데이터",
+   ben:[{t:"ageMax",v:24,p:4500,l:"만 24세 이하 70% 할인"},{t:"ageMin",v:65,p:0,l:"만 65세 이상 무료"},{t:"merit",p:0,l:"국가유공자 무료"},{t:"gu",v:"광진구",p:7500,l:"광진구 주민 50% 할인"}],
+   comments:[{t:"1주 전",c:"야외라 담요 챙기세요"}]},
+  {id:"e9",name:"음악 방송 공개녹화 방청",genre:"공연",price:0,ref:30000,start:"2026-11-10",end:"2026-11-10",hours:"화 17:00 입장",place:"성수동2가 · 스튜디오홀",reserve:true,entry:"사전 방청 신청, 추첨",x:690,y:500,src:"예시 데이터",
+   votes:{went:0,ended:0,wrong:1},status:"확인 중",reports:0,comments:[{t:"5시간 전",c:"신청 마감 11월 5일이에요"},{t:"6시간 전",c:"신분증 지참 필수라고 공지에 있어요"}]},
+  {id:"e22",name:"지역 창작자 포스터 전시",genre:"전시",price:3000,ref:7000,start:"2026-11-18",end:"2026-11-30",hours:"수–일 12:00–19:00",place:"홍대 예시 갤러리",reserve:false,entry:"현장 입장",x:470,y:430,src:"예시 데이터",comments:[]},
+  {id:"e23",name:"작은 무대 실험 공연",genre:"공연",price:10000,ref:18000,start:"2026-11-20",end:"2026-11-21",hours:"금·토 19:00",place:"서대문 예시 공연장",reserve:true,entry:"사전 예약",x:570,y:600,src:"예시 데이터",comments:[]},
+  {id:"e24",name:"연남 거리 문화 축제",genre:"축제",price:0,ref:12000,start:"2026-11-21",end:"2026-11-22",hours:"토·일 12:00–18:00",place:"연남 예시 광장",reserve:false,entry:"자유 입장",x:350,y:760,src:"예시 데이터",comments:[]},
+  {id:"e25",name:"홍대 독립출판 작은 전시",genre:"전시",price:0,ref:9000,start:"2026-11-12",end:"2026-11-24",hours:"수–일 13:00–19:00",place:"홍대입구역 예시 공간",reserve:false,entry:"현장 입장",x:640,y:460,src:"예시 데이터",comments:[{t:"방금",c:"현장 확인 가격 안내를 준비 중이에요."}]},
+];
+
+/* 서울시 culturalEventInfo 원본 필드와 화면 계산 필드를 함께 유지한다. */
+const GENRE4_MAP = {"전시":"전시","미술":"전시","공연":"공연","음악":"공연","체험":"체험","교육":"체험","축제":"축제","행사":"축제"};
+const HONGDAE_PLACES = ["서교동 예시 갤러리","연남동 예시 문화공간","동교동 예시 야외무대","대현동 예시 커뮤니티홀"];
+function normalizeCultureEvent(e, i){
+  const price = Number.isFinite(e.price) ? e.price : 0;
+  const isSample = e.is_sample !== false;
+  const displayTitle = isSample ? `○○${e.genre} ${String(i + 1).padStart(2, "0")} (예시)` : (e.name || "사용자 제보 행사");
+  const displayPlace = isSample ? HONGDAE_PLACES[i % HONGDAE_PLACES.length] : (e.place || "위치 확인 중");
+  const fee = !isSample ? (e.USE_FEE || (price === 0 ? "무료" : `${price.toLocaleString("ko-KR")}원`)) : price === 0 ? "무료" : price === 3000 ? "성인 3,000원 / 청소년 0원" : price === 5000 ? "전석 5,000원" : price === 8000 ? "성인 8,000원 / 학생 4,000원" : price === 9000 ? "성인 9,000원 / 대학생 6,000원" : price === 12000 ? "전석 12,000원" : price === 15000 ? "R석 30,000원 S석 15,000원" : price === 20000 ? "전석 20,000원" : "현장 확인";
+  const raw = Object.assign({}, e, {
+    CODENAME: e.genre, GUNAME: i % 3 === 0 ? "마포구" : "서대문구", TITLE: displayTitle,
+    DATE: e.always_open ? "상시 운영" : `${e.start}~${e.end}`, PLACE: displayPlace, ORG_NAME: isSample ? "○○기관(예시)" : (e.ORG_NAME || "사용자 제보"),
+    USE_TRGT: isSample ? (i % 5 === 0 ? "일반 관람 · 청소년 무료" : i % 7 === 0 ? "일반 관람 · 65세 이상 무료" : "누구나") : (e.USE_TRGT || "누구나"),
+    USE_FEE: isSample && e.id === "e25" ? "현장 확인" : fee, IS_FREE: isSample && e.id === "e25" ? "유료" : price === 0 ? "무료" : "유료",
+    MAIN_IMG: isSample ? "" : (e.MAIN_IMG || e.photo || ""), STRTDATE: e.always_open ? null : e.start, END_DATE: e.always_open ? null : e.end, ORG_LINK: e.ORG_LINK || "", HMPG_ADDR: e.HMPG_ADDR || "",
+    LAT: String(37.5572 + (660 - (e.y || 660)) * 0.000012), LOT: String(126.9245 + ((e.x || 500) - 500) * 0.000018),
+    is_sample: isSample, updated_at: new Date().toISOString(), genre4: GENRE4_MAP[e.genre] || "기타"
+  });
+  raw.name = raw.TITLE; raw.place = raw.PLACE; raw.lat = Number(raw.LAT); raw.lng = Number(raw.LOT); raw.src = e.src || "예시 데이터";
+  const parsed = window.priceService ? window.priceService.parseFee(raw) : {price_min: price, price_label: price ? `${price.toLocaleString()}원` : "무료"};
+  raw.price_min = parsed.price_min; raw.price_label = parsed.price_label; raw.price = parsed.price_min;
+  const inferred = [];
+  if (/청소년|어린이/.test(raw.USE_TRGT || "")) inferred.push({t:"ageMax", v:18, p:0, l:"청소년·어린이 무료", auto_extracted:true});
+  if (/65세/.test(raw.USE_TRGT || "")) inferred.push({t:"ageMin", v:65, p:0, l:"만 65세 이상 무료", auto_extracted:true});
+  if (/학생/.test(`${raw.USE_TRGT || ""} ${raw.USE_FEE || ""}`)) {
+    const studentPrice = parsed.amounts && parsed.amounts.length > 1 ? parsed.amounts[parsed.amounts.length - 1] : 0;
+    inferred.push({t:"student", v:"univ", p:studentPrice, l:studentPrice ? `학생 ${studentPrice.toLocaleString()}원` : "학생 할인", auto_extracted:true});
+  }
+  const rules = [...(raw.ben || []), ...inferred].map(r => Object.assign({auto_extracted:false}, r));
+  raw.ben = rules.filter((r, idx, list) => list.findIndex(x => `${x.t}:${x.v || ""}:${x.p}` === `${r.t}:${r.v || ""}:${r.p}`) === idx);
+  raw.benefit_records = raw.ben.map(r => ({event_id:raw.id, type:r.t, value:r.v ?? null, price_after:r.p, label:r.l, auto_extracted:!!r.auto_extracted}));
+  return raw;
+}
+for (let i = 0; i < events.length; i += 1) events[i] = normalizeCultureEvent(events[i], i);
+// 정규화 순서를 유지해 남는 문화 예시의 이름·가격·좌표는 바꾸지 않는다.
+events.splice(0,events.length,...events.filter(window.cultureEventsData.isLegacyVisible));
+const retainedCultureSamples = events.slice();
+const rawCulturalEvents = events;
+/* 오늘 예약 가능한 할인 */
+const discounts = [
+  {id:"c1",ref:"e17",title:"오늘 재즈 라이브 잔여석 할인",orig:8000,price:5000,time:"오늘 20:00 공연 · 현장 입장",left:6,slots:["20:00"]},
+  {id:"c2",ref:"e5",title:"판화전 오후 입장 반값",orig:3000,price:1500,time:"오늘 16:00–18:00 입장",left:12,slots:["16:00","17:00"]},
+  {id:"c3",ref:"e3",title:"향 만들기 키트 업그레이드 무료",orig:5000,price:0,time:"오늘 15:00–17:00 체험 회차",left:4,slots:["15:00","16:00"]},
+];
+const judgeList = [
+  {id:"j2",kind:"문화",name:"음악 방송 공개녹화 방청",price:0,area:"서울 성동구",time:"11. 02. 09:10",up:1,down:1,ref:"e9"},
+];
+judgeList.forEach(j => {
+  j.right = j.right ?? j.up ?? 0; j.ended = j.ended ?? 0; j.wrong = j.wrong ?? j.down ?? 0;
+  j.submittedAt = j.submittedAt || Date.now() - 86400000; j.expiresAt = j.expiresAt || j.submittedAt + 7*86400000;
+  j.status = j.status || "확인 중"; j.voters = j.voters || {};
+});
+
+const store = [
+  {id:"s1",name:"편의점 1,000원 금액권",cost:1500,e:"🏪"},
+  {id:"s2",name:"아메리카노 쿠폰",cost:4500,e:"☕"},
+  {id:"s3",name:"치킨 1마리 쿠폰",cost:25000,e:"🍗"},
+];
+
+/* ===== 상태 ===== */
+const S = {tab:"map",layer:"culture",date:null,dateEnd:null,dateMode:"all",dateLabel:null,calYM:FILTER_TODAY.slice(0,7),maxPrice:10000,genres:new Set(["전시","공연","체험","축제"]),reserve:"all",
+  hideSamples:false,demoMode:true,sel:null,
+  bells:new Set(["e5"]),saved:new Set(["e1"]),tikkle:1240,tickets:2,attended:false,boxAt:Date.now()-1000,ads:0,steps:4320,stepClaimed:0,
+  verified:[],judged:new Set(),bookings:[],
+  prefs:{open:true,end:true,free:true,judge:true,regions:new Set(["홍대입구","연남동"]),genres:new Set(["전시","공연","체험","축제"])},
+  notis:[
+    {kind:"신청 오픈",text:"향 만들기 체험 팝업, 오늘 현장 대기 명단이 열렸어요",time:"오늘 11:02",read:false,id:"e3"},
+    {kind:"곧 종료",text:"알림 켠 '신진 작가 판화전'이 11월 4일(수)에 끝나요",time:"오늘 09:00",read:false,id:"e5"},
+    {kind:"예매 오픈 예정",text:"낭독 공연 〈창밖의 계절〉 예매가 11월 3일 10:00에 열려요",time:"어제 20:15",read:true,id:"e6"}]};
+S.profile = window.dataService ? window.dataService.getProfile() : null; S.benefit = !!(window.dataService && window.dataService.read().benefit_enabled);
+S.myStatus = {};
+if (window.dataService) {
+  const savedRows=window.dataService.getSaved(); if(savedRows.length) S.saved=new Set(savedRows.map(x=>x.target_id));
+  const savedNotis=window.dataService.getNotifications(); if(savedNotis.length) S.notis=savedNotis;
+}
+const V = {s:1, tx:0, ty:0};
+/* 모든 장소에 현장 상태 집계 (데모 시드값) */
+events.forEach((it,i) => { if (!it.votes) it.votes = {went: 2 + (i*7)%9, ended: 0, wrong: i%5===0 ? 1 : 0}; });
+/* 현장 상태는 정보 확인용 3가지. DB 값(went·ended·wrong)은 그대로 두고 화면 문구만 바꾼다 */
+const STATUS_ORDER = ["ended","went","wrong"];
+const STATUS_L = {ended:"없어졌어요", went:"정보와 맞아요", wrong:"정보가 달라요"};
+const STATUS_ICON = {ended:"⛔", went:"✅", wrong:"✏️"};
+function liveLine(it){
+  const v = it.votes; if (!v) return "";
+  const warn = v.ended >= 2 ? `<b style="color:var(--red)">없어졌다는 제보 ${v.ended}건 · 가기 전에 확인하세요</b>` : v.wrong >= 2 ? `<b style="color:var(--red)">정보가 다르다는 제보 ${v.wrong}건</b>` : "";
+  return `<div class="sec"><h3>현장 상태 <span>방문 인증한 사람만 표시</span></h3>
+    <div class="votes ro">${STATUS_ORDER.map(k=>`<div><b>${v[k]}</b>${STATUS_L[k]}</div>`).join("")}</div>
+    ${warn?`<div class="status">${warn}</div>`:""}${S.myStatus[it.id]?`<div class="status">내 상태: ${STATUS_L[S.myStatus[it.id]]}</div>`:""}</div>`;
+}
+
+/* ===== 유틸 ===== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const won = n => {
+  if(n===null || n===undefined || n==="")return "가격 확인";
+  const value=Number(n);return !Number.isFinite(value)?"가격 확인":value===0?"무료":value.toLocaleString("ko-KR")+"원";
+};
+const tier = p => p === null || p === undefined ? "t-unknown" : p === 0 ? "t-free" : p <= 5000 ? "t-low" : "t-mid";
+const priceText = (e,value=eff(e)) => {
+  if(value.price==null)return e.price_label||won(value.price);
+  if(Number(value.price)===0)return "무료";
+  const suffix=e.is_public_culture||(!value.rule&&String(e.price_label||"").endsWith("~"))?"~":"";
+  return won(value.price)+suffix;
+};
+const ymd = s => s.split("-").map(Number);
+const md = d => { const [,m,dd] = ymd(d); return `${m}.${dd}`; };
+const dow = d => { const [y,m,dd] = ymd(d); return "일월화수목금토"[new Date(y,m-1,dd).getDay()]; };
+const dlabel = d => `${md(d)} (${dow(d)})`;
+const isAlwaysOpen = e => Boolean(e.always_open || e.meta?.always_open);
+const period = e => isAlwaysOpen(e) ? "상시 운영" : !e.start || !e.end ? "기간 확인" : e.start === e.end ? md(e.start) : `${md(e.start)} – ${md(e.end)}`;
+const days = (a,b) => Math.round((new Date(b) - new Date(a)) / 864e5);
+const soon = e => { if(isAlwaysOpen(e) || !e.end) return false; const d = days(TODAY, e.end); return d >= 0 && d <= 3; };
+const rnd = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const findAny = id => events.find(e => e.id===id);
+const locationOf = it => Number.isFinite(it.lat) && Number.isFinite(it.lng) ? {lat:it.lat,lng:it.lng} : window.mapsService.fromWorld(it.x, it.y);
+const ico = {
+  share:'<svg class="share-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg>',
+  x:'<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  car:'<svg class="car" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>',
+  cal:'<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
+  clock:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>',
+  pin:'<svg viewBox="0 0 24 24"><path d="M12 21s-6-5.3-6-10a6 6 0 1 1 12 0c0 4.7-6 10-6 10Z"/><circle cx="12" cy="11" r="2"/></svg>',
+  tk:'<svg viewBox="0 0 24 24"><path d="M3 8V6h18v2a2 2 0 0 0 0 4v6H3v-6a2 2 0 0 0 0-4Z"/></svg>',
+  menu:'<svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-2 6 0 8v10"/></svg>',
+  sl:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+  cp:'<svg viewBox="0 0 24 24"><path d="M3 8V6h18v2a2 2 0 0 0 0 4v6H3v-6a2 2 0 0 0 0-4Z"/><path d="M14 6v12"/></svg>'
+};
+let tt; function toast(m){ const t=$("#toast"); t.textContent=m; t.hidden=false; clearTimeout(tt); tt=setTimeout(()=>t.hidden=true,2800); }
+function isGuest(){ return !window.dataService || window.dataService.account().isGuest; }
+const josa = (word, withBatchim, without) => { const c = word.charCodeAt(word.length-1); return c>=0xAC00 && c<=0xD7A3 && (c-0xAC00)%28 ? withBatchim : without; };
+// 로그인 안내: back 은 취소했을 때 돌아갈 화면, 로그인에 성공하면 같은 화면으로 돌아간다
+function loginPrompt(feature, back){
+  sheet(`<div class="sh-h"><h2>로그인이 필요합니다</h2><button class="x" id="lpX" aria-label="닫기">${ico.x}</button></div>
+    <p style="font-size:15px;line-height:1.55;margin:6px 0 0"><b>${esc(feature)}</b>${josa(feature,"은","는")} 로그인 후 사용할 수 있습니다.<br>로그인 화면으로 이동할까요?</p>
+    <p class="note" style="margin:8px 0 0">로그인하지 않아도 지도와 정보는 모두 볼 수 있어요. 리뷰·평점·티끌 적립은 회원만 가능해요.</p>
+    <div class="acts"><button class="out" id="lpC">취소</button><button class="blk" id="lpGo">로그인하기</button></div>`);
+  const cancel = () => back ? back() : closeSheet();
+  $("#lpX").onclick = cancel; $("#lpC").onclick = cancel;
+  $("#lpGo").onclick = () => accountSheet("login", back);
+}
+function needLogin(feature, back){ if(!isGuest()) return false; loginPrompt(feature, back); return true; }
+// 제보는 예외: 임시 닉네임으로 할지, 로그인하고 할지 고르게 한다
+function reportEntry(){
+  if(!isGuest()){ reportTypeSheet(); return; }
+  const nick = window.dataService.getNickname() || "임시 닉네임";
+  sheet(`<div class="sh-h"><h2>로그인하지 않았어요</h2><button class="x" id="reX" aria-label="닫기">${ico.x}</button></div>
+    <p style="font-size:15px;line-height:1.55;margin:6px 0 0">제보는 로그인 없이도 할 수 있어요.<br>임시 닉네임 <b>${esc(nick)}</b>(으)로 제보할까요?</p>
+    <p class="note" style="margin:8px 0 0">임시 닉네임으로 제보하면 티끌은 적립되지 않아요. 나중에 이메일로 가입하면 이 제보도 내 계정에 그대로 남아요.</p>
+    <div class="acts"><button class="out" id="reLogin">로그인하고 제보</button><button class="blk" id="reGuest">임시 닉네임으로 제보</button></div>`);
+  $("#reX").onclick = closeSheet;
+  $("#reGuest").onclick = reportTypeSheet;
+  $("#reLogin").onclick = () => accountSheet("login", reportTypeSheet);
+}
+function addTikkle(n, why){ if(isGuest()) return; S.tikkle += n; if(window.dataService) window.dataService.addLedger({kind:"activity",amount:n,reward:n,reason:why,date:TODAY,user_id:window.dataService.userId(),created_at:new Date().toISOString()}); toast(`+${n.toLocaleString()}티끌 · ${why}`); }
+
+/* ===== 필터 ===== */
+const activeOn = (e, d) => isAlwaysOpen(e) || e.start <= d && e.end >= d;
+const activeDuring = (e, start, end) => isAlwaysOpen(e) || e.start <= end && e.end >= start;
+function addFilterDays(date,n){ const d=new Date(`${date}T00:00:00Z`); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
+/* 내 혜택: 프로필로 규칙을 판정해 가장 싼 가격을 고름 */
+function myAge(){ if (!S.profile || !S.profile.birth) return null; const [by,bm,bd] = ymd(S.profile.birth), [ty,tm,td] = ymd(TODAY); return ty - by - ((tm < bm || (tm === bm && td < bd)) ? 1 : 0); }
+function ruleOk(r){
+  const P = S.profile; if (!P) return false; const a = myAge();
+  switch (r.t){
+    case "ageMax": return a !== null && a <= r.v;
+    case "ageMin": return a !== null && a >= r.v;
+    case "gu": return P.gu === r.v;
+    case "culturecard": return !!P.culturecard;
+    case "student": return P.student === r.v;
+    case "soldier": return !!P.soldier;
+    case "disabled": return !!P.disabled;
+    case "merit": return !!P.merit;
+    case "multi": return !!P.multi;
+    case "income": return r.v.includes(P.income);
+  }
+  return false;
+}
+/* ===== 제도 기반 혜택: 국공립 시설 장애인 감면(법령) + 기관별 혜택표 ===== */
+// 장애인복지법 시행령 별표 2: 국공립 박물관·미술관 무료, 국공립 공연장 50% (팀 조사 자료 기준)
+// 주소(서울특별시 …)는 판정에 쓰지 않는다: 장소명·주최·제목 머리말만 본다
+const PUBLIC_OWNER = /(국립|시립|구립|도립|군립|공립|문화재단|구민회관|구청)/;
+// 이름에 운영 주체가 드러나지 않는 공공 공연장·전시장 (지자체·산하 재단 운영)
+const KNOWN_PUBLIC = /(세종문화회관|영등포아트홀|마포아트센터|서대문문화회관|국립극장|명동예술극장|정동극장)/;
+const MUSEUM_RE = /(미술관|박물관|기념관|전시관|역사관|문학관|아카이브)/;
+const THEATER_RE = /(공연장|극장|아트센터|아트홀|문화회관|예술회관|씨어터|홀)/;
+function facilityKind(e){
+  const where = [e.place, e.org_name, e.ORG_NAME].filter(Boolean).join(" ");
+  const prefix = (String(e.name || "").match(/^\s*[\[【]([^\]】]+)[\]】]/) || [])[1] || "";
+  if (!PUBLIC_OWNER.test(where) && !PUBLIC_OWNER.test(prefix) && !KNOWN_PUBLIC.test(where)) return null;
+  const hay = where + " " + prefix;
+  if (MUSEUM_RE.test(hay) && (e.genre === "전시" || e.genre4 === "전시")) return "museum";
+  if (THEATER_RE.test(hay) && (e.genre === "공연" || e.genre4 === "공연")) return "theater";
+  return null;
+}
+const roundWon = n => Math.round(n / 100) * 100;
+function legalRules(e){
+  const base = e.price_min ?? e.price; if (!e.is_public_culture || !base) return [];
+  const kind = facilityKind(e); e.is_public_facility = Boolean(kind);
+  if (kind === "museum") return [{t:"disabled", p:0, l:"장애인 무료 (국공립 박물관·미술관)", legal:true}];
+  if (kind === "theater") return [{t:"disabled", p:roundWon(base * 0.5), l:"장애인 50% 할인 (국공립 공연장)", legal:true}];
+  return [];
+}
+const VENUE_TARGET = { "장애인":{t:"disabled"}, "국가유공자":{t:"merit"}, "대학생":{t:"student",v:"univ"}, "초중고생":{t:"student",v:"school"}, "청소년(만18세이하)":{t:"ageMax",v:18}, "만24세이하":{t:"ageMax",v:24}, "만65세이상":{t:"ageMin",v:65}, "군인":{t:"soldier"}, "문화누리카드":{t:"culturecard"} };
+// 기관별 혜택표(venue_benefits): 장소명에 키워드가 들어간 행사에 대상별 할인을 붙인다
+function venueRules(e){
+  const base = e.price_min ?? e.price; if (!e.is_public_culture || !base || !window.dataService?.getVenueBenefits) return [];
+  const hay = [e.place, e.name, e.org_name, e.place_addr].filter(Boolean).join(" ");
+  return window.dataService.getVenueBenefits().filter(v => v.venue_keyword && hay.includes(v.venue_keyword) && (v.category === "전체" || v.category === (e.genre4 || e.genre)) && VENUE_TARGET[v.target]).map(v => {
+    const d = String(v.discount || "").trim();
+    const p = /무료/.test(d) ? 0 : /%/.test(d) ? roundWon(base * (1 - Number(d.replace(/[^0-9.]/g, "")) / 100)) : Number(d.replace(/[^0-9]/g, ""));
+    return {...VENUE_TARGET[v.target], p, l:`${v.target} ${/무료/.test(d) ? "무료" : d.includes("%") ? d + " 할인" : won(p)}`, venue:v.venue_name || v.venue_keyword};
+  }).filter(r => Number.isFinite(r.p) && r.p < base);
+}
+function eff(e){
+  const base = e.price_min == null ? null : e.price_min;
+  if (!S.benefit || !S.profile || !e.ben || base == null) return {price:base, rule:null};
+  let best = {price:base, rule:null};
+  e.ben.forEach(r => { if (ruleOk(r) && r.p < best.price) best = {price:r.p, rule:r}; });
+  return best;
+}
+const effP = e => eff(e).price;
+// 공공데이터 행사도 혜택 규칙이 있으면 내 혜택가로 거른다 (혜택가로 만 원 이하가 되는 공연은 혜택을 켰을 때만 보임)
+const cultureFilterPrice = e => e.is_public_culture && !(e.ben && e.ben.length) ? e.price : effP(e);
+function isDemoCulture(e){ return !!e && !e.is_public_culture && e.src!=="사용자 제보" && !e.report_id && (e.is_sample===true || e.src==="예시 데이터"); }
+function cultureList(){
+  return events.filter(e => {
+    if (e.hidden || !isAlwaysOpen(e) && e.end < FILTER_TODAY) return false;
+    if (S.date && !activeDuring(e, S.date, S.dateEnd || S.date)) return false;
+    const price = cultureFilterPrice(e);
+    if (price == null || price > S.maxPrice) return false;
+    if (!S.genres.has(e.genre4 || e.genre)) return false;
+    return true;
+  }).sort((a,b) => cultureFilterPrice(a)-cultureFilterPrice(b) || String(a.end || "9999-12-31").localeCompare(String(b.end || "9999-12-31")));
+}
+const priceLabel = v => v === 0 ? "무료만" : `${v.toLocaleString()}원 이하`;
+
+function chips(){
+  const c = $("#chips");
+  const on = S.date;
+  c.innerHTML = `<button class="chip icon ${on?"on":""}" id="cFilter" aria-label="상세 필터">${ico.sl}</button>
+    <button class="chip ben ${S.benefit?"on":""}" id="cBen" role="switch" aria-checked="${S.benefit}">🎟️ 내 혜택 적용 <span class="mini ${S.benefit?"on":""}"></span></button>
+    <button class="chip ${S.date?"on":""}" id="cDate">${ico.cal} ${S.date ? (S.dateLabel || dlabel(S.date)) : "날짜 선택"} ${ico.car}</button>
+    <button class="chip ${S.maxPrice<10000?"on":""}" id="cPrice">${priceLabel(S.maxPrice)} ${ico.car}</button>
+    <button class="chip ${S.genres.size<4?"on":""}" id="cGenre">문화 종류 · ${S.genres.size}</button>`;
+}
+
+/* ===== 지도 (성수동 일대, 끌어서 이동·확대) ===== */
+function mapSVG(){ return ""; }
+function rectOf(){ return $("#map").getBoundingClientRect(); }
+function applyView(){
+  if (window.mapsService?.getMap()) {
+    const w = $("#world");
+    w.style.transform = "none"; w.style.width = "100%"; w.style.height = "100%"; w.style.setProperty("--inv", "1");
+    w.querySelectorAll(".pin").forEach(pin => {
+      const ids = pin.dataset.cluster ? pin.dataset.cluster.split(",") : [pin.dataset.peek];
+      const locations = ids.map(findAny).filter(Boolean).map(locationOf);
+      if (!locations.length) return;
+      const location = {lat:locations.reduce((n,l)=>n+l.lat,0)/locations.length,lng:locations.reduce((n,l)=>n+l.lng,0)/locations.length};
+      const point = window.mapsService.project(location);
+      if (point) { pin.style.left = `${point.x}px`; pin.style.top = `${point.y}px`; }
+    });
+    placeMeDot();
+    return;
+  }
+  const r = rectOf();
+  const sw = W*V.s, sh = H*V.s, pad = 60;
+  V.tx = sw <= r.width ? (r.width - sw)/2 : clamp(V.tx, r.width - sw - pad, pad);
+  V.ty = sh <= r.height ? (r.height - sh)/2 : clamp(V.ty, r.height - sh - 80, 170);
+  const w = $("#world");
+  w.style.transform = `translate(${V.tx}px,${V.ty}px) scale(${V.s})`;
+  w.style.setProperty("--inv", (1/V.s).toFixed(3));
+  clearTimeout(applyView.cull); applyView.cull = setTimeout(() => { if (S.tab === "map") renderMap(); }, 180);
+}
+function zoomAt(px, py, f){
+  if (window.mapsService?.getMap()) { window.mapsService.zoom(f); return; }
+  const ns = clamp(V.s*f, 0.55, 1.8);
+  V.tx = px - (px - V.tx)*(ns/V.s); V.ty = py - (py - V.ty)*(ns/V.s); V.s = ns; applyView();
+}
+function centerOn(x, y, s){
+  if (window.mapsService?.getMap()) {
+    const item = events.find(it=>it.x===x && it.y===y);
+    window.mapsService.panTo(item ? locationOf(item) : window.mapsService.fromWorld(x,y));
+    applyView(); return;
+  }
+  const r = rectOf(); if (s) V.s = s;
+  V.tx = r.width/2 - x*V.s; V.ty = r.height*0.42 - y*V.s; applyView();
+}
+function viewBounds(){
+  const googleMap = window.mapsService?.getMap();
+  if (googleMap) { const center=googleMap.getCenter().toJSON(), world=window.mapsService.toWorld(center); return {google:true,center,cx:world.x,cy:world.y}; }
+  const r = rectOf();
+  return {x0:(0-V.tx)/V.s, x1:(r.width-V.tx)/V.s, y0:(150-V.ty)/V.s, y1:(r.height-70-V.ty)/V.s, cx:(r.width/2-V.tx)/V.s, cy:(r.height*0.45-V.ty)/V.s};
+}
+const hasCultureCoordinates = it => !it.is_public_culture || Number.isFinite(it.lat) && Number.isFinite(it.lng);
+const inView = (it, b) => !hasCultureCoordinates(it) ? false : b.google ? window.mapsService.contains(locationOf(it)) : it.x>=b.x0 && it.x<=b.x1 && it.y>=b.y0 && it.y<=b.y1;
+const distM = (it, b) => b.google ? window.mapsService.distance(locationOf(it),b.center) : Math.round(Math.hypot(it.x-b.cx, it.y-b.cy) * M_PER_UNIT / 10) * 10;
+const fmtDist = m => m >= 1000 ? (m/1000).toFixed(1)+"km" : m+"m";
+
+// 화면(+여유) 안에 있는 핀만 그린다. 선택된 핀은 화면 밖이어도 유지
+function nearView(it){
+  if (S.sel === it.id) return true;
+  const ms = window.mapsService;
+  if (ms?.getMap()) {
+    const vb = ms.visibleBounds(0.25); if (!vb) return true;
+    const loc = locationOf(it); if (!loc || !Number.isFinite(loc.lat)) return false;
+    return loc.lat <= vb.n && loc.lat >= vb.s && loc.lng <= vb.e && loc.lng >= vb.w;
+  }
+  const b = viewBounds(), px = (b.x1 - b.x0) * 0.25, py = (b.y1 - b.y0) * 0.25;
+  return it.x >= b.x0 - px && it.x <= b.x1 + px && it.y >= b.y0 - py && it.y <= b.y1 + py;
+}
+// 내 위치 점
+const HONGDAE = { lat: 37.5572, lng: 126.9245 };
+let meWatch = null;
+function meDotHtml(){
+  if (!S.me) return "";
+  const w = window.mapsService?.getMap() ? {x:0,y:0} : window.mapsService ? window.mapsService.toWorld(S.me) : {x:500,y:660};
+  return `<div class="me-dot ${S.me.demo?"demo":""}" id="meDot" style="left:${w.x}px;top:${w.y}px" role="img" aria-label="내 위치"><i></i></div>`;
+}
+function placeMeDot(){
+  const md = $("#meDot");
+  if (!S.me) { md && md.remove(); return; }
+  if (!md) { if (S.tab==="map") renderMap(); return; }
+  const ms = window.mapsService;
+  if (ms?.getMap()) { const p = ms.project(S.me); if (p) { md.style.left = `${p.x}px`; md.style.top = `${p.y}px`; } }
+  else if (ms) { const w = ms.toWorld(S.me); md.style.left = `${w.x}px`; md.style.top = `${w.y}px`; }
+}
+function setMe(lat, lng, demo=false){ S.me = { lat, lng, demo }; placeMeDot(); }
+function startWatch(){
+  if (meWatch !== null || !navigator.geolocation) return;
+  meWatch = navigator.geolocation.watchPosition(pos => setMe(pos.coords.latitude, pos.coords.longitude), () => {}, { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 });
+}
+function goMyLocation(){
+  const ms = window.mapsService;
+  if (!navigator.geolocation) { toast("이 기기에서는 위치를 확인할 수 없어요."); return; }
+  toast("내 위치를 확인하고 있어요…");
+  navigator.geolocation.getCurrentPosition(pos => {
+    const me = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    setMe(me.lat, me.lng); startWatch();
+    if (ms?.getMap()) ms.panTo(me); else if (ms) { const w = ms.toWorld(me); centerOn(w.x, w.y); }
+    const far = ms ? ms.distance(me, HONGDAE) : 0;
+    toast(far > 8000 ? "내 위치로 이동했어요. 지금은 홍대 주변 정보만 있어서 핀이 없을 수 있어요." : "내 위치로 이동했어요.");
+  }, err => {
+    toast(err.code === 1 ? "위치 권한이 꺼져 있어요. 브라우저 설정에서 위치 접근을 허용해 주세요." : "위치를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.");
+  }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+}
+function renderMap(){
+  let pins = "";
+  {
+    const groups = new Map();
+    cultureList().filter(hasCultureCoordinates).filter(nearView).forEach(e => { const key = `${Math.round(e.x/36)}:${Math.round(e.y/36)}`; if(!groups.has(key)) groups.set(key,[]); groups.get(key).push(e); });
+    pins = [...groups.values()].map(group => { if(group.length>1){ const x=group.reduce((a,e)=>a+e.x,0)/group.length, y=group.reduce((a,e)=>a+e.y,0)/group.length; return `<button class="pin t-mid cluster ${group.every(isDemoCulture)?"demo":""}" style="left:${x}px;top:${y}px" data-cluster="${group.map(e=>e.id).join(",")}" aria-label="${group.length}곳 겹침 핀"><span class="p"><span class="e">＋</span>${group.length}곳</span><span class="s">목록 보기</span></button>`; } const e=group[0], f=eff(e); return `<button class="pin ${tier(f.price)} ${S.sel===e.id?"sel":""} ${e.src==="사용자 제보"?"rep":""} ${isDemoCulture(e)?"demo":""}" style="left:${e.x}px;top:${e.y}px" data-peek="${e.id}" aria-label="${esc(e.name)} ${priceText(e,f)}${isDemoCulture(e)?" (예시)":""}">
+      <span class="p"><span class="e">${EMOJI[e.genre]}</span>${priceText(e,f)}</span>
+      <span class="s">${f.rule ? "🎟️ 내 혜택가" : e.src==="사용자 제보" ? "제보" : discounts.some(d=>d.ref===e.id&&d.left>0) ? "오늘 할인" : isDemoCulture(e) ? "예시" : soon(e) ? "곧 종료" : e.is_permanent_place ? "상설" : e.is_public_culture ? "문화행사" : e.reserve ? "예약" : "바로 입장"}</span></button>`; }).join("");
+  }
+  $("#world").innerHTML = mapSVG() + pins + meDotHtml();
+  if (window.mapsService?.getMap()) applyView();
+  $("#plusLabel").textContent = "제보하기";
+}
+function render(){
+  refreshNotifications();
+  $("#demoModeBadge").hidden = !S.demoMode;
+  $("#notiDot").hidden = !S.notis.some(n => !n.read);
+  document.querySelectorAll(".nav button").forEach(b => b.dataset.tab===S.tab ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
+  const onMap = S.tab === "map";
+  $("#head").hidden = !onMap; $("#mapUi").hidden = !onMap; $("#page").hidden = onMap; $("#map").hidden = !onMap;
+  chips(); renderMap();
+  if (onMap) applyView(); else renderPage();
+}
+
+/* 지도 제스처: 한 손가락/마우스 드래그 이동, 두 손가락 핀치·휠·더블클릭 확대 */
+(function gestures(){
+  const map = $("#map"), pts = new Map(); let last = null, moved = 0;
+  map.addEventListener("pointerdown", e => {
+    if (window.mapsService?.getMap() || e.target.closest(".pin")) return;
+    map.setPointerCapture(e.pointerId); pts.set(e.pointerId, {x:e.clientX, y:e.clientY}); moved = 0; last = null; map.classList.add("drag");
+  });
+  map.addEventListener("pointermove", e => {
+    if (!pts.has(e.pointerId)) return;
+    const prev = pts.get(e.pointerId); pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if (pts.size === 1){ V.tx += e.clientX - prev.x; V.ty += e.clientY - prev.y; moved += Math.abs(e.clientX-prev.x)+Math.abs(e.clientY-prev.y); applyView(); }
+    else if (pts.size === 2){
+      const [a,b] = [...pts.values()], r = rectOf();
+      const d = Math.hypot(a.x-b.x, a.y-b.y), mx = (a.x+b.x)/2 - r.left, my = (a.y+b.y)/2 - r.top;
+      if (last){ V.tx += mx - last.mx; V.ty += my - last.my; zoomAt(mx, my, d/last.d); }
+      last = {d, mx, my}; moved += 10;
+    }
+  });
+  const end = e => { pts.delete(e.pointerId); last = null; if (!pts.size){ map.classList.remove("drag"); if (moved < 4 && !$("#peek").hidden) closePeek(); } };
+  map.addEventListener("pointerup", end); map.addEventListener("pointercancel", end);
+  map.addEventListener("wheel", e => { if(window.mapsService?.getMap()) return; e.preventDefault(); const r = rectOf(); zoomAt(e.clientX-r.left, e.clientY-r.top, Math.exp(-e.deltaY*0.0015)); }, {passive:false});
+  map.addEventListener("dblclick", e => { if(window.mapsService?.getMap()) return; if (e.target.closest(".pin")) return; const r = rectOf(); zoomAt(e.clientX-r.left, e.clientY-r.top, 1.5); });
+  map.addEventListener("keydown", e => {
+    const k = {ArrowLeft:[40,0],ArrowRight:[-40,0],ArrowUp:[0,40],ArrowDown:[0,-40]}[e.key];
+    if (k && window.mapsService?.getMap()){ e.preventDefault(); window.mapsService.getMap().panBy(-k[0],-k[1]); return; }
+    if (k){ e.preventDefault(); V.tx += k[0]; V.ty += k[1]; applyView(); }
+    if (e.key === "+" || e.key === "="){ const r = rectOf(); zoomAt(r.width/2, r.height/2, 1.25); }
+    if (e.key === "-"){ const r = rectOf(); zoomAt(r.width/2, r.height/2, 0.8); }
+  });
+  window.addEventListener("resize", applyView);
+})();
+
+/* ===== 핀 → 절반 높이 상세 시트 ===== */
+function peek(id){
+  const it=findAny(id);if(!it)return;
+  S.sel=id;renderMap();$("#peek").hidden=true;$("#bottomctl").hidden=false;
+  const scrim=$("#scrim"),level=scrim.hidden||scrim.dataset.placeId!==id?"half":undefined;
+  detail(id,level);
+}
+function closePeek(){
+  if($("#scrim").dataset.placeId){closeSheet();return;}
+  $("#peek").hidden=true;$("#bottomctl").hidden=false;S.sel=null;renderMap();
+}
+
+/* ===== 시트 ===== */
+let placeSheetController=null;
+function sheet(html,options={}){
+  const s=$("#scrim"),oldPanel=s.querySelector(".sheet"),same=Boolean(options.placeId&&s.dataset.placeId===options.placeId&&!s.hidden);
+  const level=options.level||(same?placeSheetController?.level:"half"),scrollTop=same?oldPanel?.scrollTop||0:0;
+  placeSheetController?.dispose();placeSheetController=null;
+  s.classList.toggle("detail-scrim",Boolean(options.placeId));
+  if(options.placeId)s.dataset.placeId=options.placeId;else delete s.dataset.placeId;
+  s.innerHTML=`<div class="sheet" role="dialog" aria-modal="${options.placeId?"false":"true"}" tabindex="-1"><div class="grab"></div>${html}</div>`;
+  s.hidden=false;const panel=s.querySelector(".sheet");
+  if(options.placeId){placeSheetController=window.placeSheet.attach(panel,{level,onClose:closeSheet});if(level==="full")panel.scrollTop=scrollTop;}
+  panel.focus({preventScroll:true});
+}
+function closeSheet(){
+  const s=$("#scrim"),wasPlace=Boolean(s.dataset.placeId);
+  placeSheetController?.dispose();placeSheetController=null;s.hidden=true;s.innerHTML="";s.classList.remove("detail-scrim");delete s.dataset.placeId;
+  if(wasPlace){S.sel=null;renderMap();}
+}
+function openNaverMap(name){window.open(`https://map.naver.com/p/search/${encodeURIComponent(name)}`,"_blank","noopener,noreferrer");}
+const discountBlock = id => { const d = discounts.find(x => x.ref===id); return d ? `<div class="sec"><h3>오늘 예약 가능한 할인 <span>${d.left?`남은 ${d.left}개`:"마감"}</span></h3>${dcCard(d)}</div>` : ""; };
+
+/* ===== 별점 리뷰 (모든 탭 공통) ===== */
+const SAMPLE_NICKS=["홍대 알뜰러","티끌 수집가","망원 산책러","연남 탐험가","합정 짠돌이","신촌 대학생","가성비 헌터","무료 전시 덕후"];
+const hashNum = str => [...String(str)].reduce((a,ch)=>(a*31+ch.charCodeAt(0))>>>0,7);
+const starStr = n => "★".repeat(n)+"☆".repeat(5-n);
+const dotDate = iso => { if(!iso) return ""; const d=new Date(iso); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`; };
+const topStars = it => it.cnt ? ` <span class="addr-star">★ ${it.star.toFixed(1)}</span><span class="addr-cnt">(${it.cnt})</span>` : ` <span class="addr-cnt">평가 없음</span>`;
+const reviewType = () => "event";
+// DB 리뷰 + 예시 리뷰를 합쳐 평균 별점과 평가 수를 계산한다. 기존 식당 예시 평점(cnt·star)은 기본값으로 함께 반영
+function applyReviews(it){
+  const ds=window.dataService;
+  if(!it.baseInit){ it.baseInit=true; if(typeof it.cnt==="number"&&it.cnt>0){ it.baseCnt=it.cnt; it.baseStar=it.star||0; } }
+  const db=ds.getReviews(it.id).map(r=>({id:r.id,user_id:r.user_id,n:ds.nicknameOf(r.user_id,r.nickname||"이름 없음"),r:r.rating||0,c:r.text||"",at:r.created_at,likes:ds.getLikes(r.id).length,liked:ds.likedByMe(r.id),flagged:ds.flaggedByMe(r.id),mine:r.user_id===ds.userId()}));
+  const samples=(it.sampleComments||[]).map((c,i)=>({id:null,sample:true,n:SAMPLE_NICKS[hashNum(it.id+i)%SAMPLE_NICKS.length],r:3+hashNum(c.c)%3,c:c.c,t:c.t,likes:hashNum(c.c+it.id)%6,at:""}));
+  it.reviewList=[...db,...samples];
+  const rated=db.filter(r=>r.r);
+  let cnt,sum;
+  if(it.baseCnt){ cnt=it.baseCnt+rated.length; sum=it.baseStar*it.baseCnt+rated.reduce((a,r)=>a+r.r,0); }
+  else { const all=[...rated,...samples]; cnt=all.length; sum=all.reduce((a,r)=>a+r.r,0); }
+  it.cnt=cnt; it.star=cnt?sum/cnt:0;
+}
+function reviewSection(it){
+  applyReviews(it);
+  const sort=S.reviewSort||"new";
+  const list=[...it.reviewList].sort((a,b)=> sort==="like" ? (b.likes-a.likes)||(b.at||"").localeCompare(a.at||"") : (b.at||"").localeCompare(a.at||""));
+  const item = r => {
+    const acts = r.sample
+      ? `<span class="rv-sample">예시</span><span class="rv-likes">♡ ${r.likes}</span>`
+      : `<button class="rv-btn ${r.liked?"on":""}" data-like="${r.id}" data-target="${esc(it.id)}" aria-label="좋아요">${r.liked?"♥":"♡"} ${r.likes}</button>${r.mine?`<span class="rv-sample">내 리뷰</span>`:`<button class="rv-btn" data-flag="${r.id}" data-target="${esc(it.id)}" ${r.flagged?"disabled":""}>${r.flagged?"신고됨":"신고"}</button>`}`;
+    const when = r.sample ? esc(r.t||"") : dotDate(r.at);
+    if(!r.c) return `<div class="rv mini"><b>${esc(r.n)}</b><span class="rv-star">${starStr(r.r)}</span><small>${when}</small><span class="rv-acts">${acts}</span></div>`;
+    return `<div class="rv"><div class="rv-h"><b>${esc(r.n)}</b><span class="rv-star">${starStr(r.r)}</span></div><p>${esc(r.c)}</p><div class="rv-f"><small>${when}</small><span class="rv-acts">${acts}</span></div></div>`;
+  };
+  const full=Math.round(it.star||0);
+  return `<div class="sec"><h3>리뷰</h3>
+    <div class="rv-sum">${it.cnt
+      ?`<b class="rv-avg">${it.star.toFixed(1)}</b><div><div class="rv-sum-stars" aria-label="5점 만점에 ${it.star.toFixed(1)}점">${starStr(full)}</div><small>평가 ${it.cnt}개</small></div>`
+      :`<b class="rv-avg muted">-</b><div><div class="rv-sum-stars">${starStr(0)}</div><small>아직 평가가 없어요. 첫 별점을 남겨주세요.</small></div>`}</div>
+    <div class="rv-bar"><div class="seg2"><button data-rsort="new" data-target="${esc(it.id)}" aria-pressed="${sort==="new"}">최신순</button><button data-rsort="like" data-target="${esc(it.id)}" aria-pressed="${sort==="like"}">좋아요순</button></div><button class="blk sm" data-rwrite="${esc(it.id)}">★ 리뷰 쓰기</button></div>
+    ${list.map(item).join("") || '<p class="note">아직 리뷰가 없어요. 첫 리뷰를 남겨주세요.</p>'}</div>`;
+}
+function reviewSheet(id){
+  const it=findAny(id); if(!it) return;
+  if(needLogin("리뷰 작성", () => backToDetail(id))) return;
+  let rating=0;
+  sheet(`<div class="sh-h"><h2>리뷰 쓰기</h2><button class="x" id="rvX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">${esc(it.name)} · ${esc(window.dataService.getNickname())}(으)로 남겨요</p>
+    <form id="rvF" novalidate>
+      <label>별점 (필수)</label><div class="stars" id="rvStars" role="group" aria-label="별점">${[1,2,3,4,5].map(n=>`<button type="button" data-rv="${n}" aria-label="${n}점">★</button>`).join("")}</div>
+      <label for="rvT">리뷰 (선택)</label><textarea id="rvT" maxlength="300" placeholder="가격·양·대기 시간 같은 현장 정보를 남겨주세요. 별점만 남겨도 돼요."></textarea>
+      <div class="err" id="rvErr"></div>
+      <div class="acts"><button class="out" type="button" id="rvC">취소</button><button class="blk" type="submit">등록</button></div>
+    </form>`);
+  const back = () => backToDetail(id);
+  $("#rvX").onclick = back; $("#rvC").onclick = back;
+  document.querySelectorAll("[data-rv]").forEach(b => b.onclick = () => { rating=+b.dataset.rv; document.querySelectorAll("[data-rv]").forEach(x=>x.classList.toggle("on", +x.dataset.rv<=rating)); $("#rvErr").textContent=""; });
+  $("#rvF").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    if(!rating){ $("#rvErr").textContent="별점을 골라 주세요."; return; }
+    const ds=window.dataService, first=!ds.getReviews(id).some(r=>r.user_id===ds.userId());
+    ev.submitter && (ev.submitter.disabled=true);
+    const result=await ds.addReview(id,$("#rvT").value,reviewType(it),rating);
+    if(!result.ok){ $("#rvErr").textContent="저장에 실패했어요. 다시 시도해 주세요."; ev.submitter && (ev.submitter.disabled=false); return; }
+    back(); renderMap();
+    if(first) addTikkle(T.review,"리뷰 남기기"); else toast("리뷰를 남겼어요.");
+  });
+}
+function flagSheet(reviewId, target){
+  sheet(`<div class="sh-h"><h2>리뷰 신고</h2><button class="x" id="flX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">신고 사유를 골라 주세요. 신고한 사람은 다른 사용자에게 보이지 않아요.</p>
+    ${["허위 정보","광고·홍보","욕설·비방","기타"].map(r=>`<button type="button" class="listitem" data-flagreason="${r}"><span><b>${r}</b></span><span>선택</span></button>`).join("")}`);
+  $("#flX").onclick = () => backToDetail(target);
+  document.querySelectorAll("[data-flagreason]").forEach(b => b.onclick = async () => {
+    const result=await window.dataService.flagReview(reviewId,b.dataset.flagreason);
+    backToDetail(target);
+    toast(result.ok?"신고가 접수됐어요. 확인 후 조치할게요.":"신고 접수에 실패했어요.");
+  });
+}
+const cmtHtml = c => `<div class="cmt">${c.r?`<b class="cmt-star">★${c.r}</b> `:""}${esc(c.c)}<small>${c.n?`${esc(c.n)} · `:""}${esc(c.t)}</small></div>`;
+
+/* ② 문화 상세 카드 */
+function detail(id,level){
+  const e = events.find(x => x.id === id); if (!e) return; applyReviews(e);
+  const rep = e.src === "사용자 제보" || e.src === "승격 제보", done = hasVisit(id) || S.verified.some(v => v.id===id), f = eff(e);
+  sheet(`<div class="${tier(f.price)}">
+    <div class="sh-h"><h2>${esc(e.name)}</h2><button class="x" id="dX" aria-label="닫기">${ico.x}</button></div>
+    <div class="addr">${esc(e.place)} ·${topStars(e)}</div>
+    <div class="hero">${e.photo?`<img src="${esc(e.photo)}" alt="${e.is_public_culture?"행사 이미지":"제보 사진"}">`:EMOJI[e.genre]}<span class="badge">${e.genre} · ${e.is_public_culture?esc(e.source):rep?e.src:"예시 데이터"}</span><span class="price">${f.rule?`<s style="font-size:13px;color:var(--muted);font-weight:500">${won(e.price)}</s> `:""}${priceText(e,f)}</span></div>
+    ${f.rule?`<div class="benok">🎟️ 내 혜택 적용: <b>${esc(f.rule.l)}</b> · 정가 ${won(e.price)} → ${won(f.price)}</div>`:""}
+    <div class="adds"><button id="aPhoto">＋ 현장 사진 추가</button><button id="aPrice">＋ 가격 수정</button><button id="aHours">＋ 운영시간 수정</button></div>
+    <div class="rows">
+      <div class="rowi">${ico.cal}<div>${period(e)} ${soon(e)?'<span class="tag red">곧 종료</span>':""}<small>기간</small></div></div>
+      <div class="rowi">${ico.clock}<div>${esc(e.hours)}<small>운영 시간</small></div></div>
+      <div class="rowi">${ico.tk}<div>${esc(e.entry)}<small>입장 방법</small></div></div>
+      <div class="rowi">${ico.menu}<div>${esc(e.is_public_culture ? (e.fee_text || "요금 안내 없음") : e.USE_FEE || e.price_label || won(e.price))}<small>원문 이용 요금</small></div></div>
+      <div class="rowi">${ico.menu}<div>${esc(e.USE_TRGT || "누구나")}<small>이용 대상</small></div></div>
+      <div class="rowi">${ico.pin}<div>${esc(e.place)}<small>위치</small></div></div>
+      ${e.is_public_culture?`<div class="rowi">${ico.menu}<div>${esc(e.source)}<small>출처</small></div></div>`:""}
+    </div>
+    ${benefitBlock(e)}
+    ${discountBlock(id)}
+    ${rep?`<div class="sec"><h3>이 제보, 맞나요? <span>정보 확인</span></h3>
+      <div class="votes">${STATUS_ORDER.map(k=>`<button data-vote="${k}" ${!S.demoMode&&S.judged.has("j"+id)?"disabled":""}><b>${e.votes[k]}</b>${STATUS_L[k]}</button>`).join("")}</div>
+      <div class="status">상태: ${esc(e.status)} · 기간이 지나면 자동으로 숨겨져요</div></div>`:liveLine(e)}
+    ${reviewSection(e)}
+    <div class="acts">
+      <button class="out" id="dShare">${ico.share}공유</button>
+      <button class="out ${S.saved.has(id)?"on":""}" id="dSave">${S.saved.has(id)?"♥ 찜함":"♡ 찜"}</button>
+      <button class="blk w" id="dNaver">네이버 지도에서 보기</button>
+      ${e.is_public_culture&&e.homepage_url?`<button class="out w" id="dHomepage">홈페이지에서 보기</button>`:""}
+      <button class="out w" id="dVer" ${done?"disabled":""}>${done?"방문 인증 완료":`📍 방문 인증하고 ${T.visit}티끌 받기`}</button>
+    </div>
+    <button class="linkbtn" id="dReport">광고·허위 정보 신고</button></div>`,{placeId:id,level});
+  $("#dX").onclick = closeSheet;
+  $("#dSave").onclick = async () => {
+    const next=S.saved.has(id), target={target_type:"event",target_id:id};
+    $("#dSave").disabled=true;
+    const result=await (next?window.dataService.removeSaved(target):window.dataService.saveTarget(target));
+    if(!result.ok){ $("#dSave") && ($("#dSave").disabled=false); return; }
+    next?S.saved.delete(id):S.saved.add(id); detail(id);
+  };
+  $("#dNaver").onclick = () => openNaverMap(e.place||e.name);
+  if($("#dHomepage")) $("#dHomepage").onclick=()=>{const url=e.homepage_url;if(/^https?:\/\//i.test(url))window.open(url,"_blank","noopener,noreferrer");else toast("홈페이지 주소를 확인해 주세요.");};
+  $("#dShare").onclick = async () => { const url = `${location.href.split("#")[0]}#${id}`; try { await navigator.clipboard.writeText(url); toast("공유 링크를 복사했어요."); } catch (_) { toast("공유 링크는 데모에서만 안내해요."); } };
+  const backE = () => detail(id);
+  $("#dVer").onclick = () => { if(!needLogin("방문 인증", backE)) verify(id); };
+  $("#dReport").onclick = () => reportAbuse(id);
+  if ($("#goProfile")) $("#goProfile").onclick = () => profileSheet(true);
+  $("#aPhoto").onclick = () => { if(!needLogin("현장 사진 추가", backE)) photoUpdate(id); };
+  $("#aPrice").onclick = () => { if(!needLogin("가격 수정", backE)) editField(id,"price"); };
+  $("#aHours").onclick = () => { if(!needLogin("운영시간 수정", backE)) editField(id,"hours"); };
+
+  document.querySelectorAll("[data-vote]").forEach(b => b.onclick = async () => {
+    if(needLogin("현장 상태 투표", () => detail(id))) return;
+    if(!S.demoMode&&S.judged.has("j"+id)){ toast("일반 모드에서는 제보당 한 번만 투표할 수 있어요."); return; }
+    const k=b.dataset.vote; b.disabled=true;
+    const result=await window.dataService.addVote({report_id:e.report_id||id,vote:k==="went"?"right":k,demo_mode:S.demoMode});
+    if(!result.ok){ b.disabled=false; return; }
+    if(window.dataService.mode==="remote") applyDataState();
+    else { e.votes[k]++; if(!S.demoMode) S.judged.add("j"+id); }
+    detail(id); toast(S.demoMode?"시연 투표를 반영했어요. 실제 DB 투표와는 분리돼요.":"확인 고마워요. 제보 상태에 반영했어요.");
+  });
+}
+
+function benefitBlock(e){
+  if (!e.ben || !e.ben.length) return "";
+  const has = !!S.profile;
+  return `<div class="sec"><h3>받을 수 있는 할인·무료 조건 <span>${has?(S.benefit?"내 정보로 판정":"혜택 적용 꺼짐"):"내 정보 입력 전"}</span></h3>
+    ${[...new Map(e.ben.map(r=>[`${r.l}|${r.p}`, e.ben.filter(x=>x.l===r.l&&x.p===r.p)])).values()].map(group => { const r = group[0], ok = has && group.some(ruleOk); return `<div class="benrow ${ok?"ok":""}"><span>${ok?"✓":"·"} ${esc(r.l)} ${r.legal?'<span class="tag">제도 기준</span>':r.venue?`<span class="tag">${esc(r.venue)} 안내</span>`:r.auto_extracted?'<span class="tag">요금 문구에서 추출</span>':''}</span><b>${won(r.p)}</b></div>`; }).join("")}
+    ${e.ben.some(r=>r.legal||r.venue)?'<p class="note" style="margin:6px 0 0">제도·기관 기준 혜택은 신분증·증빙이 필요하고 현장 조건이 다를 수 있어요. 방문 전 확인해 주세요.</p>':""}
+    ${has?"":'<button class="blk benefit-prompt" id="goProfile">🎟️ 내 정보 입력하고 해당 여부 확인하기</button>'}</div>`;
+}
+/* 오늘 예약 가능한 할인 카드 · 예약 흐름 (결제 없는 데모) */
+function dcCard(d, dist){
+  const it = findAny(d.ref), pct = d.orig ? Math.round((1 - d.price/d.orig)*100) : 0;
+  return `<div class="dc ${tier(it.price)}"><span class="ph">${EMOJI[it.genre]}</span>
+    <span style="min-width:0"><b>${esc(d.title)}</b><small>${esc(it.name)}${dist!=null?` · ${fmtDist(dist)}`:""}</small></span>
+    <span class="pr"><s>${d.orig.toLocaleString()}원</s><br><span class="pct">${pct}%</span><b>${won(d.price)}</b></span>
+    <span class="go"><small>${esc(d.time)} · ${d.left?`남은 ${d.left}개`:"마감"}</small><button class="blk sm" data-book="${d.id}" ${d.left?"":"disabled"}>${d.left?"예약하기":"마감"}</button></span></div>`;
+}
+function bookSheet(did){
+  const d = discounts.find(x => x.id===did), it = findAny(d.ref);
+  sheet(`<div class="sh-h"><h2>할인 예약</h2><button class="x" id="bX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">${esc(it.name)} · ${esc(d.title)}</p>
+    <form id="bF"><label for="bT">입장 시간</label><select id="bT">${d.slots.map(s=>`<option>${s}</option>`).join("")}</select>
+    <label for="bQ">수량 (남은 ${d.left}개)</label><select id="bQ">${Array.from({length:Math.min(3,d.left)},(_,i)=>`<option>${i+1}</option>`).join("")}</select>
+    <div class="card" style="display:flex;justify-content:space-between"><span>결제 예정 금액</span><b id="bSum">${won(d.price)}</b></div>
+    <p class="note" style="margin-top:8px">데모라서 실제 예약·결제는 일어나지 않아요. 실제 앱에서는 예약·결제 화면으로 이어져요.</p>
+    <div class="acts"><button class="out" type="button" id="bC">취소</button><button class="blk" type="submit">예약하기</button></div></form>`);
+  $("#bX").onclick = $("#bC").onclick = closeSheet;
+  $("#bQ").onchange = () => { $("#bSum").textContent = won(d.price * +$("#bQ").value); };
+  $("#bF").addEventListener("submit", ev => { ev.preventDefault(); const q = +$("#bQ").value, t = $("#bT").value;
+    d.left -= q; const code = "GJ" + rnd(1000,9999);
+    S.bookings.push({code, title:d.title, name:it.name, time:t, q, sum:d.price*q});
+    sheet(`<div class="verify"><div class="big">✅</div><p>예약 완료 (데모)</p><span class="note">${esc(it.name)} · ${t} · ${q}개 · ${won(d.price*q)}</span><p style="font-size:22px;letter-spacing:.08em">${code}</p><span class="note">방문할 때 예약 번호를 보여주세요. 설정 탭의 '오늘 예약'에서 다시 볼 수 있어요.</span></div>
+      <div class="acts"><button class="blk w" id="bOk">확인</button></div>`);
+    $("#bOk").onclick = closeSheet; renderMap();
+  });
+}
+
+/* ⑤ 위치 방문 인증 → 티끌 + 광고 보너스 */
+function haversineM(aLat,aLng,bLat,bLng){
+  const R=6371000, r=Math.PI/180, dLat=(bLat-aLat)*r, dLng=(bLng-aLng)*r;
+  const q=Math.sin(dLat/2)**2+Math.cos(aLat*r)*Math.cos(bLat*r)*Math.sin(dLng/2)**2; return 2*R*Math.asin(Math.sqrt(q));
+}
+function visitKey(id){ return `${id}:${TODAY}`; }
+function hasVisit(id){ return window.dataService.getVisits().some(v=>v.event_id===id && v.visit_date===window.dataService.today()); }
+function backToDetail(id){ return detail(id); }
+async function completeVisit(id, it, distance, simulated){
+  const result=await window.dataService.recordVisit(id,simulated,distance); if(!result.ok) return;
+  const already=result.value.already;
+  if(!already){ S.tikkle=window.dataService.getBalance(); S.verified.push({id,name:it.name,price:it.price_min ?? it.price,ref:it.ref}); }
+  sheet(`<div class="verify"><div class="big">${already?"✅":"🎉"}</div><p>${already?"오늘 이미 방문 인증했어요.":`방문 인증 완료 · +${T.visit}티끌`}</p><span class="note">${esc(it.name)} · ${simulated?"시연 모드 위치 가정":`${Math.round(distance)}m 거리`}</span>${!already?`<span class="note">정가 대비 ${Math.max(0,(it.ref||it.price||0)-((it.price_min ?? it.price) || 0)).toLocaleString()}원 아꼈어요.</span>`:""}</div>
+    <div class="sec" id="vSt"><h3>지금 현장은 어때요? <span>눌러서 현재 상태 남기기</span></h3><div class="votes">${STATUS_ORDER.map(k=>`<button data-st="${k}"><b>${STATUS_ICON[k]}</b>${STATUS_L[k]}</button>`).join("")}</div><div id="vStMsg"></div></div>
+    <div class="adbox"><b>광고 보고 보너스 티끌 받기</b><p class="note" style="margin:4px 0 0">${T.adMin}~${T.adMax}티끌 랜덤</p><div class="bar"><i id="adBar"></i></div></div>
+    <div class="acts"><button class="out" id="vDone">그냥 닫기</button><button class="blk" id="vAd">광고 보기</button></div>`);
+  $("#vDone").onclick = () => { closeSheet(); backToDetail(id); };
+  document.querySelectorAll("[data-st]").forEach(b => b.onclick = () => { const k=b.dataset.st, prev=S.myStatus[id]; if(prev===k) return; it.votes=it.votes||{went:0,ended:0,wrong:0}; if(prev) it.votes[prev]--; it.votes[k]++; S.myStatus[id]=k; $("#vStMsg").innerHTML=`<div class="status">현장 상태를 ${STATUS_L[k]}로 표시했어요.</div>`; renderMap(); });
+  $("#vAd").onclick = () => { $("#vAd").disabled=true; $("#adBar").style.width="100%"; setTimeout(()=>{ const b=rnd(T.adMin,T.adMax); if(window.dataService) window.dataService.addLedger({kind:"ad_bonus",target_id:id,date:TODAY,reward:b,reason:"광고 시청 데모"}); S.tikkle+=b; closeSheet(); toast(`광고 보너스 +${b}티끌 · 지금 ${S.tikkle.toLocaleString()}티끌`); backToDetail(id); },1700); };
+}
+function verify(id){
+  const it=findAny(id); if(!it) return;
+  if(hasVisit(id)){ completeVisit(id,it,0,S.demoMode); return; }
+  sheet(`<div class="verify"><div class="spin"></div><p>${S.demoMode?"시연 모드 위치를 가정하고 있어요":"현재 위치를 확인하고 있어요"}</p><span class="note">${esc(it.name)} · 인증 기준 반경 200m</span></div>`);
+  const finish=(distance,simulated=false)=>{ if(distance<=200 || simulated) completeVisit(id,it,distance,simulated); else sheet(`<div class="verify"><div class="big">📍</div><p>행사 장소에서 ${Math.round(distance)}m 떨어져 있어요</p><span class="note">200m 안에서 다시 시도해 주세요.</span><div class="acts"><button class="blk w" id="vClose">확인</button></div></div>`); $("#vClose")?.addEventListener("click",closeSheet); };
+  if(S.demoMode){ setTimeout(()=>finish(0,true),500); return; }
+  if(!navigator.geolocation){ finish(9999,false); return; }
+  navigator.geolocation.getCurrentPosition(pos=>{ const lat=it.lat||37.5572,lng=it.lng||126.9245; finish(haversineM(pos.coords.latitude,pos.coords.longitude,lat,lng),false); }, ()=>{ sheet(`<div class="verify"><div class="big">⚠️</div><p>위치 권한을 확인할 수 없어요</p><span class="note">브라우저 위치 권한을 허용하거나 시연 모드를 켜서 다시 시도해 주세요.</span><div class="acts"><button class="blk w" id="vClose">확인</button></div></div>`); $("#vClose").onclick=closeSheet; }, {enableHighAccuracy:true,timeout:7000,maximumAge:60000});
+}
+
+function editField(id, field){
+  const it = findAny(id);
+  const label = {price:"가격(원)",hours:"운영 시간",memo:"메모"}[field];
+  sheet(`<div class="sh-h"><h2>${label} ${field==="memo"?"추가":"수정"}</h2><button class="x" id="eX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">누구나 정보를 추가하고 고칠 수 있어요. 다른 사용자 확인 후 반영돼요.</p>
+    <form id="eF"><label for="eV">${label}</label><input id="eV" ${field==="price"?'type="number" min="0" max="10000" step="100"':''} value="${field==="price"?it.price:field==="hours"?esc(it.hours):""}">
+    <div class="err" id="eErr"></div><div class="acts"><button class="out" type="button" id="eC">취소</button><button class="blk" type="submit">제출</button></div></form>`);
+  const back = () => detail(id);
+  $("#eX").onclick = $("#eC").onclick = back;
+  $("#eF").addEventListener("submit", ev => { ev.preventDefault(); const v = $("#eV").value.trim(); if (!v){ $("#eErr").textContent="내용을 입력해 주세요."; return; }
+    if (field==="price"){ const n=+v; if (n>10000){ $("#eErr").textContent="만 원 이하만 등록할 수 있어요."; return; } it.price=n; renderMap(); }
+    if (field==="hours") it.hours=v;
+    back(); addTikkle(20,"정보 업데이트"); });
+}
+function photoUpdate(id){
+  const e = findAny(id);
+  sheet(`<div class="sh-h"><h2>현장 사진 추가</h2><button class="x" id="pX" aria-label="닫기">${ico.x}</button></div>
+    <form id="pF"><label for="pI">사진 선택</label><input id="pI" type="file" accept="image/*"><img id="pPrev" class="prev" alt="" hidden>
+    <div class="err" id="pErr"></div><div class="acts"><button class="out" type="button" id="pC">취소</button><button class="blk" type="submit">올리기</button></div></form>`);
+  let data = null;
+  $("#pX").onclick = $("#pC").onclick = () => backToDetail(id);
+  $("#pI").onchange = ev => { const f = ev.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { data = r.result; $("#pPrev").src = data; $("#pPrev").hidden = false; }; r.readAsDataURL(f); };
+  $("#pF").addEventListener("submit", ev => { ev.preventDefault(); if (!data){ $("#pErr").textContent="사진을 골라 주세요."; return; } e.photo = data; backToDetail(id); addTikkle(20,"현장 사진 등록"); });
+}
+function reportAbuse(id){
+  const it = findAny(id);
+  sheet(`<div class="sh-h"><h2>신고하기</h2><button class="x" id="rX" aria-label="닫기">${ico.x}</button></div><p class="note">${esc(it.name)}</p>
+    <div class="opt" id="rOpt">${["광고·홍보성 제보","가격·정보가 달라요","이미 끝났거나 문을 닫았어요","부적절한 내용"].map((r,i)=>`<button aria-pressed="${i===0}" data-r="${i}">${r}</button>`).join("")}</div>
+    <div class="acts"><button class="out" id="rC">취소</button><button class="blk" id="rOk">신고 접수</button></div>`);
+  const back = () => detail(id);
+  document.querySelectorAll("[data-r]").forEach(b => b.onclick = () => document.querySelectorAll("[data-r]").forEach(x => x.setAttribute("aria-pressed", x===b)));
+  $("#rX").onclick = $("#rC").onclick = back;
+  $("#rOk").onclick = () => { if (it.reports !== undefined){ it.reports++; if (it.reports>=3){ it.hidden=true; } } closeSheet(); closePeek(); toast("신고가 접수됐어요. 여러 명이 신고하면 지도에서 노출이 제한돼요."); };
+}
+
+/* 필터 시트: 날짜는 달력, 가격은 버튼 + 슬라이더 */
+function calHTML(){
+  const [y,m] = ymd(S.calYM), first = new Date(y,m-1,1).getDay(), n = new Date(y,m,0).getDate();
+  let cells = "일월화수목금토".split("").map(w=>`<span class="wd">${w}</span>`).join("");
+  for (let i=0;i<first;i++) cells += "<span></span>";
+  for (let d=1; d<=n; d++){
+    const ds = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const has = events.some(e => !e.hidden && activeOn(e, ds) && cultureFilterPrice(e)!=null && cultureFilterPrice(e)<=S.maxPrice && S.genres.has(e.genre4||e.genre));
+    const selected = S.date && ds>=S.date && ds<=(S.dateEnd||S.date);
+    cells += `<button data-day="${ds}" class="${ds===FILTER_TODAY?"today":""} ${selected?"on":""} ${has?"has":""}" ${ds<FILTER_TODAY?"disabled":""} aria-pressed="${Boolean(selected)}" aria-label="${m}월 ${d}일${has?", 행사 있음":""}${selected?", 선택됨":""}">${d}</button>`;
+  }
+  const note = S.dateMode==="range" ? !S.date ? "시작일을 선택한 뒤 종료일을 선택해 주세요." : !S.dateEnd ? `${dlabel(S.date)} 시작 · 종료일을 선택해 주세요.` : `${dlabel(S.date)}부터 ${dlabel(S.dateEnd)}까지 하루라도 진행되는 곳을 보여줘요.` : S.dateMode==="next7" ? "오늘부터 7일 뒤까지 진행되는 곳을 보여줘요." : S.date ? `${dlabel(S.date)}에 열리는 곳만 보여줘요.` : "날짜를 고르면 그날 열리는 곳만 보여줘요. 초록 점은 행사가 있는 날이에요.";
+  return `<div class="cal"><div class="cal-h"><button data-calnav="-1" ${S.calYM<=CAL_MIN?"disabled":""} aria-label="이전 달">‹</button><b>${y}년 ${m}월</b><button data-calnav="1" ${S.calYM>=CAL_MAX?"disabled":""} aria-label="다음 달">›</button></div>
+    <div class="cal-g">${cells}</div></div><p class="note">${note}</p>
+    <div class="opt" style="margin-top:8px"><button data-od="clear" aria-pressed="${S.dateMode==="all"}">날짜 전체</button><button data-od="${FILTER_TODAY}" aria-pressed="${S.dateMode==="day"&&S.date===FILTER_TODAY}">오늘</button><button data-od="next7" aria-pressed="${S.dateMode==="next7"}">7일 이내</button><button data-od="range" aria-pressed="${S.dateMode==="range"}">기간 선택</button></div>`;
+}
+function priceHTML(){
+  return `<div class="opt">${[[0,"무료만"],[5000,"5,000원 이하"],[10000,"10,000원 이하"]].map(([v,l]) => `<button aria-pressed="${S.maxPrice===v}" data-op="${v}">${l}</button>`).join("")}</div>
+    <div class="range"><div class="range-h"><span class="note">직접 조절</span><b id="pVal">${priceLabel(S.maxPrice)}</b></div>
+    <input type="range" id="pRange" min="0" max="10000" step="500" value="${S.maxPrice}" aria-label="최대 가격">
+    <div class="range-s"><span>무료</span><span>5,000원</span><span>10,000원</span></div></div>`;
+}
+function optSheet(kind){
+  S.optKind = kind;
+  const G = `<div class="opt">${["전시","공연","체험","축제"].map(g => `<button aria-pressed="${S.genres.has(g)}" data-og="${g}">${EMOJI[g]} ${g}</button>`).join("")}</div>`;
+  const map = {date:["날짜",calHTML()],price:["가격",`<p class="note">만 원 이하만 보여줘요.</p>`+priceHTML()],genre:["문화 종류",G],
+    all:["필터",`<div class="lab">날짜</div>${calHTML()}<div class="lab">가격</div>${priceHTML()}<div class="lab">문화 종류</div>${G}`]};
+  const sc = $(".sheet") ? $(".sheet").scrollTop : 0;
+  sheet(`<div class="sh-h"><h2>${map[kind][0]}</h2></div>${map[kind][1]}<div class="acts"><button class="out" id="oReset">초기화</button><button class="blk" id="oDone">${cultureList().length}곳 보기</button></div>`);
+  $(".sheet").scrollTop = sc;
+  $("#oDone").onclick = closeSheet;
+  $("#oReset").onclick = () => { S.date=null; S.dateEnd=null; S.dateMode="all"; S.dateLabel=null; S.maxPrice=10000; S.reserve="all"; S.genres=new Set(["전시","공연","체험","축제"]); S.calYM=FILTER_TODAY.slice(0,7); render(); optSheet(kind); };
+  const rg = $("#pRange");
+  if (rg) rg.oninput = () => { S.maxPrice = +rg.value; $("#pVal").textContent = priceLabel(S.maxPrice);
+    document.querySelectorAll("[data-op]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.op===S.maxPrice));
+    render(); $("#oDone").textContent = cultureList().length + "곳 보기"; };
+}
+/* 목록 보기: 현재 지도 화면 기준 '이 지역' + 오늘 예약 가능한 할인 */
+function listSheet(clusterIds){
+  const b = viewBounds();
+  const wanted = clusterIds ? new Set(clusterIds) : null;
+  const items = cultureList().filter(it => inView(it, b) && (!wanted || wanted.has(it.id))).map(it => ({it, dist:distM(it, b)})).sort((x,y) => x.dist - y.dist);
+  const dcs = discounts.filter(d => { const it = findAny(d.ref); return it && inView(it, b) && !it.hidden; })
+    .sort((x,y) => ((y.left>0) - (x.left>0)) || ((x.price/x.orig) - (y.price/y.orig)));
+  sheet(`<div class="sh-h"><h2>이 지역 문화생활 ${items.length}곳</h2><button class="x" id="lX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">지금 보고 있는 지도 화면 기준 · 가까운 순 · 지도를 움직이면 바뀌어요</p>
+    ${dcs.length?`<div class="secline"><b>오늘 예약 가능한 할인</b><span>${dcs.filter(d=>d.left).length}건</span></div>${dcs.map(d => dcCard(d, distM(findAny(d.ref), b))).join("")}`:""}
+    <div class="secline"><b>주변 문화생활</b><span>${items.length}곳</span></div>
+    ${items.map(({it,dist}) => `<button class="listitem ${tier(effP(it))} ${isDemoCulture(it)?"demo":""}" data-open="${it.id}"><span class="ph">${EMOJI[it.genre]}</span><span style="min-width:0"><b>${esc(it.name)}</b><small>${it.genre} · ${period(it)} · ${fmtDist(dist)}</small><br>${eff(it).rule?'<span class="tag grn">🎟️ 내 혜택가</span>':""}${it.is_public_culture?`<span class="tag">${esc(it.source)}</span>`:it.reserve?'<span class="tag">예약</span>':'<span class="tag">바로 입장</span>'}${soon(it)?'<span class="tag red">곧 종료</span>':""}${it.src==="사용자 제보"?'<span class="tag grn">제보</span>':""}${isDemoCulture(it)?'<span class="tag">예시 데이터</span>':""}</span><span class="pr">${eff(it).rule?`<s class="note">${won(it.price)}</s><br>`:""}${priceText(it,eff(it))}</span></button>`).join("")
+      || '<p class="note" style="padding:12px 0">이 화면엔 조건에 맞는 곳이 없어요. 지도를 축소하거나 필터를 풀어보세요.</p>'}`);
+  $("#lX").onclick = closeSheet;
+}
+
+/* ④ 알림 */
+function refreshNotifications(){
+  if(window.dataService.mode==="connecting" || window.dataService.mode==="remote-error") return;
+  const now = [];
+  if(S.prefs.end){ events.filter(e=>S.saved.has(e.id)&&soon(e)).forEach(e=>now.push({id:`end-${e.id}`,kind:"곧 종료",text:`찜한 ${e.name}이 곧 종료돼요`,time:"지금",read:false,target_id:e.id})); }
+  if(S.prefs.free){ events.filter(e=>(e.price_min===0||e.price===0)&&S.prefs.genres.has(e.genre4||e.genre)).slice(0,5).forEach(e=>now.push({id:`free-${e.id}`,kind:"새 무료 행사",text:`관심 분야 무료 행사 ${e.name}`,time:"지금",read:false,target_id:e.id})); }
+  if(S.prefs.judge){ judgeList.filter(j=>j.status==="승격"&&j.ref&&(!j.user_id||j.user_id===window.dataService.userId())).forEach(j=>now.push({id:`judge-${j.id}`,kind:"제보 승격",text:`내 제보 ${j.name}이 확인을 받아 지도에 정식으로 올라갔어요`,time:"지금",read:false,target_id:j.ref})); }
+  const map=new Map(); [...S.notis,...now].forEach(n=>{ if(!map.has(n.id)) map.set(n.id,n); });
+  S.notis=[...map.values()].slice(0,30); if(window.dataService) window.dataService.saveNotifications(S.notis);
+}
+
+function notiSheet(){
+  const up = [...S.bells].map(id => events.find(e => e.id===id)).filter(e=>e&&!isAlwaysOpen(e)&&e.end).map(e => {
+    const [y,m,d] = ymd(e.end), dd = new Date(y,m-1,d-3), ds = `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,"0")}-${String(dd.getDate()).padStart(2,"0")}`;
+    return `<button class="noti" data-open="${e.id}"><i class="read"></i><span><b>예정 · ${e.reserve?"예약 오픈 + ":""}종료 3일 전</b><p>${esc(e.name)}</p><time>${ds<TODAY?"오늘 알림":md(ds)+" 오전 9시"}</time></span></button>`; }).join("");
+  const chipsOf = (arr, set, key) => `<div class="opt" style="margin:6px 0 4px">${arr.map(v=>`<button aria-pressed="${set.has(v)}" data-${key}="${v}">${v}</button>`).join("")}</div>`;
+  sheet(`<div class="sh-h"><h2>문화 알림</h2><button class="x" id="nX" aria-label="닫기">${ico.x}</button></div>
+    <div class="sec"><h3>받은 알림</h3>${S.notis.map((n,i)=>`<button class="noti" data-noti="${i}"><i class="${n.read?"read":""}"></i><span><b>${esc(n.kind)}</b><p>${esc(n.text)}</p><time>${esc(n.time)}</time></span></button>`).join("")}</div>
+    <div class="sec"><h3>예정된 알림 <span>알림 켠 행사</span></h3>${up || '<p class="note">상세 화면에서 "알림 받기"를 누르면 여기에 쌓여요.</p>'}</div>
+    <div class="sec"><h3>알림 설정</h3>
+      <div class="flab">관심 지역</div>${chipsOf(["홍대입구","연남동","서교동","대현동"],S.prefs.regions,"pr")}
+      <div class="flab">관심 장르</div>${chipsOf(["전시","공연","체험","축제"],S.prefs.genres,"pg")}
+      <label class="sw" for="pO"><span>관심 지역·장르의 선착순·사전예약이 열리면 알림</span><input type="checkbox" id="pO" ${S.prefs.open?"checked":""}></label>
+      <label class="sw" for="pE"><span>찜한 행사 종료 3일 전 알림</span><input type="checkbox" id="pE" ${S.prefs.end?"checked":""}></label>
+      <label class="sw" for="pFree"><span>관심 분야 새 무료 행사 알림</span><input type="checkbox" id="pFree" ${S.prefs.free?"checked":""}></label>
+      <label class="sw" for="pJudge"><span>내 제보가 확인되면 알림</span><input type="checkbox" id="pJudge" ${S.prefs.judge?"checked":""}></label></div>`);
+  $("#nX").onclick = closeSheet;
+  $("#pO").onchange = ev => { S.prefs.open=ev.target.checked; persistPreferences(); };
+  $("#pE").onchange = ev => { S.prefs.end=ev.target.checked; persistPreferences(); };
+  $("#pFree").onchange = ev => { S.prefs.free=ev.target.checked; persistPreferences(); };
+  $("#pJudge").onchange = ev => { S.prefs.judge=ev.target.checked; persistPreferences(); };
+}
+
+function savedSheet(){
+  const items = [...S.saved].map(findAny).filter(Boolean);
+  sheet(`<div class="sh-h"><h2>찜 목록</h2><button class="x" id="sX" aria-label="닫기">${ico.x}</button></div>
+    ${items.map(it => `<button class="listitem ${tier(it.price)}" data-open="${it.id}"><span class="ph">${EMOJI[it.genre]}</span><span><b>${esc(it.name)}</b><small>문화 · ${period(it)}</small></span><span class="pr">${priceText(it)}</span></button>`).join("") || '<p class="note" style="padding:20px 0">찜한 곳이 없어요.</p>'}`);
+  $("#sX").onclick = closeSheet;
+}
+
+/* ③ 제보 유형 선택 → 해당 유형 입력 */
+function reportTypeSheet(){
+  sheet(`<div class="sh-h"><h2>무엇을 제보할까요?</h2><button class="x" id="rtX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">제보할 종류를 먼저 선택해 주세요.</p>
+    <button type="button" class="listitem" data-report-kind="culture"><span class="ph">${ico.cal}</span><span><b>문화</b><small>무료·1만 원 이하 전시, 공연, 체험</small></span><span>선택</span></button>
+    <button type="button" class="listitem" data-report-kind="benefit"><span class="ph">${ico.tk}</span><span><b>혜택</b><small>행사별 무료 입장과 할인 조건</small></span><span>선택</span></button>`);
+  $("#rtX").onclick = closeSheet;
+}
+function reportSheet(){
+  const kinds = ["체험","전시","공연","축제"];
+  sheet(`<div class="sh-h"><h2>무료·만 원 이하 문화 제보</h2><button class="x" id="rX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note" style="margin-top:4px">항목·가격·기간 또는 상시 운영·장소·사진·출처 링크를 확인한 뒤 지도에 올려요. 다른 사람들이 '정보와 맞아요'를 눌러 주면 확인된 정보가 돼요. 위치는 지금 보고 있는 지도 가운데로 등록돼요.</p>
+    <form id="rF" novalidate>
+      <label for="rN">이름</label><input id="rN" maxlength="40" placeholder="예: 홍대 브랜드 팝업 무료 체험">
+      <div class="two"><div><label for="rG">분야</label><select id="rG">${kinds.map(o=>`<option>${o}</option>`).join("")}</select></div>
+      <div><label for="rP">가격 (무료는 0)</label><input id="rP" type="number" min="0" max="10000" step="100" value="0"></div></div>
+      <label class="report-permanent" for="rAlways"><input id="rAlways" type="checkbox">상시 운영(기간 없음)</label><div class="two"><div><label for="rS">시작일</label><input id="rS" type="date" value="${FILTER_TODAY}" required></div><div><label for="rE">종료일</label><input id="rE" type="date" value="${addFilterDays(FILTER_TODAY,1)}" required></div></div>
+      <label for="rL">장소</label><input id="rL" maxlength="40" placeholder="예: 홍대입구역 ○○빌딩 1층">
+      <label for="rU">출처 링크 (필수)</label><input id="rU" type="url" placeholder="https://">
+      <label for="rPh">사진 (필수)</label><input id="rPh" type="file" accept="image/*"><img id="rPrev" class="prev" alt="" hidden>
+      <div class="err" id="rErr"></div><div class="acts"><button class="out" type="button" id="rBack">종류 다시 선택</button><button class="out" type="button" id="rC">취소</button><button class="blk w report-submit" type="submit">제보 등록</button></div>
+    </form>`);
+  let photo = null;
+  $("#rX").onclick = $("#rC").onclick = closeSheet;
+  $("#rBack").onclick = reportTypeSheet;
+  $("#rAlways").onchange=ev=>{ [$("#rS"),$("#rE")].forEach(input=>{input.disabled=ev.target.checked;input.required=!ev.target.checked;}); };
+  $("#rPh").onchange = ev => { const f = ev.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { photo = r.result; $("#rPrev").src = photo; $("#rPrev").hidden = false; }; r.readAsDataURL(f); };
+  $("#rF").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const alwaysOpen=$("#rAlways").checked;
+    const n=$("#rN").value.trim(), p=Math.max(0,Number($("#rP").value)||0), place=$("#rL").value.trim(), u=$("#rU").value.trim(), st=!alwaysOpen?$("#rS").value:"", en=!alwaysOpen?$("#rE").value:"";
+    let err = !n ? "이름을 입력해 주세요." : !place ? "장소를 입력해 주세요." : p>10000 ? "만 원 이하만 등록할 수 있어요." : "";
+    if (!err && !/^https?:\/\/\S+\.\S+/.test(u)) err = "출처 링크를 https:// 로 시작하는 주소로 넣어 주세요.";
+    else if (!err && !alwaysOpen && (!st||!en||en<st)) err = "시작일과 종료일은 필수이며 종료일은 시작일보다 빠를 수 없어요.";
+    else if (!err && !photo) err = "사진을 한 장 올려 주세요.";
+    if (err){ $("#rErr").textContent = err; return; }
+    const b = viewBounds(), x = Math.round(clamp(b.cx + rnd(-30,30), 160, 980)), y = Math.round(clamp(b.cy + rnd(-30,30), 120, 1150));
+    const location = window.mapsService.fromWorld(x,y);
+    const id = "r" + Date.now(), expiresAt=Date.now()+7*86400000;
+    const genre=$("#rG").value;
+    const item=normalizeCultureEvent({id,name:n,genre,price:p,ref:p===0?12000:p*2,start:st,end:en,hours:"출처 링크에서 확인",place,reserve:false,entry:"출처 링크에서 확인",x,y,src:"사용자 제보",is_sample:false,always_open:alwaysOpen,comments:[],photo},events.length);
+    item.ORG_LINK=u; item.HMPG_ADDR=u; item.isNew=true; item.status="확인 중"; item.votes={went:0,ended:0,wrong:0};
+    ev.submitter && (ev.submitter.disabled=true);
+    const result=await window.dataService.addReport({id,tab:"문화",name:n,genre,subcategory:null,price:p,ref_price:null,start_date:st||null,end_date:en||null,address:place,lat:location.lat,lng:location.lng,photo_url:photo,source_url:u,meta:{always_open:alwaysOpen},item,created_at:new Date().toISOString()});
+    if(!result.ok){ $("#rErr") && ($("#rErr").textContent="서버 저장에 실패했어요. 입력 내용은 유지됐어요."); ev.submitter && (ev.submitter.disabled=false); return; }
+    photo=result.value.photo_url||photo; item.photo=photo;
+    S.tab="map";
+    item.src="사용자 제보"; item.reports=0; events.push(item);
+    judgeList.unshift({id:"j"+id,report_id:id,kind:"문화",right:0,ended:0,wrong:0,name:n,price:p,area:"서울 마포구",nick:window.dataService.getNickname(),time:"방금",submittedAt:Date.now(),expiresAt,status:"확인 중",ref:id,voters:{}});
+    S.date=null; S.dateEnd=null; S.dateMode="all"; S.dateLabel=null; S.maxPrice=10000; S.reserve="all"; S.genres=new Set(["전시","공연","체험","축제"]);
+    closeSheet(); render(); peek(id);
+    if(isGuest()) toast(`${window.dataService.getNickname()}(으)로 제보했어요. 로그인하면 티끌이 적립돼요.`); else addTikkle(T.report, "제보 등록");
+  });
+}
+
+/* ===== 다른 탭 페이지 ===== */
+function renderPage(){
+  const pg = $("#page");
+  if (S.tab === "me"){
+    const left = Math.max(0, S.boxAt - Date.now());
+    const stepAvail = Math.floor(S.steps/1000) - S.stepClaimed;
+    const acc = window.dataService.account();
+    pg.innerHTML = `<h1>설정 <span class="demo">${acc.isGuest?"게스트":"회원"}</span></h1>
+      <div class="card"><h3>내 계정 <span class="tag">${acc.isGuest?"게스트":"회원"}</span></h3>
+        <div class="task"><div><b>${esc(acc.nickname||"닉네임 준비 중")}</b><small>${acc.isGuest?"임시 닉네임 · 로그인 없이 제보할 때 쓰여요.":esc(acc.email)}</small></div><button class="out sm" id="acctNick" style="white-space:nowrap;flex:none">닉네임 변경</button></div>
+        ${acc.isGuest
+          ?`<button class="out g-btn" id="acctGoogle" style="margin-top:10px"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Google로 계속하기</button><div class="acts" style="margin-top:8px"><button class="blk" id="acctSignup">이메일로 가입</button><button class="out" id="acctLogin">로그인</button></div><p class="note" style="margin:8px 0 0">리뷰·평점·티끌 적립은 로그인 후 이용할 수 있어요. 지금 가입하면 임시 닉네임으로 남긴 제보가 그대로 내 계정에 남아요.</p>`
+          :`<div class="acts" style="margin-top:10px"><button class="out w" id="acctLogout">로그아웃</button></div>`}
+      </div>
+      <div class="card"><h3>내 활동</h3><div class="acts" style="margin-top:4px"><button class="out" id="myReports">내 제보 ${window.dataService.getMyReports().length}</button><button class="out" id="myReviews">내 리뷰 ${window.dataService.getMyReviews().length}</button></div></div>
+      <div class="wallet${isGuest()?" guest":""}" style="margin-top:10px"><small>보유 티끌</small>${isGuest()?`<div class="big" style="font-size:20px;line-height:1.3">로그인하면 티끌을 모을 수 있어요</div>`:`<div class="big">${S.tikkle.toLocaleString()} 티끌</div>`}<div class="row"><small>응모권 ${S.tickets}장</small><small>기여 ${3+S.verified.length}회</small></div></div>
+      <div class="card"><h3>내 혜택 정보 <button class="out sm" id="profBtn">${S.profile?"수정":"입력하기"}</button></h3>
+        ${S.profile?profileSummary():'<p class="note" style="margin:0">나이·거주지 같은 정보를 넣으면 무료·할인 대상인 문화생활을 골라서 보여줘요.</p>'}
+        <label class="sw" for="benSw" style="border-bottom:0;padding-bottom:0"><span>문화 탭에서 내 혜택 적용해서 보기</span><input type="checkbox" id="benSw" ${S.benefit?"checked":""}></label>
+        <button class="linkbtn" id="benefitInputBtn" type="button">혜택 입력</button></div>
+      ${supportProgramsCard()}
+      ${S.bookings.length?`<div class="card"><h3>오늘 예약 <span class="note">${S.bookings.length}건</span></h3>${S.bookings.map(k=>`<div class="task"><div><b>${esc(k.title)}</b><small>${esc(k.name)} · ${k.time} · ${k.q}개 · ${won(k.sum)}</small></div><b style="letter-spacing:.06em">${k.code}</b></div>`).join("")}</div>`:""}
+      <div class="card"><h3>오늘의 티끌 모으기</h3>
+        <div class="task"><div><b>출석 체크</b><small>매일 응모권 1장</small></div><button class="blk sm" id="attBtn" ${S.attended?"disabled":""}>${S.attended?"완료":"출석하기"}</button></div>
+        <div class="task"><div><b>티끌 상자</b><small>${left?`${Math.ceil(left/60000)}분 뒤 다시 열 수 있어요`:`열면 ${T.box}티끌`}</small></div><button class="blk sm" id="boxBtn" ${left?"disabled":""}>상자 열기</button></div>
+        <div class="task"><div><b>만보기 · 오늘 ${S.steps.toLocaleString()}보</b><small>1,000보마다 적립 버튼이 열려요 (데모 예시)</small></div><button class="blk sm" id="stepBtn" ${stepAvail<1?"disabled":""}>${stepAvail} 구간 받기</button></div>
+        <div class="task"><div><b>광고 보고 티끌 받기</b><small>${T.adMin}~${T.adMax}티끌 랜덤 · 오늘 ${S.ads}회</small></div><button class="blk sm" id="adBtn">광고 보기</button></div>
+      </div>
+      <div class="card"><h3>티끌 쓰기 <span class="note">교환 가격은 데모용 예시</span></h3>
+        <div class="task"><div><b>🎁 티끌드로우</b><small>응모권 1장으로 응모 · 출석하면 응모권을 받아요</small></div><button class="blk sm" id="drawBtn" ${S.tickets<1?"disabled":""}>응모하기</button></div>
+        ${store.map(x=>`<div class="task"><div><b>${x.e} ${x.name}</b><small>${x.cost.toLocaleString()}티끌</small></div><button class="out sm" data-buy="${x.id}" ${isGuest()||S.tikkle<x.cost?"disabled":""}>교환</button></div>`).join("")}
+      </div>
+      <div class="card"><h3>알림</h3><button class="out" id="goNoti" style="width:100%">문화 알림 설정 열기</button></div>
+      <div class="card"><h3>관리자 기능 <span class="tag">데모</span></h3><label class="sw" for="hideSamples"><span>실제 입력이 있으면 예시 데이터 숨기기</span><input type="checkbox" id="hideSamples" ${S.hideSamples?"checked":""}></label><label class="sw" for="demoMode"><span>시연 모드 (위치·반복 투표 허용)</span><input type="checkbox" id="demoMode" ${S.demoMode?"checked":""}></label><div class="acts"><button class="out" id="refreshDataBtn">데이터 새로고침</button><button class="out" id="resetDataBtn">데이터 초기화</button></div></div>`;
+  }
+}
+function adFlow(){
+  sheet(`<div class="adbox"><b>광고 시청 중</b><p class="note" style="margin:4px 0 0">끝까지 보면 ${T.adMin}~${T.adMax}티끌 랜덤</p><div class="bar"><i id="adBar2"></i></div></div>`);
+  requestAnimationFrame(()=>{ $("#adBar2").style.width="100%"; });
+  setTimeout(()=>{ const b=rnd(T.adMin,T.adMax); S.tikkle+=b; S.ads++; closeSheet(); renderPage(); toast(`광고 보상 +${b}티끌`); }, 1700);
+}
+
+/* 내 혜택 정보 입력 (보조금24 판정 기준 + 문화시설 관람료 감면 기준을 종합) */
+const SEOUL_GU = ["강남구","강동구","강북구","강서구","관악구","광진구","구로구","금천구","노원구","도봉구","동대문구","동작구","마포구","서대문구","서초구","성동구","성북구","송파구","양천구","영등포구","용산구","은평구","종로구","중구","중랑구"];
+const INCOME_L = {"":"선택 안 함",basic:"기초생활수급",near:"차상위계층",mid150:"기준중위소득 150% 이하",none:"해당 없음"};
+const STUDENT_L = {none:"해당 없음",school:"초·중·고등학생",univ:"대학생·대학원생"};
+// 가격을 바로 낮춰주지는 않지만, 내 정보로 대상 여부를 알려주는 지원 제도 (2026년 기준, 출처 링크 포함)
+function supportProgramsCard(){
+  const P = S.profile, by = P?.birth ? Number(P.birth.slice(0, 4)) : null, wed = new Date().getDay() === 3;
+  const items = [];
+  items.push(`<div class="task"><div><b>🎬 문화가 있는 날 ${wed?'<span class="tag" style="background:var(--gold-soft)">오늘</span>':""}</b><small>2026년 4월부터 매주 수요일. 영화·공연·전시 등 참여 시설에서 할인·무료·야간 개방 (시설마다 혜택이 달라요)</small></div><a class="out sm" href="https://www.mcst.go.kr/usr/child/info/policyPackage/wday.jsp" target="_blank" rel="noopener noreferrer">자세히</a></div>`);
+  if (by === 2006 || by === 2007) items.push(`<div class="task"><div><b>🎟️ 청년문화예술패스 <span class="tag">대상일 수 있어요</span></b><small>2006·2007년생 대상, 공연·전시·영화 관람비와 도서 구매비 지원 (수도권 15만 원, 비수도권 최대 20만 원 · 생애 1회, 지역 예산에 따라 다름)</small></div><a class="out sm" href="https://www.bokjiro.go.kr/ssis-tbu/cms/pc/news/promotion/1309335_1118.html" target="_blank" rel="noopener noreferrer">자세히</a></div>`);
+  if (P?.culturecard) items.push(`<div class="task"><div><b>💳 문화누리카드</b><small>2026년 1인당 연 15만 원(청소년·준고령기 1만 원 추가). 가맹점인 공연장·미술관·영화관에서 결제할 수 있어요. 국립현대미술관 등은 소지자 무료</small></div><a class="out sm" href="https://www.mnuri.kr" target="_blank" rel="noopener noreferrer">자세히</a></div>`);
+  return `<div class="card"><h3>받을 수 있는 지원 제도 <span class="note">${P?"내 정보 기준":"정보 입력 전"}</span></h3>${items.join("")}<p class="note" style="margin:6px 0 0">신청·사용 조건은 각 공식 안내를 확인해 주세요.</p></div>`;
+}
+function profileSummary(){
+  const P = S.profile, a = myAge(), extra = [P.soldier&&"현역 장병",P.disabled&&"등록 장애인",P.merit&&"국가유공자",P.culturecard&&"문화누리카드"].filter(Boolean);
+  return `<div class="task"><div><b>만 ${a}세 · ${esc(SEOUL_GU.includes(P.gu)?"서울 "+P.gu:"서울 외 지역")}</b><small>${STUDENT_L[P.student]}${extra.length?" · "+extra.join(" · "):""}</small></div></div>`;
+}
+function accountSheet(mode, after){
+  const signup = mode==="signup";
+  sheet(`<div class="sh-h"><h2>${signup?"이메일로 가입":"로그인"}</h2><button class="x" id="acX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">${signup?"지금 쓰는 게스트 계정에 이메일을 연결해요. 남긴 제보·리뷰와 닉네임은 그대로 유지돼요.":"처음 쓰는 구글 계정이면 지금 남긴 제보가 그대로 내 계정으로 넘어가요. 이메일 로그인은 이미 가입한 계정으로 들어가며, 지금 기록은 옮겨지지 않아요."}</p>
+    <button class="out g-btn" type="button" id="acGoogle" style="margin-top:12px"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Google로 계속하기</button>
+    <div class="or-line"><span>또는 이메일로</span></div>
+    <form id="acF" novalidate>
+      <label for="acE" style="margin-top:0">이메일</label><input id="acE" type="email" autocomplete="email" placeholder="example@email.com" required>
+      <label for="acP">비밀번호${signup?" (6자 이상)":""}</label><input id="acP" type="password" autocomplete="${signup?"new-password":"current-password"}" minlength="6" required>
+      <p class="note" id="acMsg" role="alert" style="color:#d33;min-height:16px;margin:8px 0 0"></p>
+      <div class="acts" style="margin-top:8px"><button class="out" type="button" id="acSwitch">${signup?"로그인으로":"가입으로"}</button><button class="blk" type="submit">${signup?"가입하기":"로그인"}</button></div>
+    </form>`);
+  $("#acX").onclick = closeSheet;
+  $("#acSwitch").onclick = () => accountSheet(signup?"login":"signup", after);
+  $("#acGoogle").onclick = () => window.dataService.signInGoogle();
+  $("#acF").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const email=$("#acE").value.trim(), pw=$("#acP").value, msg=$("#acMsg");
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ msg.textContent="이메일 형식을 확인해 주세요."; return; }
+    if(pw.length<6){ msg.textContent="비밀번호는 6자 이상으로 정해 주세요."; return; }
+    const btn=ev.submitter; btn && (btn.disabled=true); msg.textContent="";
+    const result = signup ? await window.dataService.signUpEmail(email,pw) : await window.dataService.signInEmail(email,pw);
+    btn && (btn.disabled=false);
+    if(!result.ok){ msg.textContent=result.error?.message||"다시 시도해 주세요."; return; }
+    if(!signup) applyDataState();
+    if(after) after(); else closeSheet();
+    renderPage();
+    toast(signup?"가입 완료! 이제 회원으로 이용해요.":`${result.value.nickname||"회원"}님, 다시 오셨네요.`);
+  });
+}
+/* ===== 검색: 문화 행사·시설을 이름·장소·종류로 찾는다 ===== */
+const RECENT_KEY = "geojimap-recent-search";
+function recentSearches(){ try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]").slice(0, 6); } catch (_) { return []; } }
+function saveRecentSearch(q){
+  q = String(q || "").trim(); if (!q) return;
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify([q, ...recentSearches().filter(x => x !== q)].slice(0, 6))); } catch (_) {}
+}
+const searchNorm = v => String(v || "").toLowerCase().replace(/\s+/g, "");
+function searchPool(){
+  const culture = events.filter(e => !e.hidden && (isAlwaysOpen(e) || !e.end || e.end >= FILTER_TODAY) && hasCultureCoordinates(e)).filter(e => { const p = cultureFilterPrice(e); return p != null && p <= 10000; })
+    .map(e => ({ it: e, kind: "문화", emoji: EMOJI[e.genre] || "🎫", sub: [e.genre, e.place].filter(Boolean).join(" · "), price: priceText(e), price0: cultureFilterPrice(e), hay: [e.name, e.place, e.genre, e.raw_category, e.source, e.fee_text, e.place_addr].join(" ") }));
+  return culture;
+}
+function searchResults(q){
+  const tokens = String(q || "").trim().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return [];
+  const b = viewBounds();
+  return searchPool().filter(r => {
+    const hay = searchNorm(r.hay + " " + r.kind);
+    return tokens.every(t => searchNorm(t) === "무료" ? (r.price0 === 0 || hay.includes("무료")) : hay.includes(searchNorm(t)));
+  }).map(r => ({ ...r, starts: searchNorm(r.it.name).startsWith(searchNorm(tokens[0])), dist: distM(r.it, b) }))
+    .sort((a, c) => (c.starts - a.starts) || (a.dist - c.dist)).slice(0, 60);
+}
+function renderSearch(){
+  const box = $("#srRes"); if (!box) return;
+  const q = $("#srI").value.trim();
+  if (!q) {
+    const recent = recentSearches();
+    box.innerHTML = `${recent.length ? `<p class="sr-h">최근 검색 <button class="sr-clear" type="button" id="srClear">지우기</button></p><div class="sr-chips">${recent.map(x => `<button class="chip" data-sq="${esc(x)}">${esc(x)}</button>`).join("")}</div>` : ""}
+      <p class="sr-h">이렇게 찾아보세요</p><div class="sr-chips">${["무료 전시","공연","체험","축제","박물관","미술관","홍대","마포"].map(x => `<button class="chip" data-sq="${x}">${x}</button>`).join("")}</div>`;
+    $("#srClear") && ($("#srClear").onclick = () => { try { localStorage.removeItem(RECENT_KEY); } catch (_) {} renderSearch(); });
+    return;
+  }
+  const rows = searchResults(q);
+  if (!rows.length) { box.innerHTML = `<p class="note" style="padding:20px 0;text-align:center">'${esc(q)}'에 맞는 장소가 없어요.<br>다른 이름이나 동네로 찾아보세요.</p>`; return; }
+  const groups = ["문화"].map(k => [k, rows.filter(r => r.kind === k)]).filter(([, list]) => list.length);
+  box.innerHTML = groups.map(([k, list]) => `<p class="sr-h">${k} <span>${list.length}</span></p>` + list.map(r => `<button class="listitem" data-sopen="${esc(r.it.id)}"><span class="ph">${r.emoji}</span><span style="min-width:0"><b>${esc(r.it.name)}</b><small>${esc(r.sub)} · ${fmtDist(r.dist)}</small></span><span class="tag">${esc(r.price)}</span></button>`).join("")).join("");
+}
+function searchSheet(){
+  sheet(`<div class="sr-top"><div class="sr-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="srI" type="search" enterkeyhint="search" placeholder="행사, 전시, 장소, 동네 검색" aria-label="검색어" autocomplete="off"></div><button class="sr-cancel" type="button" id="srX">취소</button></div>
+    <div id="srRes"></div>`, {level:"full"});
+  $("#srX").onclick = closeSheet;
+  const input = $("#srI");
+  input.addEventListener("input", renderSearch);
+  input.addEventListener("keydown", ev => { if (ev.key === "Enter") { saveRecentSearch(input.value); input.blur(); } });
+  renderSearch();
+  setTimeout(() => input.focus(), 50);
+}
+function myReportsSheet(){
+  const rows=window.dataService.getMyReports().sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+  sheet(`<div class="sh-h"><h2>내 제보 <span class="note">${rows.length}개</span></h2><button class="x" id="mrX" aria-label="닫기">${ico.x}</button></div>
+    ${rows.map(r=>{ const j=judgeList.find(x=>x.report_id===r.id), st0=j?j.status:(r.status||"확인 중"), st=st0==="승격"?"확인됨":st0, exists=Boolean(findAny(r.id));
+      return `<button class="listitem" ${exists?`data-myreport="${esc(r.id)}"`:"disabled"}><span class="ph">${EMOJI[r.genre]||"🎫"}</span><span style="min-width:0"><b>${esc(r.name)}</b><small>${esc(r.tab)} · ${dotDate(r.created_at)} · ${r.meta?.guest?"임시 닉네임으로 제보":"회원 제보"}</small></span><span class="tag">${esc(st)}</span></button>`; }).join("") || '<p class="note" style="padding:12px 0">아직 남긴 제보가 없어요.</p>'}`);
+  $("#mrX").onclick = () => { closeSheet(); renderPage(); };
+}
+function myReviewsSheet(){
+  const rows=window.dataService.getMyReviews().sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+  sheet(`<div class="sh-h"><h2>내 리뷰 <span class="note">${rows.length}개</span></h2><button class="x" id="mvX" aria-label="닫기">${ico.x}</button></div>
+    ${rows.map(r=>{ const it=findAny(r.target_id);
+      return `<button class="listitem" ${it?`data-myreview="${esc(r.target_id)}"`:"disabled"}><span style="min-width:0"><b>${it?esc(it.name):"지금은 볼 수 없는 장소"}</b><small><span class="rv-star">${starStr(r.rating||0)}</span> · ${dotDate(r.created_at)}${r.text?` · ${esc(r.text.length>30?r.text.slice(0,30)+"…":r.text)}`:""}</small></span><span>보기</span></button>`; }).join("") || '<p class="note" style="padding:12px 0">아직 남긴 리뷰가 없어요.</p>'}`);
+  $("#mvX").onclick = () => { closeSheet(); renderPage(); };
+}
+function nicknameSheet(){
+  const cur = window.dataService.getNickname();
+  sheet(`<div class="sh-h"><h2>닉네임 변경</h2><button class="x" id="nkX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">리뷰와 제보에 표시되는 이름이에요. 바꾸면 내가 이미 남긴 리뷰와 제보에도 바로 반영돼요. 다른 사람이 쓰는 닉네임은 쓸 수 없어요.</p>
+    <form id="nkF" novalidate>
+      <label for="nkI">닉네임 (2~12자)</label><input id="nkI" maxlength="12" value="${esc(cur)}">
+      <p class="note" id="nkMsg" role="alert" style="color:#d33;min-height:16px;margin:8px 0 0"></p>
+      <div class="acts" style="margin-top:8px"><button class="out" type="button" id="nkX2">취소</button><button class="blk" type="submit">저장</button></div>
+    </form>`);
+  $("#nkX").onclick = closeSheet; $("#nkX2").onclick = closeSheet;
+  $("#nkF").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const v=$("#nkI").value.trim();
+    if(v.length<2){ $("#nkMsg").textContent="닉네임은 2~12자로 정해 주세요."; return; }
+    const result=await window.dataService.setNickname(v);
+    if(!result.ok){ $("#nkMsg").textContent=result.error?.message||"다시 시도해 주세요."; return; }
+    closeSheet(); renderPage(); toast("닉네임을 바꿨어요.");
+  });
+}
+function profileSheet(fromToggle){
+  const P = S.profile || {birth:"",sido:"서울특별시",gu:"마포구",student:"none",soldier:false,disabled:false,merit:false,culturecard:false};
+  const guOpts = [...SEOUL_GU, "서울 외 지역"].map(g=>`<option ${(P.gu===g||(!SEOUL_GU.includes(P.gu)&&g==="서울 외 지역"))?"selected":""}>${g}</option>`).join("");
+  sheet(`<div class="sh-h"><h2>내 혜택 정보</h2><button class="x" id="prX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">받을 수 있는 무료·할인을 고르는 데만 써요. 행사 요금 문구와 국공립 문화시설 감면 기준에 실제로 쓰이는 항목만 물어봐요.</p>
+    <form id="prF" novalidate>
+      <div class="flab" style="margin-top:14px">기본 정보 (필수)</div>
+      <label for="prB">생년월일 · 만 나이로 계산</label><input id="prB" type="date" max="${TODAY}" value="${P.birth}">
+      <label for="prG">거주 자치구 · 구민 할인 판정</label><select id="prG">${guOpts}</select>
+      <label for="prSt">학생 여부</label><select id="prSt">${Object.entries(STUDENT_L).map(([v,l])=>`<option value="${v}" ${P.student===v?"selected":""}>${l}</option>`).join("")}</select>
+      <label class="sw" for="prSo"><span>현역 군 복무 중</span><input type="checkbox" id="prSo" ${P.soldier?"checked":""}></label>
+      <div class="flab" style="margin-top:16px">추가 정보 (선택 · 입력하지 않아도 돼요)</div>
+      <p class="note" style="margin:0 0 4px">국공립 미술관·공연장 감면과 기관별 할인을 찾는 데 써요. 이 기기와 내 계정에만 저장되고, 현장에서는 증빙이 필요해요.</p>
+      <label class="sw" for="prD"><span>장애인 등록 <small class="note">(선택)</small></span><input type="checkbox" id="prD" ${P.disabled?"checked":""}></label>
+      <label class="sw" for="prM"><span>국가유공자 <small class="note">(선택)</small></span><input type="checkbox" id="prM" ${P.merit?"checked":""}></label>
+      <label class="sw" for="prC"><span>문화누리카드 소지 <small class="note">(선택)</small></span><input type="checkbox" id="prC" ${P.culturecard?"checked":""}></label>
+      <p class="note" style="margin-top:10px">${window.dataService.mode==="remote"?"Supabase의 내 익명 사용자 프로필에 저장돼요. 브라우저의 로그인 세션은 유지해 주세요.":"Supabase 연결이 완료되지 않았어요. 저장 전에 연결 상태를 확인해 주세요."}</p>
+      <div class="err" id="prErr"></div>
+      <div class="acts"><button class="out" type="button" id="prEx">예시로 채우기</button><button class="blk" type="submit">저장</button></div>
+      ${S.profile?'<button class="linkbtn" type="button" id="prDel">입력한 정보 지우기</button>':""}
+    </form>`);
+  $("#prX").onclick = closeSheet;
+  $("#prEx").onclick = () => { $("#prB").value = "2002-05-10"; $("#prG").value = "마포구"; $("#prSt").value = "univ"; };
+  if ($("#prDel")) $("#prDel").onclick = async () => { const result=await window.dataService.saveProfile(null); if(!result.ok) return; S.profile=null; S.benefit=false; window.dataService.update("benefit_enabled",false); closeSheet(); render(); toast("입력한 정보를 지웠어요. 혜택 적용도 꺼졌어요."); };
+  $("#prF").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const birth = $("#prB").value, gu = $("#prG").value.trim();
+    if (!birth){ $("#prErr").textContent = "생년월일을 입력해 주세요. 나이 기준 혜택을 판정하는 데 필요해요."; return; }
+    if (birth > TODAY){ $("#prErr").textContent = "생년월일이 오늘보다 늦을 수 없어요."; return; }
+    const profile = {birth, sido:SEOUL_GU.includes(gu)?"서울특별시":"기타 지역", gu, student:$("#prSt").value, soldier:$("#prSo").checked, disabled:$("#prD").checked, merit:$("#prM").checked, culturecard:$("#prC").checked};
+    const result=await window.dataService.saveProfile(profile); if(!result.ok){ $("#prErr") && ($("#prErr").textContent="서버 저장에 실패했어요. 다시 시도해 주세요."); return; }
+    S.profile=profile; S.benefit=true; window.dataService.update("benefit_enabled",true); closeSheet(); render();
+    const n = events.filter(e => e.ben && e.ben.some(ruleOk)).length;
+    toast(`저장했어요. 내 혜택 적용을 켰어요 · 혜택 대상 ${n}곳`);
+  });
+}
+function benefitInputSheet(fromReport = false){
+  const options = events.filter(e => e.price_min != null).map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join("");
+  sheet(`<div class="sh-h"><h2>${fromReport?"혜택 제보":"혜택 입력"}</h2><button class="x" id="biX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">행사별로 확인한 혜택을 직접 입력해요. 저장된 규칙은 내 혜택 적용에서 함께 판정돼요.</p>
+    <form id="biF"><label for="biEvent">행사</label><select id="biEvent">${options}</select>
+      <label for="biType">혜택 유형</label><select id="biType"><option value="ageMax">나이 이하</option><option value="ageMin">나이 이상</option><option value="student">학생</option><option value="gu">거주구</option><option value="soldier">장병</option></select>
+      <div class="two"><div><label for="biValue">조건 값</label><input id="biValue" placeholder="예: 24 또는 대학생"></div><div><label for="biPrice">적용 후 가격</label><input id="biPrice" type="number" min="0" step="500" placeholder="0"></div></div>
+      <label for="biLabel">혜택 문구</label><input id="biLabel" maxlength="60" placeholder="예: 대학생 30% 할인"><div class="err" id="biErr"></div>
+      <div class="acts">${fromReport?`<button class="out" type="button" id="biBack">종류 다시 선택</button>`:""}<button class="out" type="button" id="biC">취소</button><button class="blk" type="submit">혜택 저장</button></div></form>`);
+  $("#biX").onclick = $("#biC").onclick = closeSheet;
+  if(fromReport) $("#biBack").onclick = reportTypeSheet;
+  $("#biF").addEventListener("submit", async ev => { ev.preventDefault(); const e=events.find(x=>x.id===$("#biEvent").value), value=$("#biValue").value.trim(), price=Number($("#biPrice").value); if(!e || !value || !Number.isFinite(price)){ $("#biErr").textContent="행사·조건·적용 후 가격을 입력해 주세요."; return; }
+    const type=$("#biType").value;
+    const parsedValue=type==="student"?(value.includes("대학")?"univ":value.includes("학생")?"school":value):["ageMax","ageMin"].includes(type)?Number(value):value;
+    const rule={t:type,v:parsedValue,p:price,l:$("#biLabel").value.trim()||"직접 입력 혜택",auto_extracted:false};
+    const result=await window.dataService.saveBenefits([{event_id:e.id,type:rule.t,value:rule.v,price_after:rule.p,label:rule.l,auto_extracted:false}]);
+    if(!result.ok){ $("#biErr") && ($("#biErr").textContent="서버 저장에 실패했어요."); return; }
+    e.ben=[...(e.ben||[]),rule]; e.benefit_records=[...(e.benefit_records||[]),{event_id:e.id,type:rule.t,value:rule.v,price_after:rule.p,label:rule.l,auto_extracted:false}]; closeSheet(); render(); toast("혜택을 저장했어요.");
+  });
+}
+
+/* ===== 이벤트 ===== */
+document.addEventListener("click", async ev => {
+  const t = ev.target.closest("button"); if (!t) return;
+  const d = t.dataset;
+  if (d.rsort){ S.reviewSort=d.rsort; backToDetail(d.target); return; }
+  if (d.rwrite){ reviewSheet(d.rwrite); return; }
+  if (d.like){ t.disabled=true; const r=await window.dataService.toggleLike(d.like); if(r.ok) backToDetail(d.target); else t.disabled=false; return; }
+  if (d.flag){ flagSheet(d.flag, d.target); return; }
+  if (d.sq){ const input=$("#srI"); if(input){ input.value=d.sq; renderSearch(); input.focus(); } return; }
+  if (d.myreview || d.myreport || d.sopen){ if(d.sopen) saveRecentSearch($("#srI")?.value); closeSheet(); S.tab="map"; const id=d.myreview||d.myreport||d.sopen; render(); const it=findAny(id); if(it){ centerOn(it.x,it.y); backToDetail(id); } return; }
+  if (d.reportKind){ if(d.reportKind==="benefit") benefitInputSheet(true); else reportSheet(); return; }
+  if (d.tab){ S.tab=d.tab; closePeek(); closeSheet(); render(); return; }
+  if (d.peek){ peek(d.peek); return; }
+  if (d.cluster){ listSheet(d.cluster.split(",")); return; }
+  if (d.book){ bookSheet(d.book); return; }
+  if (d.open){ closeSheet(); S.tab="map"; render(); const it = findAny(d.open); centerOn(it.x, it.y); peek(d.open); return; }
+  if (d.noti !== undefined){ const n=S.notis[+d.noti]; n.read=true; if(window.dataService) window.dataService.saveNotifications(S.notis); closeSheet(); const targetId=n.target_id || n.id, it=findAny(targetId); if(!it){ toast("알림 대상이 아직 지도에 없어요."); return; } render(); centerOn(it.x,it.y); peek(targetId); return; }
+  const refreshOpt = () => { render(); const done=$("#oDone"); if (done) done.textContent=cultureList().length+"곳 보기"; };
+  const pressOne = () => t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));
+  if (d.day){
+    if(S.dateMode==="range"){
+      if(!S.date || S.dateEnd || d.day<S.date){S.date=d.day;S.dateEnd=null;}else S.dateEnd=d.day;
+      S.dateLabel=S.dateEnd?`${md(S.date)} – ${md(S.dateEnd)}`:`${md(S.date)}부터`;
+    }else{S.date=S.date===d.day?null:d.day;S.dateEnd=null;S.dateMode=S.date?"day":"all";S.dateLabel=null;}
+    render();optSheet(S.optKind);return;
+  }
+  if (d.calnav){ const [y,m] = ymd(S.calYM), nd = new Date(y, m-1 + (+d.calnav), 1); S.calYM = `${nd.getFullYear()}-${String(nd.getMonth()+1).padStart(2,"0")}`; optSheet(S.optKind); return; }
+  if (d.od){
+    S.dateEnd=null;S.dateLabel=null;
+    if(d.od==="next7"){S.date=FILTER_TODAY;S.dateEnd=addFilterDays(FILTER_TODAY,7);S.dateMode="next7";S.dateLabel="7일 이내";}
+    else if(d.od==="range"){S.date=null;S.dateMode="range";}
+    else{S.date=d.od==="clear"?null:d.od;S.dateMode=S.date?"day":"all";}
+    S.calYM=(S.date||FILTER_TODAY).slice(0,7);render();optSheet(S.optKind);return;
+  }
+  if (d.op !== undefined){ S.maxPrice=+d.op; pressOne(); const rg=$("#pRange"); if (rg){ rg.value=S.maxPrice; $("#pVal").textContent=priceLabel(S.maxPrice); } refreshOpt(); return; }
+  if (d.og){ if (S.genres.has(d.og)){ if (S.genres.size>1) S.genres.delete(d.og); } else S.genres.add(d.og); t.setAttribute("aria-pressed",S.genres.has(d.og)); refreshOpt(); return; }
+  if (d.pr){ S.prefs.regions.has(d.pr)?S.prefs.regions.delete(d.pr):S.prefs.regions.add(d.pr); t.setAttribute("aria-pressed",S.prefs.regions.has(d.pr)); persistPreferences(); return; }
+  if (d.pg){ S.prefs.genres.has(d.pg)?S.prefs.genres.delete(d.pg):S.prefs.genres.add(d.pg); t.setAttribute("aria-pressed",S.prefs.genres.has(d.pg)); persistPreferences(); return; }
+  if (d.buy){ if(needLogin("쿠폰 교환")) return; const s=store.find(x=>x.id===d.buy); if (S.tikkle<s.cost) return; S.tikkle-=s.cost; renderPage(); toast(`${s.name}으로 교환했어요 (데모) · 남은 티끌 ${S.tikkle.toLocaleString()}`); return; }
+  switch (t.id){
+    case "cFilter": optSheet("all"); break;
+    case "cBen": if (!S.profile){ profileSheet(true); toast("먼저 내 혜택 정보를 입력해 주세요."); } else { S.benefit=!S.benefit; window.dataService.update("benefit_enabled",S.benefit); closePeek(); render(); toast(S.benefit?"내 혜택을 적용한 가격으로 보여줘요.":"원래 가격으로 보여줘요. 만 원이 넘는 곳은 숨겨져요."); } break;
+    case "profBtn": profileSheet(false); break;
+    case "acctNick": nicknameSheet(); break;
+    case "acctSignup": accountSheet("signup"); break;
+    case "acctLogin": accountSheet("login"); break;
+    case "acctLogout": window.dataService.signOut(); break;
+    case "acctGoogle": window.dataService.signInGoogle(); break;
+    case "myReports": myReportsSheet(); break;
+    case "myReviews": myReviewsSheet(); break;
+    case "benefitInputBtn": benefitInputSheet(); break;
+    case "cDate": S.calYM=(S.date||FILTER_TODAY).slice(0,7); optSheet("date"); break;
+    case "cPrice": optSheet("price"); break;
+    case "cGenre": optSheet("genre"); break;
+    case "refreshDataBtn": { const result=await window.dataService.refresh(); if(result.ok){ applyDataState(); toast(window.dataService.mode==="remote"?"Supabase 데이터를 새로 불러왔어요.":"현재는 예시 데이터 모드예요."); } break; }
+    case "resetDataBtn": if(window.dataService) window.dataService.resetDemo(); location.reload(); break;
+    case "listBtn": listSheet(); break;
+    case "plusBtn": reportEntry(); break;
+    case "notiBtn": notiSheet(); break;
+    case "goNoti": notiSheet(); break;
+    case "savedBtn": savedSheet(); break;
+    case "zIn": { const r=rectOf(); zoomAt(r.width/2, r.height*0.45, 1.3); break; }
+    case "zOut": { const r=rectOf(); zoomAt(r.width/2, r.height*0.45, 1/1.3); break; }
+    case "searchBtn": searchSheet(); break;
+    case "locBtn": goMyLocation(); break;
+    case "attBtn": if(needLogin("출석 체크")) break; S.attended=true; S.tickets++; renderPage(); toast("출석 완료 · 응모권 +1장"); break;
+    case "boxBtn": if(needLogin("티끌 상자")) break; S.boxAt=Date.now()+60*60000; addTikkle(T.box,"티끌 상자"); renderPage(); break;
+    case "stepBtn": if(needLogin("만보기 적립")) break; { const n=Math.floor(S.steps/1000)-S.stepClaimed; S.stepClaimed+=n; addTikkle(n*10,`만보기 ${n}구간 (데모 예시)`); renderPage(); break; }
+    case "adBtn": if(!needLogin("광고 보고 티끌 받기")) adFlow(); break;
+    case "drawBtn": if(needLogin("티끌드로우 응모")) break; { S.tickets--; const win = Math.random()<0.15; renderPage(); toast(win?"🎉 당첨! 커피 쿠폰이 쿠폰함에 들어갔어요 (데모)":"아쉽게도 꽝이에요. 다음 기회에!"); break; }
+  }
+});
+$("#scrim").addEventListener("click", ev => { if (ev.target.id==="scrim") closeSheet(); });
+document.addEventListener("change", ev => {
+  if (ev.target.id === "hideSamples"){ S.hideSamples=ev.target.checked; persistPreferences(); render(); toast(S.hideSamples?"실제 입력 장소만 보여줘요.":"예시 데이터도 함께 보여줘요."); }
+  if (ev.target.id === "demoMode"){ S.demoMode=ev.target.checked; persistPreferences(); if(window.dataService.mode==="remote") applyDataState(); $("#demoModeBadge").hidden=!S.demoMode; toast(S.demoMode?"시연 모드를 켰어요.":"일반 모드로 전환했어요."); }
+  if (ev.target.id === "benSw"){ S.benefit=ev.target.checked; if(window.dataService) window.dataService.update("benefit_enabled",S.benefit); render(); }
+});
+
+document.addEventListener("keydown", ev => { if (ev.key==="Escape"){ if (!$("#scrim").hidden) closeSheet(); else if (!$("#peek").hidden) closePeek(); } });
+function persistPreferences(){
+  window.dataService.update("app_state",{hideSamples:S.hideSamples,demoMode:S.demoMode,bells:[...S.bells],prefs:{...S.prefs,regions:[...S.prefs.regions],genres:[...S.prefs.genres]}});
+}
+function applyDataState(){
+  const ds=window.dataService;
+  if(ds.mode!=="remote") return;
+  const merge=(destination,rows)=>{ destination.splice(0,destination.length,...rows); };
+  const culture=new Map(retainedCultureSamples.map(e=>[e.id,e]));
+  ds.getEvents().forEach(e=>culture.set(e.id,e));
+  merge(events,[...culture.values()]);
+  const benefits=ds.getBenefits();
+  events.forEach(e=>{
+    e.comments=e.meta?.comments||e.comments||[]; e.votes=e.votes||{went:0,ended:0,wrong:0}; e.hours=e.hours||"원문에서 확인"; e.entry=e.entry||"원문에서 확인";
+    // 공공데이터 행사는 요금 문구에서 자동으로 뽑은 혜택가에, 사용자가 직접 입력한 혜택을 더한다
+    const auto=e.is_public_culture&&Array.isArray(e.benefit_rules)?e.benefit_rules.map(r=>({...r,auto_extracted:true})):[];
+    e.ben=[...auto,...legalRules(e),...venueRules(e),...benefits.filter(r=>r.event_id===e.id).map(r=>({t:r.type,v:r.value,p:r.price_after,l:r.label,auto_extracted:r.auto_extracted}))];
+    e.benefit_records=benefits.filter(r=>r.event_id===e.id);
+  });
+  events.forEach(it=>{
+    if(!it.sampleComments) it.sampleComments=(it.meta?.comments||it.comments||[]).filter(c=>!c.id);
+    applyReviews(it); it.votes=it.votes||{went:0,ended:0,wrong:0};
+    if(it.x==null||it.y==null){ if(!hasCultureCoordinates(it)) return; const point=({x:500+((it.lng||126.9245)-126.9245)/0.000018,y:660-((it.lat||37.5572)-37.5572)/0.000012}); it.x=point.x; it.y=point.y; }
+  });
+  S.profile=ds.getProfile(); S.benefit=Boolean(ds.read().benefit_enabled);
+  S.saved=new Set(ds.getSaved().map(r=>r.target_id)); S.notis=ds.getNotifications(); S.tikkle=ds.getBalance();
+  const preferences=ds.read().app_state;
+  if(preferences){ S.hideSamples=Boolean(preferences.hideSamples); S.demoMode=preferences.demoMode??true; S.bells=new Set(preferences.bells||[]); if(preferences.prefs){ S.prefs={...S.prefs,...preferences.prefs,regions:new Set(preferences.prefs.regions||[]),genres:new Set(preferences.prefs.genres||[])}; } }
+  const baseJudges=judgeList.filter(j=>/^j[123]$/.test(j.id));
+  const reports=ds.getReports().map(r=>{
+    const demoVotes=S.demoMode?(ds.read().demo_votes||[]).filter(v=>v.report_id===r.id):[];
+    const right=r.yes+demoVotes.filter(v=>v.vote==="right").length,ended=r.ended+demoVotes.filter(v=>v.vote==="ended").length,wrong=r.wrong+demoVotes.filter(v=>v.vote==="wrong").length;
+    const status=right>=3&&right>ended+wrong?"승격":r.status==="통과"?"승격":r.status==="종료"?"종료":"확인 중";
+    const target=findAny(r.id); if(target){ target.isNew=status!=="승격"; if(r.tab==="문화"){ target.src=status==="승격"?"승격 제보":"사용자 제보"; target.status=status; target.votes={went:right,ended,wrong}; } }
+    return {id:"j"+r.id,report_id:r.id,user_id:r.user_id,nick:ds.nicknameOf(r.user_id,r.meta?.nickname||""),ref:r.id,kind:r.tab,name:r.name,price:r.price,area:r.address,time:"제보",submittedAt:Date.parse(r.created_at),expiresAt:Date.parse(r.created_at)+7*86400000,right,ended,wrong,status,voters:{}};
+  });
+  judgeList.splice(0,judgeList.length,...reports,...baseJudges);
+  S.judged=new Set((ds.read().report_votes||[]).filter(v=>v.user_id===ds.userId()).map(v=>"j"+v.report_id));
+  render();
+}
+window.addEventListener("geojimap:data-error",ev=>{
+  const messages={anonymous_provider_disabled:"Supabase 익명 로그인을 켜 주세요.","23505":"이미 저장된 정보예요. 새로고침해 확인해 주세요.","42501":"서버 저장 권한을 확인해 주세요."};
+  if(String(ev.detail.code||"").startsWith("auth_")) return; // 계정 오류는 가입·로그인 시트 안에 표시
+  toast(messages[ev.detail.code]||"Supabase 저장·조회에 실패했어요. 연결 상태를 확인해 주세요.");
+});
+window.addEventListener("geojimap:account-change",()=>{ if(S.tab==="me") renderPage(); });
+window.addEventListener("geojimap:data-ready",applyDataState);
+render();
+window.dataService.ready.then(result=>{ if(result.ok){ applyDataState(); const notice=window.dataService.takeAuthNotice(); if(notice){ S.noticeShown=true; toast(notice); if(!isGuest()){ S.tab="me"; render(); } } else if(result.mode==="remote") toast("Supabase 연결 완료 · 데이터를 불러왔어요."); } else toast("Supabase 연결이 완료되지 않았어요. 익명 인증과 환경변수를 확인해 주세요."); });
+if (window.mapsService) {
+  window.mapsService.onChange(applyView);
+  // 지도를 움직이다 멈추면 화면 안의 핀만 다시 그린다
+  window.mapsService.onIdle(() => { if (S.tab === "map") renderMap(); });
+  window.mapsService.init().then(applyView);
+}
+// 이미 위치 권한을 허용한 기기라면 들어오자마자 내 위치 점을 표시한다 (권한을 새로 묻지는 않음)
+try { navigator.permissions?.query({ name: "geolocation" }).then(p => { if (p.state === "granted") startWatch(); }).catch(() => {}); } catch (_) {}
+centerOn(500, 660, 0.72);
+setTimeout(() => { if(!S.noticeShown) toast("지도를 끌어서 움직이고, 두 손가락이나 휠로 확대해 보세요"); }, 300);
+
+document.addEventListener("change", ev => {
+  if (ev.target.id !== "benSw") return;
+  if (!S.profile){ ev.target.checked = false; profileSheet(true); toast("먼저 내 혜택 정보를 입력해 주세요."); return; }
+  S.benefit = ev.target.checked; render(); toast(S.benefit ? "내 혜택 적용을 켰어요." : "내 혜택 적용을 껐어요. 원래 가격으로 보여줘요.");
+});
+
+</script>
+</body></html>
