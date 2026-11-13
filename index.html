@@ -1684,7 +1684,7 @@ async function shareMonth(month){
   sheet(`<div class="sh-h"><h2>${m}월 기록 이미지</h2><button class="x" id="shX" aria-label="닫기">${ico.x}</button></div>
     <p class="note">이미지를 <b>길게 눌러</b> 사진에 저장한 뒤 인스타그램 등에 올려 주세요.</p>
     <img src="${dataUrl}" alt="${y}년 ${m}월 문화생활 기록" style="width:100%;border-radius:12px;border:1px solid var(--line);margin-top:8px">
-    <div class="acts"><a class="out" href="${dataUrl}" download="${name}" style="text-align:center;text-decoration:none;color:var(--ink);display:flex;align-items:center;justify-content:center">파일로 저장</a><button class="blk w" id="shDone">닫기</button></div>`);
+    <div class="acts"><a class="out w" href="${dataUrl}" download="${name}" style="text-align:center;text-decoration:none;color:var(--ink);display:block;font-size:inherit;line-height:inherit">파일로 저장</a><button class="blk w" id="shDone">닫기</button></div>`);
   $("#shX").onclick = $("#shDone").onclick = closeSheet;
 }
 
