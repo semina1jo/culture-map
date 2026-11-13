@@ -260,6 +260,17 @@ form textarea{min-height:110px;resize:vertical}
 .fabp{position:absolute;right:16px;bottom:78px;z-index:10;width:52px;height:52px;border-radius:50%;border:0;background:var(--ink);display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,.25)}
 .fabp svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2}
 .card{border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:10px}
+.rc-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin:6px 0 10px}
+.receipt{background:#fffdf7;border:1px solid var(--line);border-radius:4px;padding:16px 16px 12px;font-variant-numeric:tabular-nums;position:relative;box-shadow:0 2px 0 #eee}
+.receipt::after{content:"";position:absolute;left:0;right:0;bottom:-8px;height:8px;background:radial-gradient(circle at 6px 0,transparent 6px,#fffdf7 6.5px) 0 0/12px 8px repeat-x}
+.rc-head{text-align:center}.rc-head b{display:block;font-size:18px;letter-spacing:.2em}.rc-head small{color:var(--muted)}
+.rc-rule{border-top:1.5px dashed #c9c4b8;margin:12px 0}
+.rc-row{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:3px 0}.rc-row span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rc-row small{color:var(--muted);margin-right:4px}
+.rc-row span:last-child{white-space:nowrap;text-align:right}.rc-row s{display:block;font-size:11px;color:var(--muted)}
+.rc-sum{display:flex;justify-content:space-between;font-size:15px;margin-top:10px}.rc-sum.big b{font-size:22px;color:var(--grn,#1a7f4b)}
+.rc-cmp{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45}.rc-cmp b{color:var(--ink)}
+.rc-foot{font-size:10.5px;color:var(--muted);line-height:1.5;margin:0}
+
 .card h3{margin:0 0 6px;font-size:15px;font-weight:800;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .wallet{background:var(--ink);color:#fff;border-radius:18px;padding:16px}
 .wallet small{opacity:.72}
@@ -931,6 +942,7 @@ function reviewSheet(id){
     ev.submitter && (ev.submitter.disabled=true);
     const result=await ds.addReview(id,$("#rvT").value,reviewType(it),rating);
     if(!result.ok){ $("#rvErr").textContent="저장에 실패했어요. 다시 시도해 주세요."; ev.submitter && (ev.submitter.disabled=false); return; }
+    logReceipt(id, "리뷰");
     back(); renderMap();
     if(first) addTikkle(T.review,"리뷰 남기기"); else toast("리뷰를 남겼어요.");
   });
@@ -1060,6 +1072,7 @@ async function completeVisit(id, it, distance, simulated){
   const result=await window.dataService.recordVisit(id,simulated,distance); if(!result.ok) return;
   const already=result.value.already;
   if(!already){ S.tikkle=window.dataService.getBalance(); S.verified.push({id,name:it.name,price:it.price_min ?? it.price,ref:it.ref}); }
+  logReceipt(id, "방문 인증");
   sheet(`<div class="verify"><div class="big">${already?"✅":"🎉"}</div><p>${already?"오늘 이미 방문 인증했어요.":`방문 인증 완료 · +${T.visit}티끌`}</p><span class="note">${esc(it.name)} · ${simulated?"시연 모드 위치 가정":`${Math.round(distance)}m 거리`}</span>${!already?`<span class="note">정가 대비 ${Math.max(0,(it.ref||it.price||0)-((it.price_min ?? it.price) || 0)).toLocaleString()}원 아꼈어요.</span>`:""}</div>
     <div class="sec" id="vSt"><h3>지금 현장은 어때요? <span>눌러서 현재 상태 남기기</span></h3><div class="votes">${STATUS_ORDER.map(k=>`<button data-st="${k}"><b>${STATUS_ICON[k]}</b>${STATUS_L[k]}</button>`).join("")}</div><div id="vStMsg"></div></div>
     <div class="adbox"><b>광고 보고 보너스 티끌 받기</b><p class="note" style="margin:4px 0 0">${T.adMin}~${T.adMax}티끌 랜덤</p><div class="bar"><i id="adBar"></i></div></div>
@@ -1275,7 +1288,7 @@ function renderPage(){
           ?`<button class="out g-btn" id="acctGoogle" style="margin-top:10px"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Google로 계속하기</button><div class="acts" style="margin-top:8px"><button class="blk" id="acctSignup">이메일로 가입</button><button class="out" id="acctLogin">로그인</button></div><p class="note" style="margin:8px 0 0">리뷰·평점·티끌 적립은 로그인 후 이용할 수 있어요. 지금 가입하면 임시 닉네임으로 남긴 제보가 그대로 내 계정에 남아요.</p>`
           :`<div class="acts" style="margin-top:10px"><button class="out w" id="acctLogout">로그아웃</button></div>`}
       </div>
-      <div class="card"><h3>내 활동</h3><div class="acts" style="margin-top:4px"><button class="out" id="myReports">내 제보 ${window.dataService.getMyReports().length}</button><button class="out" id="myReviews">내 리뷰 ${window.dataService.getMyReviews().length}</button></div></div>
+      <div class="card"><h3>내 활동</h3><button class="blk" id="receiptBtn" style="width:100%;margin-top:4px">🧾 이번 달 아낀 돈 영수증</button><div class="acts" style="margin-top:8px"><button class="out" id="myReports">내 제보 ${window.dataService.getMyReports().length}</button><button class="out" id="myReviews">내 리뷰 ${window.dataService.getMyReviews().length}</button></div></div>
       <div class="wallet${isGuest()?" guest":""}" style="margin-top:10px"><small>보유 티끌</small>${isGuest()?`<div class="big" style="font-size:20px;line-height:1.3">로그인하면 티끌을 모을 수 있어요</div>`:`<div class="big">${S.tikkle.toLocaleString()} 티끌</div>`}<div class="row"><small>응모권 ${S.tickets}장</small><small>기여 ${3+S.verified.length}회</small></div></div>
       <div class="card"><h3>내 혜택 정보 <button class="out sm" id="profBtn">${S.profile?"수정":"입력하기"}</button></h3>
         ${S.profile?profileSummary():'<p class="note" style="margin:0">나이·거주지 같은 정보를 넣으면 무료·할인 대상인 문화생활을 골라서 보여줘요.</p>'}
@@ -1405,6 +1418,97 @@ function myReportsSheet(){
       return `<button class="listitem" ${exists?`data-myreport="${esc(r.id)}"`:"disabled"}><span class="ph">${EMOJI[r.genre]||"🎫"}</span><span style="min-width:0"><b>${esc(r.name)}</b><small>${esc(r.tab)} · ${dotDate(r.created_at)} · ${r.meta?.guest?"임시 닉네임으로 제보":"회원 제보"}</small></span><span class="tag">${esc(st)}</span></button>`; }).join("") || '<p class="note" style="padding:12px 0">아직 남긴 제보가 없어요.</p>'}`);
   $("#mrX").onclick = () => { closeSheet(); renderPage(); };
 }
+/* ===== 아낀 돈 영수증: 이번 달 관람 횟수·쓴 돈·아낀 돈 + 또래 비교 ===== */
+/* 비교 통계는 여기서만 고치면 된다. 연간 수치를 12로 나눠 한 달 기준으로 보여준다. */
+const RECEIPT_STATS = {
+  count: { // 국가데이터처 사회조사: 지난 1년 문화예술·스포츠 관람자의 1인 평균 관람횟수(영화·스포츠 포함)
+    source: "국가데이터처 사회조사(2023)", unit: "회",
+    bands: [{max:19,label:"10대",v:7.8},{max:29,label:"20대",v:8.5},{max:39,label:"30대",v:7.2},{max:49,label:"40대",v:6.7},{max:59,label:"50대",v:6.3},{max:200,label:"60세 이상",v:5.7}],
+    all: {label:"전체", v:7.1, source:"국가데이터처 사회조사(2025)"}
+  },
+  spend: { // 서울문화재단 2024 서울시민 문화향유 실태조사: 관람 경험자 1인당 연간 문화비
+    source: "서울문화재단 서울시민 문화향유 실태조사(2024)", unit: "원",
+    bands: [{min:30,max:39,label:"서울 30대",v:265000}],
+    all: {label:"서울시민", v:214000}
+  },
+  movie: 10000 // 문화가 있는 날 영화 관람료(성인)
+};
+const RECEIPT_KEY = "culturemap-receipt-v1";
+function receiptLog(){ try { return JSON.parse(localStorage.getItem(RECEIPT_KEY)) || {}; } catch(_) { return {}; } }
+/* 실제 낸 돈: '내 혜택 적용' 스위치와 관계없이, 내 정보로 받을 수 있는 가장 싼 값 */
+function paidPrice(e){
+  const base = e.price_min ?? e.price ?? 0;
+  if (!S.profile || !e.ben) return base;
+  return e.ben.reduce((m,r) => ruleOk(r) && r.p < m ? r.p : m, base);
+}
+function logReceipt(id, kind){
+  const it = findAny(id); if (!it) return;
+  const log = receiptLog(), month = TODAY.slice(0,7), key = `${month}|${id}`;
+  if (log[key]) return; // 같은 달 같은 행사는 한 번만
+  const price = it.price_min ?? it.price ?? 0;
+  log[key] = {id, name:it.name, genre:it.genre, date:TODAY, kind, price, paid:Math.min(price, paidPrice(it))};
+  try { localStorage.setItem(RECEIPT_KEY, JSON.stringify(log)); } catch(_) {}
+}
+/* 한 달 기록: 저장된 영수증 + 서버의 방문 인증·내 리뷰(같은 달 같은 행사는 1회) */
+function receiptEntries(month){
+  const log = receiptLog(), out = new Map();
+  Object.entries(log).forEach(([k,v]) => { if (k.startsWith(month + "|")) out.set(v.id, v); });
+  const add = (id, date, kind) => {
+    if (!date || !String(date).startsWith(month) || out.has(id)) return;
+    const it = findAny(id); if (!it) return;
+    const price = it.price_min ?? it.price ?? 0;
+    out.set(id, {id, name:it.name, genre:it.genre, date:String(date).slice(0,10), kind, price, paid:Math.min(price, paidPrice(it))});
+  };
+  const ds = window.dataService;
+  if (ds) { ds.getVisits().forEach(v => add(v.event_id, v.visit_date, "방문 인증")); ds.getMyReviews().forEach(r => add(r.target_id, r.created_at, "리뷰")); }
+  return [...out.values()].sort((a,b) => a.date.localeCompare(b.date));
+}
+function peerStat(stat){
+  const age = myAge();
+  if (age == null) return {label:stat.all.label, v:stat.all.v, source:stat.all.source || stat.source, age:null};
+  // 또래 = 내 나이 ±2세. 국가 통계는 10세 단위라, 그 범위가 가장 많이 걸치는 연령대 수치를 쓴다
+  const lo = age - 2, hi = age + 2;
+  const band = (stat.bands || []).map(b => ({b, n:Math.max(0, Math.min(hi, b.max) - Math.max(lo, b.min ?? -1) + 1)})).sort((x,y) => y.n - x.n)[0];
+  const use = band && band.n > 0 ? band.b : null;
+  return use ? {label:use.label, v:use.v, source:stat.source, age:[lo,hi]} : {label:stat.all.label, v:stat.all.v, source:stat.all.source || stat.source, age:[lo,hi]};
+}
+function cmpLine(mine, avg, unit){
+  const r = avg ? mine / avg : 0;
+  if (unit === "회") return mine > avg * 1.05 ? `평균보다 <b>${(mine/avg).toFixed(1)}배</b> 자주 즐겼어요` : mine >= avg * 0.95 ? "평균만큼 즐겼어요" : "평균보다 조금 덜 다녔어요";
+  if (!mine) return "이번 달은 한 푼도 안 썼어요";
+  return mine < avg * 0.95 ? `평균보다 <b>${won(Math.round(avg - mine))}</b> 덜 썼어요` : mine <= avg * 1.05 ? "평균만큼 썼어요" : `평균보다 ${won(Math.round(mine - avg))} 더 썼어요`;
+}
+function receiptSheet(month = TODAY.slice(0,7)){
+  const rows = receiptEntries(month);
+  const count = rows.length, spent = rows.reduce((a,r) => a + r.paid, 0), saved = rows.reduce((a,r) => a + Math.max(0, r.price - r.paid), 0);
+  const free = rows.filter(r => r.price === 0).length;
+  const pc = peerStat(RECEIPT_STATS.count), ps = peerStat(RECEIPT_STATS.spend);
+  const avgCount = pc.v / 12, avgSpend = ps.v / 12;
+  const who = pc.age ? `회원님 또래(만 ${pc.age[0]}~${pc.age[1]}세)` : "다른 사람들";
+  const [y, m] = month.split("-").map(Number);
+  const shift = d => { const t = new Date(y, m - 1 + d, 1); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}`; };
+  const movies = saved / RECEIPT_STATS.movie;
+  sheet(`<div class="sh-h"><h2>아낀 돈 영수증</h2><button class="x" id="rcX" aria-label="닫기">${ico.x}</button></div>
+    <div class="rc-nav"><button class="out sm" data-rcm="${shift(-1)}" aria-label="이전 달">‹</button><b>${y}년 ${m}월</b><button class="out sm" data-rcm="${shift(1)}" aria-label="다음 달" ${month>=TODAY.slice(0,7)?"disabled":""}>›</button></div>
+    <div class="receipt">
+      <div class="rc-head"><b>컬처맵</b><small>${esc(window.dataService?.getNickname?.() || "회원")}님의 ${m}월 문화생활</small></div>
+      <div class="rc-rule"></div>
+      ${rows.length ? rows.map(r => `<div class="rc-row"><span><small>${r.date.slice(5).replace("-",".")}</small> ${esc(r.name)}</span><span>${r.paid ? won(r.paid) : "무료"}${r.price > r.paid ? `<s>${won(r.price)}</s>` : ""}</span></div>`).join("")
+        : '<p class="note" style="text-align:center;margin:14px 0">이번 달 기록이 아직 없어요.<br>방문 인증하거나 리뷰를 남기면 여기에 쌓여요.</p>'}
+      <div class="rc-rule"></div>
+      <div class="rc-sum"><span>이용 횟수</span><b>${count}회</b></div>
+      <div class="rc-cmp">${who}는 한 달 평균 약 ${avgCount.toFixed(1)}회 관람해요 · ${count ? cmpLine(count, avgCount, "회") : "첫 기록을 남겨 보세요"}</div>
+      <div class="rc-sum"><span>쓴 금액</span><b>${spent.toLocaleString()}원</b></div>
+      <div class="rc-cmp">${ps.label === "서울시민" ? "서울시민" : "회원님 또래 서울시민"} 한 달 평균 문화비는 약 ${won(Math.round(avgSpend/100)*100)}이에요 · ${count ? cmpLine(spent, avgSpend, "원") : "기록이 쌓이면 비교해 드려요"}${free ? ` · 무료 ${free}곳` : ""}</div>
+      <div class="rc-sum big"><span>아낀 금액</span><b>${saved.toLocaleString()}원</b></div>
+      <div class="rc-cmp">${saved ? (movies >= 1 ? `문화가 있는 날 영화 <b>${Math.floor(movies)}편</b>을 볼 수 있는 돈이에요` : `문화가 있는 날 영화 한 편까지 ${won(RECEIPT_STATS.movie - saved)} 남았어요`) : "혜택가로 들어가면 할인받은 금액이 여기에 쌓여요"}</div>
+      <div class="rc-rule"></div>
+      <p class="rc-foot">아낀 금액 = 일반 가격 − 내가 받을 수 있는 혜택가<br>비교: ${esc(pc.source)} ${pc.label} 연 ${pc.v}회(영화·스포츠 포함), ${esc(ps.source)} ${ps.label} 연 ${won(ps.v)}을 12개월로 나눈 값</p>
+    </div>`);
+  $("#rcX").onclick = closeSheet;
+  document.querySelectorAll("[data-rcm]").forEach(b => b.onclick = () => receiptSheet(b.dataset.rcm));
+}
+
 function myReviewsSheet(){
   const rows=window.dataService.getMyReviews().sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
   sheet(`<div class="sh-h"><h2>내 리뷰 <span class="note">${rows.length}개</span></h2><button class="x" id="mvX" aria-label="닫기">${ico.x}</button></div>
@@ -1538,6 +1642,7 @@ document.addEventListener("click", async ev => {
     case "acctGoogle": window.dataService.signInGoogle(); break;
     case "myReports": myReportsSheet(); break;
     case "myReviews": myReviewsSheet(); break;
+    case "receiptBtn": receiptSheet(); break;
     case "benefitInputBtn": benefitInputSheet(); break;
     case "cDate": S.calYM=(S.date||FILTER_TODAY).slice(0,7); optSheet("date"); break;
     case "cPrice": optSheet("price"); break;
