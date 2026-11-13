@@ -1,5 +1,7 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#FFFAF3"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="컬처맵"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>컬처맵 · 가성비 문화 혜택 지도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&text=%EC%BB%AC%EC%B2%98%EB%A7%B5&display=swap">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
@@ -7,8 +9,8 @@
 /* Layout: 전체 화면 지도 위에 헤더·필터칩·떠 있는 버튼·하단 메뉴. 다른 탭은 지도 위 전체 페이지, 카드·시트는 아래에서 올라옴 */
 :root{
   color-scheme:light;
-  /* 컬처맵 팔레트: 딥 인디고 잉크 + 올리브 포인트 + 따뜻한 종이색. 가격 단계는 민트(무료)·레몬(저가)·라일락(만 원 이하) */
-  --ink:#231B4D; --ink2:#4B4570; --muted:#8E89A8; --line:#ECE7F4; --chip:#F4F0FA; --white:#fff; --outer:#E7E1F1;
+  /* 컬처맵 팔레트: 짙은 숲색 잉크 + 올리브 포인트 + 따뜻한 종이색. 가격 단계는 민트(무료)·레몬(저가)·라일락(만 원 이하) */
+  --ink:#1F2B22; --ink2:#4A584D; --muted:#8B958C; --line:#E6EADF; --chip:#F1F4EA; --white:#fff; --outer:#E4E9DC;
   --accent:#6F8F2E; --accent-soft:#EDF3DC; --paper:#FFFAF3; --grn:#0E9F75;
   --gold:#F0A500; --gold-soft:#FFF3CC; --green:#13B386; --green-soft:#DDF6EC; --blue:#7B61FF; --blue-soft:#EEEAFF; --red:#F0445A; --red-soft:#FFE5E9;
   --map-land:#f3f2ee; --map-road:#fff; --map-case:#e4e1da; --map-park:#d6ead0; --map-water:#cde2f4; --map-label:#9a9a9a;
@@ -354,40 +356,47 @@ form .sw{margin:0}
 #rF .report-permanent{display:flex;align-items:center;gap:8px}
 #rF .report-permanent input{width:18px;height:18px;margin:0;padding:0;accent-color:var(--ink)}
 #rF input:disabled{background:var(--chip);color:var(--muted);cursor:not-allowed}
+/* ===== 로고 ===== */
+.logo{display:inline-flex;align-items:center;gap:6px;vertical-align:middle;transform:rotate(-2deg);transform-origin:left center}
+.logo svg{width:26px;height:26px;flex:none;filter:drop-shadow(0 2px 3px rgba(111,143,46,.35))}
+.logo .tk{fill:var(--accent)}.logo .pn{fill:#fff}.logo .ho{fill:var(--accent)}
+.logo .w{font-family:"Black Han Sans",var(--f);font-weight:800;font-size:25px;line-height:1;letter-spacing:-.01em;color:var(--ink)}
+.logo .w em{font-style:normal;color:var(--accent);position:relative}
+.logo .w em::after{content:"";position:absolute;left:-2px;right:-2px;bottom:1px;height:7px;background:var(--accent-soft);border-radius:4px;z-index:-1}
+.logo .w{position:relative;z-index:0}
 /* ===== 컬처맵 테마 (색·모양·아이콘만, 위치·크기는 그대로) ===== */
 svg{stroke-linecap:round;stroke-linejoin:round}
-body{background:radial-gradient(circle at 20% 10%,#F3E9FF,transparent 50%),radial-gradient(circle at 85% 90%,#E8F0D2,transparent 45%),var(--outer)}
+body{background:radial-gradient(circle at 20% 10%,#F2F0DC,transparent 50%),radial-gradient(circle at 85% 90%,#E8F0D2,transparent 45%),var(--outer)}
 .head{background:linear-gradient(var(--paper) 72%,rgba(255,250,243,0))}
 .title h1{color:var(--ink);letter-spacing:-.04em}
-.title h1::first-letter{color:var(--accent)}
-.demo{border-color:#E4DCF0;background:#fff;color:var(--ink2);border-radius:999px;padding:1px 7px}
-.round{box-shadow:0 3px 10px rgba(35,27,77,.12),0 0 0 1px rgba(35,27,77,.04)}
+.demo{border-color:#DDE3D3;background:#fff;color:var(--ink2);border-radius:999px;padding:1px 7px}
+.round{box-shadow:0 3px 10px rgba(31,43,34,.12),0 0 0 1px rgba(31,43,34,.04)}
 .round svg{stroke:var(--ink);stroke-width:2.1}
-.chip{border-radius:999px;box-shadow:0 2px 8px rgba(35,27,77,.10),0 0 0 1px rgba(35,27,77,.05);color:var(--ink)}
-.chip.on{background:var(--ink);box-shadow:0 3px 10px rgba(35,27,77,.25)}
-.pin .p{border-width:2px;box-shadow:0 3px 8px rgba(35,27,77,.16)}
+.chip{border-radius:999px;box-shadow:0 2px 8px rgba(31,43,34,.10),0 0 0 1px rgba(31,43,34,.05);color:var(--ink)}
+.chip.on{background:var(--ink);box-shadow:0 3px 10px rgba(31,43,34,.25)}
+.pin .p{border-width:2px;box-shadow:0 3px 8px rgba(31,43,34,.16)}
 .pin.sel .p{background:var(--accent);border-color:var(--accent);box-shadow:0 4px 12px rgba(111,143,46,.4)}
-.more{background:var(--ink);box-shadow:0 3px 10px rgba(35,27,77,.25)}
+.more{background:var(--ink);box-shadow:0 3px 10px rgba(31,43,34,.25)}
 .dot{background:var(--accent)}
 .plus{border-radius:50%;background:var(--accent);box-shadow:0 6px 16px rgba(111,143,46,.42)}
 .plus svg{stroke-width:2.6}
-.plus-wrap span{color:var(--ink);box-shadow:0 1px 6px rgba(35,27,77,.14)}
-.legend{border-radius:999px;box-shadow:0 1px 6px rgba(35,27,77,.12)}
-.nav{background:rgba(255,255,255,.96);border-top:1px solid var(--line);box-shadow:0 -4px 18px rgba(35,27,77,.06)}
+.plus-wrap span{color:var(--ink);box-shadow:0 1px 6px rgba(31,43,34,.14)}
+.legend{border-radius:999px;box-shadow:0 1px 6px rgba(31,43,34,.12)}
+.nav{background:rgba(255,255,255,.96);border-top:1px solid var(--line);box-shadow:0 -4px 18px rgba(31,43,34,.06)}
 .nav svg{stroke-width:2}
 .nav svg .f{fill:none}
 .nav button[aria-current="page"]{color:var(--accent)}
 .nav button[aria-current="page"] svg .f{fill:var(--accent-soft)}
-.peek{border-radius:24px;box-shadow:0 10px 30px rgba(35,27,77,.18)}
+.peek{border-radius:24px;box-shadow:0 10px 30px rgba(31,43,34,.18)}
 .peek .ph,.listitem .ph,.hero{border-radius:16px}
 .blk{background:var(--accent);border-radius:999px;box-shadow:0 3px 10px rgba(111,143,46,.28)}
 .blk:disabled{box-shadow:none}
 .out{border:1.5px solid var(--line);border-radius:999px;color:var(--ink)}
 .out.on{border-color:var(--ink);background:var(--chip);color:var(--ink)}
 .sm{border-radius:999px}
-.scrim{background:rgba(35,27,77,.38)}
+.scrim{background:rgba(31,43,34,.38)}
 .sheet{border-radius:28px 28px 0 0}
-.grab{background:#DCD5EA}
+.grab{background:#D8DECF}
 .hero .badge,.hero .price{border-radius:999px;color:var(--ink)}
 .hero .price{color:var(--accent)}
 .cmt,.stat,.adbox{border-radius:16px}
@@ -412,13 +421,13 @@ form input:focus,form select:focus,form textarea:focus{border-color:var(--blue);
 .bar i{background:var(--accent)}
 .page{background:var(--paper)}
 .page h1{color:var(--ink);letter-spacing:-.04em}
-.card{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:0 2px 10px rgba(35,27,77,.05)}
-.wallet{background:linear-gradient(135deg,#2C2160 0%,#4B2C7A 55%,#7A3A7E 100%);border-radius:22px;box-shadow:0 8px 22px rgba(43,33,96,.28)}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:0 2px 10px rgba(31,43,34,.05)}
+.wallet{background:linear-gradient(135deg,#1F2B22 0%,#34502C 55%,#6F8F2E 100%);border-radius:22px;box-shadow:0 8px 22px rgba(31,43,34,.28)}
 .tabs button[aria-pressed="true"]{background:var(--ink);border-radius:999px}
 .noti i,.new{background:var(--accent)}
 :focus-visible{outline-color:var(--blue)}
 /* 기록·영수증 */
-.receipt{background:#fff;border-color:#EDE6DA;border-radius:6px;box-shadow:0 6px 18px rgba(35,27,77,.07)}
+.receipt{background:#fff;border-color:#EDE6DA;border-radius:6px;box-shadow:0 6px 18px rgba(31,43,34,.07)}
 .receipt::after{background:radial-gradient(circle at 6px 0,transparent 6px,#fff 6.5px) 0 0/12px 8px repeat-x}
 .rc-head b{color:var(--ink)}
 .cal-c{border-radius:14px;border-color:var(--line)}
@@ -432,7 +441,7 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 
   <header class="head" id="head">
     <div class="title">
-      <h1>컬처맵<span class="demo">컨셉 데모</span><span class="demo" id="demoModeBadge">시연 모드</span></h1>
+      <h1><span class="logo" aria-label="컬처맵"><svg viewBox="0 0 28 28" aria-hidden="true"><path class="tk" d="M5 4h18a3 3 0 0 1 3 3v4.2a2.8 2.8 0 0 0 0 5.6V21a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-4.2a2.8 2.8 0 0 0 0-5.6V7a3 3 0 0 1 3-3Z"/><path class="pn" d="M14 20.5s-4.2-3.7-4.2-7a4.2 4.2 0 0 1 8.4 0c0 3.3-4.2 7-4.2 7Z"/><circle class="ho" cx="14" cy="13.4" r="1.5"/></svg><span class="w">컬처<em>맵</em></span></span><span class="demo">컨셉 데모</span><span class="demo" id="demoModeBadge">시연 모드</span></h1>
       <button class="round" id="searchBtn" aria-label="검색"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.6-4.6"/><path d="M8 8.6a3 3 0 0 1 2.4-1.3"/></svg></button>
     </div>
     <div class="chips" id="chips"></div>
