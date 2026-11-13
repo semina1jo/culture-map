@@ -1,4 +1,5 @@
-// 한눈에보는문화정보조회서비스(문화체육관광부·한국문화정보원) → 홍대 5km 안 공연·전시·행사 → culture_events 저장
+// 한눈에보는문화정보조회서비스(문화체육관광부·한국문화정보원) → 서울시 전역 공연·전시·행사 → culture_events 저장
+// 2026-11-13: 홍대 5km → 서울 전역. 상세 조회가 많아져서 한 번에 다 못 하면 다음 실행에서 이어서 한다(시간 예산).
 // 매일 자동 실행. 본문에 {"dry": true}를 보내면 저장하지 않고 건수·예시만 돌려준다.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { parseFee } from "./fee.ts";
@@ -12,8 +13,11 @@ const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPAB
 const CENTER = { lat: 37.5563, lng: 126.9236 }; // 홍대입구역
 const RADIUS_KM = 5;
 const MAX_PRICE = 10000;
-// 반경 5km를 덮는 사각형 (검색은 사각형으로, 저장은 원 안만)
-const BOX = { gpsxfrom: "126.8668", gpsxto: "126.9804", gpsyfrom: "37.5113", gpsyto: "37.6013" };
+// 서울시를 덮는 사각형 (검색은 사각형으로, 저장은 서울 주소만)
+const BOX = { gpsxfrom: "126.7640", gpsxto: "127.1840", gpsyfrom: "37.4280", gpsyto: "37.7020" };
+const inBox = (lat: number, lng: number) => lat >= 37.428 && lat <= 37.702 && lng >= 126.764 && lng <= 127.184;
+const TIME_BUDGET_MS = 110_000; // Edge Function 실행 시간 제한 안에서 끝내기
+const FRESH_DAYS = 7;           // 최근 7일 안에 상세를 받은 행사는 다시 받지 않음
 const KIDS = /영유아|유아|어린이|아동|미취학|초등|키즈|가족뮤지컬/;
 
 function tag(xml: string, t: string): string {
@@ -81,7 +85,7 @@ Deno.serve(async (req) => {
 
     // 1) 목록: 사각형 범위 + 오늘 이후
     const list: string[] = [];
-    for (let page = 1; page <= 20; page++) {
+    for (let page = 1; page <= 80; page++) {
       const xml = await get("period2", { PageNo: String(page), numOfrows: "100", from: today, to: until, ...BOX });
       const total = Number(tag(xml, "totalCount")) || 0;
       const its = items(xml); list.push(...its);
@@ -95,14 +99,25 @@ Deno.serve(async (req) => {
     const candidates = list.map(x => ({
       seq: tag(x, "seq"), title: unesc(tag(x, "title")), realm: tag(x, "realmName"), place: unesc(tag(x, "place")),
       start: ymd(tag(x, "startDate")), end: ymd(tag(x, "endDate")), lat: Number(tag(x, "gpsY")), lng: Number(tag(x, "gpsX")), thumb: tag(x, "thumbnail"),
-    })).filter(c => c.seq && c.lat && c.lng && distanceKm(c.lat, c.lng) <= RADIUS_KM && toCategory(c.realm) && !KIDS.test(c.title) && (!c.end || c.end >= todayIso) && !isDup(c));
+    })).filter(c => c.seq && c.lat && c.lng && inBox(c.lat, c.lng) && toCategory(c.realm) && !KIDS.test(c.title) && (!c.end || c.end >= todayIso) && !isDup(c));
 
     // 3) 상세(요금·링크·이미지)를 차례로 받아 요금 문구를 규칙으로 바꾼다 (동시에 보내면 포털이 거절함)
     const records: Record<string, unknown>[] = [];
-    const stats = { listed: list.length, candidates: candidates.length, saved: 0, free: 0, under10k: 0, benefitOnly: 0, tooExpensive: 0, unknownPrice: 0, withRules: 0 };
+    const stats = { listed: list.length, candidates: candidates.length, saved: 0, free: 0, under10k: 0, benefitOnly: 0, tooExpensive: 0, unknownPrice: 0, withRules: 0, notSeoul: 0, skippedFresh: 0, pending: 0 };
     const samples: unknown[] = [];
-    for (let i = 0; i < candidates.length; i += 1) {
-      const batch = candidates.slice(i, i + 1);
+    // 이미 저장된 행사 중 최근에 상세를 받은 것은 건너뛰고, 새 행사부터 상세를 받는다
+    const existing = new Map<string, string>();
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase.from("culture_events").select("id,updated_at").eq("source", SOURCE).range(from, from + 999);
+      (data ?? []).forEach((r: { id: string; updated_at: string }) => existing.set(r.id, r.updated_at)); if (!data || data.length < 1000) break;
+    }
+    const freshCut = new Date(Date.now() - FRESH_DAYS * 86400e3).toISOString();
+    const todo = candidates.filter(c => { const u = existing.get(`kcis_${c.seq}`); if (u && u > freshCut && !options.dry) { stats.skippedFresh++; return false; } return true; })
+      .sort((a, b) => (existing.has(`kcis_${a.seq}`) ? 1 : 0) - (existing.has(`kcis_${b.seq}`) ? 1 : 0));
+    const t0 = Date.now();
+    for (let i = 0; i < todo.length; i += 1) {
+      if (Date.now() - t0 > TIME_BUDGET_MS) { stats.pending = todo.length - i; break; }
+      const batch = todo.slice(i, i + 1);
       const details = [await get("detail2", { seq: batch[0].seq }).catch(() => "")];
       batch.forEach((c, k) => {
         const it = items(details[k])[0] ?? "";
@@ -113,6 +128,8 @@ Deno.serve(async (req) => {
         if (price > MAX_PRICE && minRule > MAX_PRICE) { stats.tooExpensive++; return; }
         if (price === 0) stats.free++; else if (price <= MAX_PRICE) stats.under10k++; else stats.benefitOnly++;
         if (rules.length) stats.withRules++;
+        const addr = unesc(tag(it, "placeAddr"));
+        if (addr && !addr.includes("서울")) { stats.notSeoul++; return; }
         const url = unesc(tag(it, "url"));
         const rec = {
           id: `kcis_${c.seq}`,
@@ -149,9 +166,15 @@ Deno.serve(async (req) => {
       const { error } = await supabase.from("culture_events").upsert(records.slice(i, i + 200), { onConflict: "id" });
       if (error) throw error;
     }
-    const { count, error: delErr } = await supabase.from("culture_events").delete({ count: "exact" }).eq("source", SOURCE).lt("updated_at", runStart);
-    if (delErr) throw delErr;
-    return Response.json({ ok: true, ...stats, deleted: count ?? 0 });
+    // 목록에서 사라진(끝났거나 범위를 벗어난) 행사만 삭제. 시간이 모자라 상세를 못 받은 행사는 다음 실행까지 그대로 둔다
+    const keep = new Set(candidates.map(c => `kcis_${c.seq}`));
+    const gone = [...existing.keys()].filter(id => !keep.has(id));
+    let deleted = 0;
+    for (let i = 0; i < gone.length; i += 200) {
+      const { count, error: delErr } = await supabase.from("culture_events").delete({ count: "exact" }).in("id", gone.slice(i, i + 200));
+      if (delErr) throw delErr; deleted += count ?? 0;
+    }
+    return Response.json({ ok: true, ...stats, deleted });
   } catch (e) {
     return Response.json({ ok: false, error: String((e as Error)?.message ?? e) }, { status: 500 });
   }

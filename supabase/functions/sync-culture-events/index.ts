@@ -11,7 +11,7 @@ const supabase = createClient(
 );
 
 const CENTER = { lat: 37.5563, lng: 126.9236 }; // 홍대입구역
-const RADIUS_KM = 5; // 2026-11-07: 3km(17건) → 5km(55건)로 확대
+const RADIUS_KM = 5; // dry 실행의 반경별 건수 참고용. 저장은 서울 전역(2026-11-13)
 const MAX_PRICE = 10000;
 const PAGE = 1000;
 const KIDS = /영유아|유아|어린이|아동|미취학|초등|키즈/;
@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
       if (!end || end < today) continue;
       const lat = toCoord(r.LAT), lng = toCoord(r.LOT);
       if (lat === null || lng === null) continue;
-      if (distanceKm(lat, lng) > RADIUS_KM) continue;
+      // 2026-11-13: 홍대 반경 제한 해제 → 서울시 전역 (서울시 데이터라 지역 필터 불필요)
       const category = toCategory(r.CODENAME ?? "");
       if (!category) continue;
       if (KIDS.test(`${r.USE_TRGT ?? ""} ${r.TITLE ?? ""}`)) continue;
