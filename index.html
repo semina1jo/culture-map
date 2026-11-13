@@ -362,6 +362,9 @@ form .sw{margin:0}
 .sit-list .sit-e{font-size:22px;width:38px;height:38px;border-radius:12px;background:var(--chip);display:grid;place-items:center;flex:none}
 .sit-list button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
 .sit-list button[aria-pressed="true"] .sit-e{background:#fff}
+.sit-vote{display:flex;flex-wrap:wrap;gap:6px}
+.sit-vote button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px;font-weight:700;color:var(--ink)}
+.sit-vote button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
 /* ===== 로고 ===== */
 .logo{display:inline-flex;align-items:center;gap:6px;vertical-align:middle;transform:rotate(-2deg);transform-origin:left center}
 .logo svg{width:26px;height:26px;flex:none;filter:drop-shadow(0 2px 3px rgba(111,143,46,.35))}
@@ -783,6 +786,23 @@ const SITUATIONS = [
   {k:"soon",  e:"⏳", l:"마감 임박", d:"3일 안에 끝나는 곳"}
 ];
 const SIT_L = Object.fromEntries(SITUATIONS.map(x => [x.k, x]));
+/* 방문자가 고를 수 있는 상황(장소 성격에 관한 것만. 무료·마감 임박은 데이터로 정확히 알 수 있어 투표 안 받음) */
+const SIT_VOTE = [{k:"quick", e:"⏱️", l:"잠깐 들르기 좋았어요"}, {k:"weekend", e:"☀️", l:"반나절 보내기 좋았어요"}, {k:"rain", e:"☔", l:"비 와도 괜찮아요(실내)"}];
+const SIT_MIN_VOTERS = 3, SIT_YES_RATIO = 0.4; // 3명 이상 투표가 쌓이면, 40% 이상이 고른 상황만 인정
+let sitIdx = null, sitIdxLen = -1;
+function sitVotes(id){
+  const all = window.dataService.getSituationVotes ? window.dataService.getSituationVotes() : [];
+  if (sitIdxLen !== all.length) { sitIdx = {}; sitIdxLen = all.length;
+    all.forEach(v => { const x = sitIdx[v.event_id] = sitIdx[v.event_id] || {voters:new Set(), n:{}}; x.voters.add(v.user_id); x.n[v.situation] = (x.n[v.situation] || 0) + 1; }); }
+  const x = sitIdx[id]; return x ? {voters:x.voters.size, n:x.n} : {voters:0, n:{}};
+}
+/* 투표가 충분하면 true/false, 부족하면 null(기본 규칙 사용) */
+function crowdSit(e, k){ const v = sitVotes(e.id); return v.voters >= SIT_MIN_VOTERS ? (v.n[k] || 0) / v.voters >= SIT_YES_RATIO : null; }
+function sitVoteLine(e){
+  const v = sitVotes(e.id); if (!v.voters) return "";
+  const tags = SIT_VOTE.filter(x => v.n[x.k]).sort((a,b) => v.n[b.k] - v.n[a.k]).map(x => `<span class="tag">${x.e} ${x.l.replace(/좋았어요|괜찮아요/,"").trim()} ${v.n[x.k]}</span>`).join("");
+  return `<div class="sec"><h3>방문자들이 고른 상황 <span>${v.voters}명 참여${v.voters < SIT_MIN_VOTERS ? ` · ${SIT_MIN_VOTERS}명부터 필터에 반영` : " · 필터에 반영 중"}</span></h3>${tags || '<p class="note">아직 고른 상황이 없어요.</p>'}</div>`;
+}
 /* 거리 기준: 내 실제 위치가 있으면 내 위치, 없으면 지금 보는 지도 가운데 */
 function sitDistance(it){
   const ms = window.mapsService;
@@ -802,15 +822,15 @@ function nextWeekend(){ const t = new Date(`${REC_TODAY}T00:00:00`), dow = t.get
 function sitOk(e){
   const base = e.price_min ?? e.price;
   switch (S.sit){
-    case "quick": return !e.reserve && activeDuring(e, REC_TODAY, REC_TODAY) && sitDistance(e) <= 1000;
+    case "quick": { if (!activeDuring(e, REC_TODAY, REC_TODAY) || sitDistance(e) > 1000) return false; const c = crowdSit(e, "quick"); return c ?? !e.reserve; }
     case "free": return base === 0 || (S.profile && paidPrice(e) === 0);
-    case "weekend": { const [a, b] = nextWeekend(); return activeDuring(e, a, b) && sitDistance(e) <= 3000; }
-    case "rain": return isIndoor(e);
+    case "weekend": { const [a, b] = nextWeekend(); if (!activeDuring(e, a, b) || sitDistance(e) > 3000) return false; const c = crowdSit(e, "weekend"); return c ?? true; }
+    case "rain": { const c = crowdSit(e, "rain"); return c ?? isIndoor(e); }
     case "soon": { if (isAlwaysOpen(e) || !e.end) return false; const d = days(REC_TODAY, e.end); return d >= 0 && d <= 3; }
     default: return true;
   }
 }
-const sitHTML = () => `<p class="note" style="margin:0 0 6px">지금 상황을 고르면 다른 필터와 함께 걸러줘요. 거리는 ${S.me && !S.me.demo ? "내 위치" : "지금 보는 지도 가운데"} 기준이에요.</p>
+const sitHTML = () => `<p class="note" style="margin:0 0 6px">지금 상황을 고르면 다른 필터와 함께 걸러줘요. 거리는 ${S.me && !S.me.demo ? "내 위치" : "지금 보는 지도 가운데"} 기준이에요. 방문 인증한 사람이 ${SIT_MIN_VOTERS}명 이상 고른 곳은 그 투표 결과로 걸러요.</p>
   <div class="sit-list">${SITUATIONS.map(x => `<button aria-pressed="${S.sit===x.k}" data-sit="${x.k}"><span class="sit-e">${x.e}</span><span><b>${x.l}</b><small>${x.d}</small></span></button>`).join("")}</div>`;
 function cultureList(){
   return events.filter(e => {
@@ -1128,6 +1148,7 @@ function detail(id,level){
     ${rep?`<div class="sec"><h3>이 제보, 맞나요? <span>정보 확인</span></h3>
       <div class="votes">${STATUS_ORDER.map(k=>`<button data-vote="${k}" ${!S.demoMode&&S.judged.has("j"+id)?"disabled":""}><b>${e.votes[k]}</b>${STATUS_L[k]}</button>`).join("")}</div>
       <div class="status">상태: ${esc(e.status)} · 기간이 지나면 자동으로 숨겨져요</div></div>`:liveLine(e)}
+    ${sitVoteLine(e)}
     ${reviewSection(e)}
     <div class="acts">
       <div class="acts-row">
@@ -1222,10 +1243,15 @@ async function completeVisit(id, it, distance, simulated){
   if(!already){ S.tikkle=window.dataService.getBalance(); S.verified.push({id,name:it.name,price:it.price_min ?? it.price,ref:it.ref}); }
   logReceipt(id, "방문 인증");
   sheet(`<div class="verify"><div class="big">${already?"✅":"🎉"}</div><p>${already?"오늘 이미 방문 인증했어요.":`방문 인증 완료 · +${T.visit}티끌`}</p><span class="note">${esc(it.name)} · ${simulated?"시연 모드 위치 가정":`${Math.round(distance)}m 거리`}</span>${!already?`<span class="note">정가 대비 ${Math.max(0,(it.ref||it.price||0)-((it.price_min ?? it.price) || 0)).toLocaleString()}원 아꼈어요.</span>`:""}</div>
+    ${(window.dataService.getSituationVotes?.() || []).some(v => v.event_id===id && v.user_id===window.dataService.userId()) ? "" : `<div class="sec" id="vSit"><h3>이곳, 어떤 상황에 어울렸나요? <span>여러 개 골라도 돼요</span></h3><div class="sit-vote">${SIT_VOTE.map(x => `<button type="button" aria-pressed="false" data-sv="${x.k}">${x.e} ${x.l}</button>`).join("")}</div><button class="out sm" id="vSitSave" style="margin-top:8px;width:100%" disabled>상황 남기기</button><div id="vSitMsg"></div></div>`}
     <div class="sec" id="vSt"><h3>지금 현장은 어때요? <span>눌러서 현재 상태 남기기</span></h3><div class="votes">${STATUS_ORDER.map(k=>`<button data-st="${k}"><b>${STATUS_ICON[k]}</b>${STATUS_L[k]}</button>`).join("")}</div><div id="vStMsg"></div></div>
     <div class="adbox"><b>광고 보고 보너스 티끌 받기</b><p class="note" style="margin:4px 0 0">${T.adMin}~${T.adMax}티끌 랜덤</p><div class="bar"><i id="adBar"></i></div></div>
     <div class="acts"><button class="out" id="vDone">그냥 닫기</button><button class="blk" id="vAd">광고 보기</button></div>`);
   $("#vDone").onclick = () => { closeSheet(); backToDetail(id); };
+  const svPick = new Set();
+  document.querySelectorAll("[data-sv]").forEach(b => b.onclick = () => { const k = b.dataset.sv; svPick.has(k) ? svPick.delete(k) : svPick.add(k); b.setAttribute("aria-pressed", svPick.has(k)); $("#vSitSave").disabled = !svPick.size; });
+  $("#vSitSave") && ($("#vSitSave").onclick = async () => { $("#vSitSave").disabled = true; await window.dataService.addSituationVotes(id, [...svPick]); sitIdxLen = -1;
+    $("#vSit").innerHTML = `<div class="status">고마워요! 다음 사람들이 상황 필터로 이곳을 더 정확하게 찾을 수 있어요.</div>`; });
   document.querySelectorAll("[data-st]").forEach(b => b.onclick = () => { const k=b.dataset.st, prev=S.myStatus[id]; if(prev===k) return; it.votes=it.votes||{went:0,ended:0,wrong:0}; if(prev) it.votes[prev]--; it.votes[k]++; S.myStatus[id]=k; $("#vStMsg").innerHTML=`<div class="status">현장 상태를 ${STATUS_L[k]}로 표시했어요.</div>`; renderMap(); });
   $("#vAd").onclick = () => { $("#vAd").disabled=true; $("#adBar").style.width="100%"; setTimeout(()=>{ const b=rnd(T.adMin,T.adMax); if(window.dataService) window.dataService.addLedger({kind:"ad_bonus",target_id:id,date:TODAY,reward:b,reason:"광고 시청 데모"}); S.tikkle+=b; closeSheet(); toast(`광고 보너스 +${b}티끌 · 지금 ${S.tikkle.toLocaleString()}티끌`); backToDetail(id); },1700); };
 }

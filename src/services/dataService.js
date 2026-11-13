@@ -28,10 +28,11 @@
     notifications: "id,user_id,dedupe_key,type,text,target_id,read,created_at",
     review_likes: "id,review_id,user_id,created_at",
     review_flags: "id,review_id,user_id,reason,created_at",
-    venue_benefits: "id,venue_keyword,venue_name,category,target,discount,note,source_url"
+    venue_benefits: "id,venue_keyword,venue_name,category,target,discount,note,source_url",
+    situation_votes: "id,event_id,user_id,situation,created_at"
   };
   // 새로 추가된 테이블: 아직 DB에 없더라도 앱 전체가 멈추지 않게 실패를 무시한다
-  const optionalTables = new Set(["review_likes", "review_flags", "venue_benefits"]);
+  const optionalTables = new Set(["review_likes", "review_flags", "venue_benefits", "situation_votes"]);
   const ownTables = new Set(["user_profiles", "visits", "tikkle_ledger", "saved", "notifications", "review_flags"]);
   const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const uuid = () => global.crypto.randomUUID();
@@ -220,7 +221,8 @@
   async function hydrate() {
     const tables = Object.keys(columns);
     const results = await Promise.all(tables.map(async table => {
-      if (optionalTables.has(table)) { try { return [table, await selectAll(table)]; } catch (_) { return [table, []]; } }
+      // 선택 테이블이 아직 DB에 없으면 null → 이 기기에 저장해 둔 값을 그대로 둔다
+      if (optionalTables.has(table)) { try { return [table, await selectAll(table)]; } catch (_) { return [table, null]; } }
       if (table !== "culture_events") return [table, await selectAll(table)];
       try {
         const rows = await selectAll(table);
@@ -234,6 +236,7 @@
     const state = read();
     state.nicknames = await fetchNicknames();
     for (const [table, rows] of results) {
+      if (rows === null && optionalTables.has(table)) continue;
       if (table === "user_profiles") {
         const p = rows[0];
         state.profile = savedProfile(p);
@@ -357,6 +360,22 @@
       return row;
     }),
     getVenueBenefits: () => list("venue_benefits"),
+    // 방문 인증 때 남기는 '어울리는 상황' 투표. situation_votes 테이블이 없으면 이 기기에만 저장된다
+    getSituationVotes: () => list("situation_votes"),
+    addSituationVotes: async (eventId, situations) => {
+      const uid = userId(), mine = list("situation_votes").filter(v => !(v.event_id === eventId && v.user_id === uid));
+      const rows = situations.map(situation => ({ id: uuid(), event_id: eventId, user_id: uid, situation, created_at: now() }));
+      cache("situation_votes", [...mine, ...rows]);
+      let synced = false;
+      if (configured && connection.mode === "remote" && session) {
+        try {
+          await request(`/rest/v1/situation_votes?event_id=eq.${encodeURIComponent(eventId)}&user_id=eq.${encodeURIComponent(uid)}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+          if (rows.length) await insert("situation_votes", rows.map(({ id, ...r }) => r));
+          synced = true;
+        } catch (_) { /* 테이블이 아직 없으면 이 기기에만 남긴다 */ }
+      }
+      return { ok: true, synced };
+    },
     getMyReports: () => list("reports").filter(r => r.user_id === userId()),
     getMyReviews: () => list("reviews").filter(r => r.user_id === userId()),
     getReports: () => list("reports"),
