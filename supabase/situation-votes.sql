@@ -4,7 +4,7 @@ create table if not exists public.situation_votes (
   id uuid primary key default gen_random_uuid(),
   event_id text not null,
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  situation text not null check (situation in ('quick', 'weekend', 'rain')),
+  situation text not null check (situation in ('quick', 'weekend', 'rain', 'solo', 'quiet', 'photo', 'together')),
   created_at timestamptz not null default now(),
   unique (event_id, user_id, situation)
 );

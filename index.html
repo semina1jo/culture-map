@@ -357,6 +357,7 @@ form .sw{margin:0}
 #rF .report-permanent input{width:18px;height:18px;margin:0;padding:0;accent-color:var(--ink)}
 #rF input:disabled{background:var(--chip);color:var(--muted);cursor:not-allowed}
 .sit-list{display:grid;gap:8px;margin:4px 0 12px}
+.sit-g{font-size:12px;font-weight:800;color:var(--ink2);margin:10px 0 2px}
 .sit-list button{display:flex;align-items:center;gap:12px;text-align:left;border:1.5px solid var(--line);background:#fff;border-radius:18px;padding:10px 14px}
 .sit-list button b{display:block;font-size:14px}.sit-list button small{color:var(--muted);font-size:12px}
 .sit-list .sit-e{font-size:22px;width:38px;height:38px;border-radius:12px;background:var(--chip);display:grid;place-items:center;flex:none}
@@ -783,11 +784,17 @@ const SITUATIONS = [
   {k:"free",  e:"💸", l:"무료로만", d:"돈 안 드는 곳만 (혜택가 무료 포함)"},
   {k:"weekend", e:"☀️", l:"주말 반나절", d:"이번 주말에 하는 곳 · 3km 안"},
   {k:"rain",  e:"☔", l:"비 오는 날", d:"실내로 보이는 곳 (전시·공연·박물관 등)"},
-  {k:"soon",  e:"⏳", l:"마감 임박", d:"3일 안에 끝나는 곳"}
+  {k:"soon",  e:"⏳", l:"마감 임박", d:"3일 안에 끝나는 곳"},
+  /* 이런 곳(장소 성격 태그): 처음엔 분야로 추정, 방문자 투표가 쌓이면 투표로 */
+  {k:"solo",    e:"🙋", l:"혼자 가기 좋은", d:"예약 없이 혼자 둘러보기 좋은 곳", group:"tag"},
+  {k:"quiet",   e:"🤫", l:"조용한", d:"차분하게 머물 수 있는 실내", group:"tag"},
+  {k:"photo",   e:"📸", l:"사진 찍기 좋은", d:"볼거리·포토존이 있는 곳", group:"tag"},
+  {k:"together",e:"👯", l:"같이 가기 좋은", d:"친구·연인과 함께 즐기기 좋은 곳", group:"tag"}
 ];
 const SIT_L = Object.fromEntries(SITUATIONS.map(x => [x.k, x]));
 /* 방문자가 고를 수 있는 상황(장소 성격에 관한 것만. 무료·마감 임박은 데이터로 정확히 알 수 있어 투표 안 받음) */
-const SIT_VOTE = [{k:"quick", e:"⏱️", l:"잠깐 들르기 좋았어요"}, {k:"weekend", e:"☀️", l:"반나절 보내기 좋았어요"}, {k:"rain", e:"☔", l:"비 와도 괜찮아요(실내)"}];
+const SIT_VOTE = [{k:"quick", e:"⏱️", l:"잠깐 들르기 좋았어요"}, {k:"weekend", e:"☀️", l:"반나절 보내기 좋았어요"}, {k:"rain", e:"☔", l:"비 와도 괜찮아요(실내)"},
+  {k:"solo", e:"🙋", l:"혼자 가기 좋았어요"}, {k:"quiet", e:"🤫", l:"조용했어요"}, {k:"photo", e:"📸", l:"사진 찍기 좋았어요"}, {k:"together", e:"👯", l:"같이 가기 좋았어요"}];
 const SIT_MIN_VOTERS = 3, SIT_YES_RATIO = 0.4; // 3명 이상 투표가 쌓이면, 40% 이상이 고른 상황만 인정
 let sitIdx = null, sitIdxLen = -1;
 function sitVotes(id){
@@ -827,11 +834,18 @@ function sitOk(e){
     case "weekend": { const [a, b] = nextWeekend(); if (!activeDuring(e, a, b) || sitDistance(e) > 3000) return false; const c = crowdSit(e, "weekend"); return c ?? true; }
     case "rain": { const c = crowdSit(e, "rain"); return c ?? isIndoor(e); }
     case "soon": { if (isAlwaysOpen(e) || !e.end) return false; const d = days(REC_TODAY, e.end); return d >= 0 && d <= 3; }
+    /* 태그: 투표 3명 이상이면 투표, 아니면 분야 기반 추정 */
+    case "solo": { const c = crowdSit(e, "solo"); return c ?? (!e.reserve && (["전시","체험"].includes(e.genre4 || e.genre) || isAlwaysOpen(e))); }
+    case "quiet": { const c = crowdSit(e, "quiet"); return c ?? (isIndoor(e) && !["공연","축제"].includes(e.genre4 || e.genre)); }
+    case "photo": { const c = crowdSit(e, "photo"); return c ?? ["전시","축제"].includes(e.genre4 || e.genre); }
+    case "together": { const c = crowdSit(e, "together"); return c ?? ["공연","축제","체험"].includes(e.genre4 || e.genre); }
     default: return true;
   }
 }
-const sitHTML = () => `<p class="note" style="margin:0 0 6px">지금 상황을 고르면 다른 필터와 함께 걸러줘요. 거리는 ${S.me && !S.me.demo ? "내 위치" : "지금 보는 지도 가운데"} 기준이에요. 방문 인증한 사람이 ${SIT_MIN_VOTERS}명 이상 고른 곳은 그 투표 결과로 걸러요.</p>
-  <div class="sit-list">${SITUATIONS.map(x => `<button aria-pressed="${S.sit===x.k}" data-sit="${x.k}"><span class="sit-e">${x.e}</span><span><b>${x.l}</b><small>${x.d}</small></span></button>`).join("")}</div>`;
+const sitBtn = x => `<button aria-pressed="${S.sit===x.k}" data-sit="${x.k}"><span class="sit-e">${x.e}</span><span><b>${x.l}</b><small>${x.d}</small></span></button>`;
+const sitHTML = () => `<p class="note" style="margin:0 0 6px">하나를 고르면 다른 필터와 함께 걸러줘요. 거리는 ${S.me && !S.me.demo ? "내 위치" : "지금 보는 지도 가운데"} 기준이에요. 방문 인증한 사람이 ${SIT_MIN_VOTERS}명 이상 고른 곳은 그 투표 결과로 걸러요.</p>
+  <div class="sit-g">지금 내 상황</div><div class="sit-list">${SITUATIONS.filter(x => !x.group).map(sitBtn).join("")}</div>
+  <div class="sit-g">이런 곳을 찾아요</div><div class="sit-list">${SITUATIONS.filter(x => x.group === "tag").map(sitBtn).join("")}</div>`;
 function cultureList(){
   return events.filter(e => {
     if (e.hidden || !isAlwaysOpen(e) && e.end < FILTER_TODAY) return false;
@@ -1243,7 +1257,7 @@ async function completeVisit(id, it, distance, simulated){
   if(!already){ S.tikkle=window.dataService.getBalance(); S.verified.push({id,name:it.name,price:it.price_min ?? it.price,ref:it.ref}); }
   logReceipt(id, "방문 인증");
   sheet(`<div class="verify"><div class="big">${already?"✅":"🎉"}</div><p>${already?"오늘 이미 방문 인증했어요.":`방문 인증 완료 · +${T.visit}티끌`}</p><span class="note">${esc(it.name)} · ${simulated?"시연 모드 위치 가정":`${Math.round(distance)}m 거리`}</span>${!already?`<span class="note">정가 대비 ${Math.max(0,(it.ref||it.price||0)-((it.price_min ?? it.price) || 0)).toLocaleString()}원 아꼈어요.</span>`:""}</div>
-    ${(window.dataService.getSituationVotes?.() || []).some(v => v.event_id===id && v.user_id===window.dataService.userId()) ? "" : `<div class="sec" id="vSit"><h3>이곳, 어떤 상황에 어울렸나요? <span>여러 개 골라도 돼요</span></h3><div class="sit-vote">${SIT_VOTE.map(x => `<button type="button" aria-pressed="false" data-sv="${x.k}">${x.e} ${x.l}</button>`).join("")}</div><button class="out sm" id="vSitSave" style="margin-top:8px;width:100%" disabled>상황 남기기</button><div id="vSitMsg"></div></div>`}
+    ${(window.dataService.getSituationVotes?.() || []).some(v => v.event_id===id && v.user_id===window.dataService.userId()) ? "" : `<div class="sec" id="vSit"><h3>이곳, 어땠나요? <span>여러 개 골라도 돼요</span></h3><div class="sit-vote">${SIT_VOTE.map(x => `<button type="button" aria-pressed="false" data-sv="${x.k}">${x.e} ${x.l}</button>`).join("")}</div><button class="out sm" id="vSitSave" style="margin-top:8px;width:100%" disabled>선택한 항목 남기기</button><div id="vSitMsg"></div></div>`}
     <div class="sec" id="vSt"><h3>지금 현장은 어때요? <span>눌러서 현재 상태 남기기</span></h3><div class="votes">${STATUS_ORDER.map(k=>`<button data-st="${k}"><b>${STATUS_ICON[k]}</b>${STATUS_L[k]}</button>`).join("")}</div><div id="vStMsg"></div></div>
     <div class="adbox"><b>광고 보고 보너스 티끌 받기</b><p class="note" style="margin:4px 0 0">${T.adMin}~${T.adMax}티끌 랜덤</p><div class="bar"><i id="adBar"></i></div></div>
     <div class="acts"><button class="out" id="vDone">그냥 닫기</button><button class="blk" id="vAd">광고 보기</button></div>`);
