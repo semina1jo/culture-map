@@ -356,6 +356,12 @@ form .sw{margin:0}
 #rF .report-permanent{display:flex;align-items:center;gap:8px}
 #rF .report-permanent input{width:18px;height:18px;margin:0;padding:0;accent-color:var(--ink)}
 #rF input:disabled{background:var(--chip);color:var(--muted);cursor:not-allowed}
+.sit-list{display:grid;gap:8px;margin:4px 0 12px}
+.sit-list button{display:flex;align-items:center;gap:12px;text-align:left;border:1.5px solid var(--line);background:#fff;border-radius:18px;padding:10px 14px}
+.sit-list button b{display:block;font-size:14px}.sit-list button small{color:var(--muted);font-size:12px}
+.sit-list .sit-e{font-size:22px;width:38px;height:38px;border-radius:12px;background:var(--chip);display:grid;place-items:center;flex:none}
+.sit-list button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.sit-list button[aria-pressed="true"] .sit-e{background:#fff}
 /* ===== 로고 ===== */
 .logo{display:inline-flex;align-items:center;gap:6px;vertical-align:middle;transform:rotate(-2deg);transform-origin:left center}
 .logo svg{width:26px;height:26px;flex:none;filter:drop-shadow(0 2px 3px rgba(111,143,46,.35))}
@@ -768,6 +774,44 @@ const effP = e => eff(e).price;
 // 공공데이터 행사도 혜택 규칙이 있으면 내 혜택가로 거른다 (혜택가로 만 원 이하가 되는 공연은 혜택을 켰을 때만 보임)
 const cultureFilterPrice = e => e.is_public_culture && !(e.ben && e.ben.length) ? e.price : effP(e);
 function isDemoCulture(e){ return !!e && !e.is_public_culture && e.src!=="사용자 제보" && !e.report_id && (e.is_sample===true || e.src==="예시 데이터"); }
+/* ===== 상황 필터: 지금 내 상황에 맞는 조건 묶음 (다른 필터와 함께 적용) ===== */
+const SITUATIONS = [
+  {k:"quick", e:"⏱️", l:"잠깐 짬 날 때", d:"1km 안 · 예약 없이 바로 · 오늘 하는 곳"},
+  {k:"free",  e:"💸", l:"무료로만", d:"돈 안 드는 곳만 (혜택가 무료 포함)"},
+  {k:"weekend", e:"☀️", l:"주말 반나절", d:"이번 주말에 하는 곳 · 3km 안"},
+  {k:"rain",  e:"☔", l:"비 오는 날", d:"실내로 보이는 곳 (전시·공연·박물관 등)"},
+  {k:"soon",  e:"⏳", l:"마감 임박", d:"3일 안에 끝나는 곳"}
+];
+const SIT_L = Object.fromEntries(SITUATIONS.map(x => [x.k, x]));
+/* 거리 기준: 내 실제 위치가 있으면 내 위치, 없으면 지금 보는 지도 가운데 */
+function sitDistance(it){
+  const ms = window.mapsService;
+  if (S.me && !S.me.demo && ms){
+    if (ms.getMap && ms.getMap()) return ms.distance(locationOf(it), S.me);
+    const w = ms.toWorld(S.me); return Math.hypot(it.x - w.x, it.y - w.y) * M_PER_UNIT;
+  }
+  return distM(it, viewBounds());
+}
+const INDOOR_RE = /미술관|박물관|갤러리|극장|아트홀|홀|센터|도서관|기념관|전시관|문화회관|문화원|아트|스튜디오|스페이스|공연장|소극장|역사관|문학관|서점|라운지|카페/;
+const OUTDOOR_RE = /공원|광장|거리|야외|마당|한강|숲|운동장|정원|둘레길|산|천변|시장/;
+const isIndoor = e => { const hay = [e.place, e.name].filter(Boolean).join(" ");
+  if (OUTDOOR_RE.test(hay) || (e.genre4 || e.genre) === "축제") return false;
+  return INDOOR_RE.test(hay) || ["전시","공연"].includes(e.genre4 || e.genre); };
+function nextWeekend(){ const t = new Date(`${REC_TODAY}T00:00:00`), dow = t.getDay();
+  const sat = dow === 0 ? addFilterDays(REC_TODAY, -1) : addFilterDays(REC_TODAY, 6 - dow); return [dow === 0 ? REC_TODAY : sat, addFilterDays(sat, 1)]; }
+function sitOk(e){
+  const base = e.price_min ?? e.price;
+  switch (S.sit){
+    case "quick": return !e.reserve && activeDuring(e, REC_TODAY, REC_TODAY) && sitDistance(e) <= 1000;
+    case "free": return base === 0 || (S.profile && paidPrice(e) === 0);
+    case "weekend": { const [a, b] = nextWeekend(); return activeDuring(e, a, b) && sitDistance(e) <= 3000; }
+    case "rain": return isIndoor(e);
+    case "soon": { if (isAlwaysOpen(e) || !e.end) return false; const d = days(REC_TODAY, e.end); return d >= 0 && d <= 3; }
+    default: return true;
+  }
+}
+const sitHTML = () => `<p class="note" style="margin:0 0 6px">지금 상황을 고르면 다른 필터와 함께 걸러줘요. 거리는 ${S.me && !S.me.demo ? "내 위치" : "지금 보는 지도 가운데"} 기준이에요.</p>
+  <div class="sit-list">${SITUATIONS.map(x => `<button aria-pressed="${S.sit===x.k}" data-sit="${x.k}"><span class="sit-e">${x.e}</span><span><b>${x.l}</b><small>${x.d}</small></span></button>`).join("")}</div>`;
 function cultureList(){
   return events.filter(e => {
     if (e.hidden || !isAlwaysOpen(e) && e.end < FILTER_TODAY) return false;
@@ -775,6 +819,7 @@ function cultureList(){
     const price = cultureFilterPrice(e);
     if (price == null || price > S.maxPrice) return false;
     if (!S.genres.has(e.genre4 || e.genre)) return false;
+    if (S.sit && !sitOk(e)) return false;
     return true;
   }).sort((a,b) => cultureFilterPrice(a)-cultureFilterPrice(b) || String(a.end || "9999-12-31").localeCompare(String(b.end || "9999-12-31")));
 }
@@ -787,7 +832,8 @@ function chips(){
     <button class="chip ben ${S.benefit?"on":""}" id="cBen" role="switch" aria-checked="${S.benefit}">🎟️ 내 혜택 적용 <span class="mini ${S.benefit?"on":""}"></span></button>
     <button class="chip ${S.date?"on":""}" id="cDate">${ico.cal} ${S.date ? (S.dateLabel || dlabel(S.date)) : "날짜 선택"} ${ico.car}</button>
     <button class="chip ${S.maxPrice<10000?"on":""}" id="cPrice">${priceLabel(S.maxPrice)} ${ico.car}</button>
-    <button class="chip ${S.genres.size<4?"on":""}" id="cGenre">문화 종류 · ${S.genres.size}</button>`;
+    <button class="chip ${S.genres.size<4?"on":""}" id="cGenre">문화 종류 · ${S.genres.size}</button>
+    <button class="chip ${S.sit?"on":""}" id="cSit">${S.sit ? `${SIT_L[S.sit].e} ${SIT_L[S.sit].l}` : "상황"} ${ico.car}</button>`;
 }
 
 /* ===== 지도 (성수동 일대, 끌어서 이동·확대) ===== */
@@ -1253,13 +1299,13 @@ function priceHTML(){
 function optSheet(kind){
   S.optKind = kind;
   const G = `<div class="opt">${["전시","공연","체험","축제"].map(g => `<button aria-pressed="${S.genres.has(g)}" data-og="${g}">${EMOJI[g]} ${g}</button>`).join("")}</div>`;
-  const map = {date:["날짜",calHTML()],price:["가격",`<p class="note">만 원 이하만 보여줘요.</p>`+priceHTML()],genre:["문화 종류",G],
-    all:["필터",`<div class="lab">날짜</div>${calHTML()}<div class="lab">가격</div>${priceHTML()}<div class="lab">문화 종류</div>${G}`]};
+  const map = {date:["날짜",calHTML()],price:["가격",`<p class="note">만 원 이하만 보여줘요.</p>`+priceHTML()],genre:["문화 종류",G],sit:["상황",sitHTML()],
+    all:["필터",`<div class="lab">날짜</div>${calHTML()}<div class="lab">가격</div>${priceHTML()}<div class="lab">문화 종류</div>${G}<div class="lab">상황</div>${sitHTML()}`]};
   const sc = $(".sheet") ? $(".sheet").scrollTop : 0;
   sheet(`<div class="sh-h"><h2>${map[kind][0]}</h2></div>${map[kind][1]}<div class="acts"><button class="out" id="oReset">초기화</button><button class="blk" id="oDone">${cultureList().length}곳 보기</button></div>`);
   $(".sheet").scrollTop = sc;
   $("#oDone").onclick = closeSheet;
-  $("#oReset").onclick = () => { S.date=null; S.dateEnd=null; S.dateMode="all"; S.dateLabel=null; S.maxPrice=10000; S.reserve="all"; S.genres=new Set(["전시","공연","체험","축제"]); S.calYM=FILTER_TODAY.slice(0,7); render(); optSheet(kind); };
+  $("#oReset").onclick = () => { S.date=null; S.dateEnd=null; S.dateMode="all"; S.dateLabel=null; S.maxPrice=10000; S.reserve="all"; S.genres=new Set(["전시","공연","체험","축제"]); S.sit=null; S.calYM=FILTER_TODAY.slice(0,7); render(); optSheet(kind); };
   const rg = $("#pRange");
   if (rg) rg.oninput = () => { S.maxPrice = +rg.value; $("#pVal").textContent = priceLabel(S.maxPrice);
     document.querySelectorAll("[data-op]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.op===S.maxPrice));
@@ -1913,6 +1959,7 @@ document.addEventListener("click", async ev => {
     S.calYM=(S.date||FILTER_TODAY).slice(0,7);render();optSheet(S.optKind);return;
   }
   if (d.op !== undefined){ S.maxPrice=+d.op; pressOne(); const rg=$("#pRange"); if (rg){ rg.value=S.maxPrice; $("#pVal").textContent=priceLabel(S.maxPrice); } refreshOpt(); return; }
+  if (d.sit){ S.sit = S.sit === d.sit ? null : d.sit; document.querySelectorAll("[data-sit]").forEach(b => b.setAttribute("aria-pressed", S.sit === b.dataset.sit)); refreshOpt(); return; }
   if (d.og){ if (S.genres.has(d.og)){ if (S.genres.size>1) S.genres.delete(d.og); } else S.genres.add(d.og); t.setAttribute("aria-pressed",S.genres.has(d.og)); refreshOpt(); return; }
   if (d.pr){ S.prefs.regions.has(d.pr)?S.prefs.regions.delete(d.pr):S.prefs.regions.add(d.pr); t.setAttribute("aria-pressed",S.prefs.regions.has(d.pr)); persistPreferences(); return; }
   if (d.pg){ S.prefs.genres.has(d.pg)?S.prefs.genres.delete(d.pg):S.prefs.genres.add(d.pg); t.setAttribute("aria-pressed",S.prefs.genres.has(d.pg)); persistPreferences(); return; }
@@ -1932,6 +1979,7 @@ document.addEventListener("click", async ev => {
     case "cDate": S.calYM=(S.date||FILTER_TODAY).slice(0,7); optSheet("date"); break;
     case "cPrice": optSheet("price"); break;
     case "cGenre": optSheet("genre"); break;
+    case "cSit": optSheet("sit"); break;
     case "refreshDataBtn": { const result=await window.dataService.refresh(); if(result.ok){ applyDataState(); toast(window.dataService.mode==="remote"?"Supabase 데이터를 새로 불러왔어요.":"현재는 예시 데이터 모드예요."); } break; }
     case "resetDataBtn": if(window.dataService) window.dataService.resetDemo(); location.reload(); break;
     case "listBtn": listSheet(); break;
