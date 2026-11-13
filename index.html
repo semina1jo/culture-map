@@ -260,6 +260,19 @@ form textarea{min-height:110px;resize:vertical}
 .fabp{position:absolute;right:16px;bottom:78px;z-index:10;width:52px;height:52px;border-radius:50%;border:0;background:var(--ink);display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,.25)}
 .fabp svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2}
 .card{border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:10px}
+.cal-w{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11.5px;color:var(--muted);margin-bottom:4px}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-c{aspect-ratio:1/1.1;border:1px solid var(--line);border-radius:10px;background:#fff;padding:4px 3px;display:flex;flex-direction:column;align-items:center;gap:1px;position:relative;background-size:cover;background-position:center;overflow:hidden}
+.cal-c.empty{border:0;background:none}
+.cal-c.ph::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.28)}.cal-c.ph .cal-n{color:#fff}.cal-c > *{position:relative}
+.cal-c.today{border-color:var(--ink);border-width:1.5px}.cal-c.sel{outline:2.5px solid var(--grn,#1a7f4b);outline-offset:-1px}
+.cal-n{font-size:12px;font-weight:600;align-self:flex-start;margin-left:3px}.cal-n.sun{color:#d84a4a}.cal-n.sat{color:#3a6fd8}
+.cal-stamp{font-size:16px;line-height:1}.cal-stamp small{font-size:9px;color:var(--muted)}
+.cal-dots{display:flex;gap:3px;margin-top:auto;margin-bottom:2px}.cal-dots i,.cal-leg i{display:inline-block;width:6px;height:6px;border-radius:50%}
+i.p{background:#3a6fd8}i.e{background:#e0662a}
+.cal-leg{display:flex;gap:12px;justify-content:center;font-size:11px;color:var(--muted);margin:8px 0 4px}.cal-leg span{display:flex;align-items:center;gap:4px}
+.day-p h3{margin-bottom:6px}.day-i{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)}.day-i:first-of-type{border-top:0}
+.day-i .ph{font-size:20px}.day-i small{display:block;color:var(--muted);font-size:11.5px}.memo{margin:4px 0 0;font-size:13px}.memo-ph{display:block;width:100%;max-width:220px;border-radius:10px;margin-top:6px}
 .rc-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin:6px 0 10px}
 .receipt{max-width:420px;margin:0 auto;background:#fffdf7;border:1px solid var(--line);border-radius:4px;padding:16px 16px 12px;font-variant-numeric:tabular-nums;position:relative;box-shadow:0 2px 0 #eee}
 .receipt::after{content:"";position:absolute;left:0;right:0;bottom:-8px;height:8px;background:radial-gradient(circle at 6px 0,transparent 6px,#fffdf7 6.5px) 0 0/12px 8px repeat-x}
@@ -368,7 +381,7 @@ form .sw{margin:0}
 
   <nav class="nav" aria-label="메뉴">
     <button data-tab="map" aria-current="page"><svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg>맵</button>
-    <button data-tab="receipt"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21V3Z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>영수증</button>
+    <button data-tab="record"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/></svg>기록</button>
     <button data-tab="me"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>설정</button>
   </nav>
 
@@ -989,6 +1002,7 @@ function detail(id,level){
     <div class="acts">
       <button class="out" id="dShare">${ico.share}공유</button>
       <button class="out ${S.saved.has(id)?"on":""}" id="dSave">${S.saved.has(id)?"♥ 찜함":"♡ 찜"}</button>
+      ${!e.end || isAlwaysOpen(e) || e.end >= REC_TODAY ? `<button class="out ${diary().plans[id]?"on":""}" id="dPlan">📅 ${diary().plans[id] ? diary().plans[id].slice(5).replace("-","/")+" 가요" : "갈 날짜"}</button>` : ""}
       <button class="blk w" id="dNaver">네이버 지도에서 보기</button>
       ${e.is_public_culture&&e.homepage_url?`<button class="out w" id="dHomepage">홈페이지에서 보기</button>`:""}
       <button class="out w" id="dVer" ${done?"disabled":""}>${done?"방문 인증 완료":`📍 방문 인증하고 ${T.visit}티끌 받기`}</button>
@@ -1003,6 +1017,7 @@ function detail(id,level){
     next?S.saved.delete(id):S.saved.add(id); detail(id);
   };
   $("#dNaver").onclick = () => openNaverMap(e.place||e.name);
+  $("#dPlan") && ($("#dPlan").onclick = () => planSheet(id));
   if($("#dHomepage")) $("#dHomepage").onclick=()=>{const url=e.homepage_url;if(/^https?:\/\//i.test(url))window.open(url,"_blank","noopener,noreferrer");else toast("홈페이지 주소를 확인해 주세요.");};
   $("#dShare").onclick = async () => { const url = `${location.href.split("#")[0]}#${id}`; try { await navigator.clipboard.writeText(url); toast("공유 링크를 복사했어요."); } catch (_) { toast("공유 링크는 데모에서만 안내해요."); } };
   const backE = () => detail(id);
@@ -1187,6 +1202,10 @@ function refreshNotifications(){
   if(S.prefs.end){ events.filter(e=>S.saved.has(e.id)&&soon(e)).forEach(e=>now.push({id:`end-${e.id}`,kind:"곧 종료",text:`찜한 ${e.name}이 곧 종료돼요`,time:"지금",read:false,target_id:e.id})); }
   if(S.prefs.free){ events.filter(e=>(e.price_min===0||e.price===0)&&S.prefs.genres.has(e.genre4||e.genre)).slice(0,5).forEach(e=>now.push({id:`free-${e.id}`,kind:"새 무료 행사",text:`관심 분야 무료 행사 ${e.name}`,time:"지금",read:false,target_id:e.id})); }
   if(S.prefs.judge){ judgeList.filter(j=>j.status==="승격"&&j.ref&&(!j.user_id||j.user_id===window.dataService.userId())).forEach(j=>now.push({id:`judge-${j.id}`,kind:"제보 승격",text:`내 제보 ${j.name}이 확인을 받아 지도에 정식으로 올라갔어요`,time:"지금",read:false,target_id:j.ref})); }
+  const tmr = addFilterDays(REC_TODAY, 1);
+  Object.entries(diary().plans).forEach(([pid, date]) => { const it = findAny(pid); if (!it) return;
+    if (date === tmr) now.push({id:`plan-${pid}-${date}-d1`, kind:"내일 갈 곳", text:`내일 ${it.name}에 가기로 했어요`, time:"지금", read:false, target_id:pid});
+    if (date === REC_TODAY) now.push({id:`plan-${pid}-${date}-d0`, kind:"오늘 갈 곳", text:`오늘 ${it.name}에 가는 날이에요`, time:"지금", read:false, target_id:pid}); });
   const map=new Map(); [...S.notis,...now].forEach(n=>{ if(!map.has(n.id)) map.set(n.id,n); });
   S.notis=[...map.values()].slice(0,30); if(window.dataService) window.dataService.saveNotifications(S.notis);
 }
@@ -1278,7 +1297,7 @@ function reportSheet(){
 /* ===== 다른 탭 페이지 ===== */
 function renderPage(){
   const pg = $("#page");
-  if (S.tab === "receipt"){ receiptPage(pg); return; }
+  if (S.tab === "record"){ recordPage(pg); return; }
   if (S.tab === "me"){
     const left = Math.max(0, S.boxAt - Date.now());
     const stepAvail = Math.floor(S.steps/1000) - S.stepClaimed;
@@ -1436,6 +1455,7 @@ const RECEIPT_STATS = {
   movie: 10000 // 문화가 있는 날 영화 관람료(성인)
 };
 const RECEIPT_KEY = "culturemap-receipt-v1";
+const REC_TODAY = window.dataService.today(); // 기록은 실제 오늘 날짜 기준
 function receiptLog(){ try { return JSON.parse(localStorage.getItem(RECEIPT_KEY)) || {}; } catch(_) { return {}; } }
 /* 실제 낸 돈: '내 혜택 적용' 스위치와 관계없이, 내 정보로 받을 수 있는 가장 싼 값 */
 function paidPrice(e){
@@ -1445,10 +1465,10 @@ function paidPrice(e){
 }
 function logReceipt(id, kind){
   const it = findAny(id); if (!it) return;
-  const log = receiptLog(), month = TODAY.slice(0,7), key = `${month}|${id}`;
+  const log = receiptLog(), month = REC_TODAY.slice(0,7), key = `${month}|${id}`;
   if (log[key]) return; // 같은 달 같은 행사는 한 번만
   const price = it.price_min ?? it.price ?? 0;
-  log[key] = {id, name:it.name, genre:it.genre, date:TODAY, kind, price, paid:Math.min(price, paidPrice(it))};
+  log[key] = {id, name:it.name, genre:it.genre, date:REC_TODAY, kind, price, paid:Math.min(price, paidPrice(it))};
   try { localStorage.setItem(RECEIPT_KEY, JSON.stringify(log)); } catch(_) {}
 }
 /* 한 달 기록: 저장된 영수증 + 서버의 방문 인증·내 리뷰(같은 달 같은 행사는 1회) */
@@ -1480,8 +1500,7 @@ function cmpLine(mine, avg, unit){
   if (!mine) return "이번 달은 한 푼도 안 썼어요";
   return mine < avg * 0.95 ? `평균보다 <b>${won(Math.round(avg - mine))}</b> 덜 썼어요` : mine <= avg * 1.05 ? "평균만큼 썼어요" : `평균보다 ${won(Math.round(mine - avg))} 더 썼어요`;
 }
-function receiptPage(pg, month = S.receiptMonth || TODAY.slice(0,7)){
-  S.receiptMonth = month;
+function receiptData(month){
   const rows = receiptEntries(month);
   const count = rows.length, spent = rows.reduce((a,r) => a + r.paid, 0), saved = rows.reduce((a,r) => a + Math.max(0, r.price - r.paid), 0);
   const free = rows.filter(r => r.price === 0).length;
@@ -1489,11 +1508,12 @@ function receiptPage(pg, month = S.receiptMonth || TODAY.slice(0,7)){
   const avgCount = pc.v / 12, avgSpend = ps.v / 12;
   const who = pc.age ? `회원님 또래(만 ${pc.age[0]}~${pc.age[1]}세)` : "다른 사람들";
   const [y, m] = month.split("-").map(Number);
-  const shift = d => { const t = new Date(y, m - 1 + d, 1); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}`; };
   const movies = saved / RECEIPT_STATS.movie;
-  pg.innerHTML = `<h1>아낀 돈 영수증</h1>
-    <div class="rc-nav"><button class="out sm" data-rcm="${shift(-1)}" aria-label="이전 달">‹</button><b>${y}년 ${m}월</b><button class="out sm" data-rcm="${shift(1)}" aria-label="다음 달" ${month>=TODAY.slice(0,7)?"disabled":""}>›</button></div>
-    <div class="receipt">
+  return {rows, count, spent, saved, free, pc, ps, avgCount, avgSpend, who, y, m, movies};
+}
+function receiptHTML(month){
+  const {rows, count, spent, saved, free, pc, ps, avgCount, avgSpend, who, y, m, movies} = receiptData(month);
+  return `    <div class="receipt">
       <div class="rc-head"><b>컬처맵</b><small>${esc(window.dataService?.getNickname?.() || "회원")}님의 ${m}월 문화생활</small></div>
       <div class="rc-rule"></div>
       ${rows.length ? rows.map(r => `<div class="rc-row"><span><small>${r.date.slice(5).replace("-",".")}</small> ${esc(r.name)}</span><span>${r.paid ? won(r.paid) : "무료"}${r.price > r.paid ? `<s>${won(r.price)}</s>` : ""}</span></div>`).join("")
@@ -1507,10 +1527,157 @@ function receiptPage(pg, month = S.receiptMonth || TODAY.slice(0,7)){
       <div class="rc-cmp">${saved ? (movies >= 1 ? `문화가 있는 날 영화 <b>${Math.floor(movies)}편</b>을 볼 수 있는 돈이에요` : `문화가 있는 날 영화 한 편까지 ${won(RECEIPT_STATS.movie - saved)} 남았어요`) : "혜택가로 들어가면 할인받은 금액이 여기에 쌓여요"}</div>
       <div class="rc-rule"></div>
       <p class="rc-foot">아낀 금액 = 일반 가격 − 내가 받을 수 있는 혜택가<br>비교: ${esc(pc.source)} ${pc.label} 연 ${pc.v}회(영화·스포츠 포함), ${esc(ps.source)} ${ps.label} 연 ${won(ps.v)}을 12개월로 나눈 값</p>
+    </div>`;
+}
+
+
+/* ===== 기록 탭: 달력(지난 기록 + 앞으로의 계획) + 그 달 영수증 ===== */
+const DIARY_KEY = "culturemap-diary-v1";
+function diary(){ try { const d = JSON.parse(localStorage.getItem(DIARY_KEY)) || {}; return {notes:d.notes||{}, plans:d.plans||{}}; } catch(_) { return {notes:{}, plans:{}}; } }
+function saveDiary(d){ try { localStorage.setItem(DIARY_KEY, JSON.stringify(d)); return true; } catch(_) { toast("저장 공간이 부족해요. 사진 크기를 줄이거나 지난 사진을 지워 주세요."); return false; } }
+const ymOf = d => d.slice(0,7);
+const shiftYM = (ym, n) => { const [y,m] = ym.split("-").map(Number), t = new Date(y, m-1+n, 1); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}`; };
+/* 날짜별 다녀온 곳: 방문 인증 · 내 리뷰 · 영수증 기록 (같은 날 같은 행사는 한 번) */
+function dayRecords(month){
+  const out = {}, add = (id, date, kind, snap) => {
+    date = String(date||"").slice(0,10); if (!date.startsWith(month)) return;
+    const it = findAny(id) || snap; if (!it) return;
+    const list = out[date] = out[date] || [];
+    const found = list.find(r => r.id === id);
+    if (found) { if (!found.kinds.includes(kind)) found.kinds.push(kind); return; }
+    list.push({id, name:it.name, genre:it.genre, kinds:[kind]});
+  };
+  const ds = window.dataService;
+  ds.getVisits().forEach(v => add(v.event_id, v.visit_date, "방문 인증"));
+  ds.getMyReviews().forEach(r => add(r.target_id, r.created_at, "리뷰"));
+  Object.values(receiptLog()).forEach(r => add(r.id, r.date, r.kind, r));
+  return out;
+}
+/* 날짜별 계획: 내가 정한 갈 날짜 + 찜한 행사 마감일 */
+function dayPlans(month){
+  const out = {}, push = (date, x) => { if (date && date.startsWith(month)) (out[date] = out[date] || []).push(x); };
+  Object.entries(diary().plans).forEach(([id, date]) => { const it = findAny(id); if (it) push(date, {type:"plan", id, name:it.name, genre:it.genre}); });
+  events.filter(e => S.saved.has(e.id) && e.end && !isAlwaysOpen(e) && e.end >= REC_TODAY).forEach(e => push(e.end, {type:"end", id:e.id, name:e.name, genre:e.genre}));
+  return out;
+}
+function recordPage(pg){
+  const month = S.recMonth || REC_TODAY.slice(0,7);
+  S.recMonth = month;
+  if (!S.recDay || ymOf(S.recDay) !== month) S.recDay = ymOf(REC_TODAY) === month ? REC_TODAY : `${month}-01`;
+  const [y, m] = month.split("-").map(Number);
+  const recs = dayRecords(month), plans = dayPlans(month), notes = diary().notes;
+  const first = new Date(y, m-1, 1).getDay(), last = new Date(y, m, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < first; i++) cells.push('<div class="cal-c empty"></div>');
+  for (let d = 1; d <= last; d++){
+    const date = `${month}-${String(d).padStart(2,"0")}`, r = recs[date] || [], pl = plans[date] || [];
+    const photo = r.map(x => notes[`${date}|${x.id}`]?.photo).find(Boolean);
+    const dow = (first + d - 1) % 7;
+    cells.push(`<button class="cal-c${date===REC_TODAY?" today":""}${date===S.recDay?" sel":""}${photo?" ph":""}" data-recday="${date}" ${photo?`style="background-image:url(${photo})"`:""} aria-label="${m}월 ${d}일${r.length?` 다녀온 곳 ${r.length}곳`:""}${pl.length?` 계획 ${pl.length}건`:""}">
+      <span class="cal-n${dow===0?" sun":dow===6?" sat":""}">${d}</span>
+      ${r.length ? `<span class="cal-stamp">${r.slice(0,2).map(x => EMOJI[x.genre]||"🎫").join("")}${r.length>2?`<small>+${r.length-2}</small>`:""}</span>` : ""}
+      ${pl.length ? `<span class="cal-dots">${pl.some(x=>x.type==="plan")?'<i class="p"></i>':""}${pl.some(x=>x.type==="end")?'<i class="e"></i>':""}</span>` : ""}
+    </button>`);
+  }
+  const dayR = recs[S.recDay] || [], dayP = plans[S.recDay] || [];
+  const [, sm, sd] = S.recDay.split("-").map(Number), future = S.recDay > REC_TODAY;
+  const visitedCount = Object.values(recs).reduce((a, l) => a + l.length, 0);
+  pg.innerHTML = `<h1>기록</h1>
+    <div class="rc-nav"><button class="out sm" data-recm="${shiftYM(month,-1)}" aria-label="이전 달">‹</button><b>${y}년 ${m}월</b><button class="out sm" data-recm="${shiftYM(month,1)}" aria-label="다음 달">›</button></div>
+    <div class="cal-w">${["일","월","화","수","목","금","토"].map(w => `<span>${w}</span>`).join("")}</div>
+    <div class="cal-g">${cells.join("")}</div>
+    <div class="cal-leg"><span><b>🖼️</b> 다녀온 곳</span><span><i class="p"></i> 갈 날짜</span><span><i class="e"></i> 찜한 행사 마감</span></div>
+    <div class="card day-p"><h3>${sm}월 ${sd}일${S.recDay===REC_TODAY?" · 오늘":""}</h3>
+      ${dayR.map(x => { const n = notes[`${S.recDay}|${x.id}`] || {};
+        return `<div class="day-i"><span class="ph">${EMOJI[x.genre]||"🎫"}</span><div style="min-width:0;flex:1"><button class="linkbtn" data-open="${esc(x.id)}" style="padding:0;text-align:left"><b>${esc(x.name)}</b></button><small>${x.kinds.join(" · ")}</small>${n.memo?`<p class="memo">“${esc(n.memo)}”</p>`:""}${n.photo?`<img class="memo-ph" src="${n.photo}" alt="${esc(x.name)} 사진">`:""}</div><button class="out sm" data-memo="${esc(x.id)}">${n.memo||n.photo?"수정":"메모·사진"}</button></div>`; }).join("")}
+      ${dayP.map(x => x.type==="plan"
+        ? `<div class="day-i"><span class="ph">📅</span><div style="min-width:0;flex:1"><button class="linkbtn" data-open="${esc(x.id)}" style="padding:0;text-align:left"><b>${esc(x.name)}</b></button><small>가기로 한 날</small></div><button class="out sm" data-unplan="${esc(x.id)}">취소</button></div>`
+        : `<div class="day-i"><span class="ph">⏰</span><div style="min-width:0;flex:1"><button class="linkbtn" data-open="${esc(x.id)}" style="padding:0;text-align:left"><b>${esc(x.name)}</b></button><small>찜한 행사 마지막 날</small></div></div>`).join("")}
+      ${!dayR.length && !dayP.length ? `<p class="note" style="margin:6px 0 0">${future ? "찜한 행사 상세에서 '갈 날짜 정하기'를 누르면 여기에 표시돼요." : "이날은 기록이 없어요. 방문 인증하거나 리뷰를 남기면 도장이 찍혀요."}</p>` : ""}
     </div>
-    ${myAge()==null?'<p class="note" style="margin-top:18px">설정 &gt; 내 혜택 정보에 생년월일을 넣으면 또래와 비교해 드려요.</p>':""}
-    ${rows.length?'<p class="note" style="margin-top:10px">방문 인증하거나 리뷰를 남긴 행사가 자동으로 기록돼요.</p>':""}`;
-  pg.querySelectorAll("[data-rcm]").forEach(b => b.onclick = () => receiptPage(pg, b.dataset.rcm));
+    <div class="secline" style="margin-top:18px"><b>${m}월 영수증</b><span>${visitedCount}곳</span></div>
+    ${receiptHTML(month)}
+    <button class="blk" id="recShare" style="width:100%;margin-top:22px">📤 ${m}월 기록 이미지로 공유</button>
+    ${myAge()==null?'<p class="note" style="margin-top:12px">설정 &gt; 내 혜택 정보에 생년월일을 넣으면 또래와 비교해 드려요.</p>':""}
+    <p class="note" style="margin-top:8px">메모·사진과 갈 날짜는 이 기기에만 저장돼요.</p>`;
+  pg.querySelectorAll("[data-recm]").forEach(b => b.onclick = () => { S.recMonth = b.dataset.recm; S.recDay = null; recordPage(pg); });
+  pg.querySelectorAll("[data-recday]").forEach(b => b.onclick = () => { S.recDay = b.dataset.recday; recordPage(pg); });
+  pg.querySelectorAll("[data-memo]").forEach(b => b.onclick = () => memoSheet(S.recDay, b.dataset.memo));
+  pg.querySelectorAll("[data-unplan]").forEach(b => b.onclick = () => { const d = diary(); delete d.plans[b.dataset.unplan]; saveDiary(d); toast("갈 날짜를 취소했어요."); recordPage(pg); });
+  $("#recShare").onclick = () => shareMonth(month);
+}
+/* 사진은 긴 변 640px JPEG로 줄여서 저장 */
+function shrinkPhoto(file){
+  return new Promise((ok, no) => { const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const k = Math.min(1, 640 / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg", 0.72)); };
+    img.onerror = no; img.src = url; });
+}
+function memoSheet(date, id){
+  const it = findAny(id), key = `${date}|${id}`, d = diary(), cur = d.notes[key] || {};
+  let photo = cur.photo || null;
+  sheet(`<div class="sh-h"><h2>메모·사진</h2><button class="x" id="mmX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">${esc(it?.name || "")} · ${date.slice(5).replace("-","월 ")}일 · 나만 볼 수 있어요</p>
+    <form id="mmF" novalidate>
+      <label for="mmT">한 줄 메모</label><input id="mmT" maxlength="60" placeholder="예: 생각보다 사람 적고 조용했음" value="${esc(cur.memo || "")}">
+      <label for="mmP">사진 (선택)</label><input id="mmP" type="file" accept="image/*"><img id="mmPrev" class="prev" alt="" ${photo?`src="${photo}"`:"hidden"}>
+      ${photo?'<button type="button" class="linkbtn" id="mmDelP">사진 지우기</button>':""}
+      <div class="acts"><button class="out" type="button" id="mmC">취소</button>${cur.memo||cur.photo?'<button class="out" type="button" id="mmDel">전부 지우기</button>':""}<button class="blk w" type="submit">저장</button></div>
+    </form>`);
+  const back = () => { closeSheet(); renderPage(); };
+  $("#mmX").onclick = $("#mmC").onclick = closeSheet;
+  $("#mmP").onchange = async ev => { const f = ev.target.files[0]; if (!f) return; try { photo = await shrinkPhoto(f); $("#mmPrev").src = photo; $("#mmPrev").hidden = false; } catch(_) { toast("사진을 읽지 못했어요."); } };
+  $("#mmDelP") && ($("#mmDelP").onclick = () => { photo = null; $("#mmPrev").hidden = true; $("#mmDelP").remove(); });
+  $("#mmDel") && ($("#mmDel").onclick = () => { const x = diary(); delete x.notes[key]; saveDiary(x); back(); });
+  $("#mmF").addEventListener("submit", ev => { ev.preventDefault(); const memo = $("#mmT").value.trim(), x = diary();
+    if (!memo && !photo) delete x.notes[key]; else x.notes[key] = {memo, photo};
+    if (saveDiary(x)) { toast("기록에 남겼어요."); back(); } });
+}
+function planSheet(id){
+  const it = findAny(id), d = diary(), cur = d.plans[id] || "";
+  const max = it.end && !isAlwaysOpen(it) ? it.end : "", min = it.start && it.start > REC_TODAY ? it.start : REC_TODAY;
+  sheet(`<div class="sh-h"><h2>갈 날짜 정하기</h2><button class="x" id="plX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">${esc(it.name)}${max?` · ${max.slice(5).replace("-","월 ")}일까지`:""}</p>
+    <form id="plF" novalidate><label for="plD">날짜</label><input id="plD" type="date" min="${min}" ${max?`max="${max}"`:""} value="${cur || min}">
+      <p class="note">전날과 당일에 앱 알림으로 알려 드려요. 기록 탭 달력에도 표시돼요.</p><div class="err" id="plErr"></div>
+      <div class="acts"><button class="out" type="button" id="plC">취소</button>${cur?'<button class="out" type="button" id="plDel">날짜 지우기</button>':""}<button class="blk w" type="submit">저장</button></div></form>`);
+  const back = () => detail(id);
+  $("#plX").onclick = $("#plC").onclick = back;
+  $("#plDel") && ($("#plDel").onclick = () => { const x = diary(); delete x.plans[id]; saveDiary(x); toast("갈 날짜를 지웠어요."); back(); });
+  $("#plF").addEventListener("submit", ev => { ev.preventDefault(); const v = $("#plD").value;
+    if (!v || v < min || (max && v > max)) { $("#plErr").textContent = max ? `${min} ~ ${max} 사이로 골라 주세요.` : "오늘 이후 날짜를 골라 주세요."; return; }
+    const x = diary(); x.plans[id] = v; saveDiary(x);
+    if (!S.saved.has(id)) window.dataService.saveTarget({target_type:"event", target_id:id}).then(r => { if (r.ok) S.saved.add(id); });
+    refreshNotifications(); toast(`${v.slice(5).replace("-","월 ")}일에 가기로 했어요.`); back(); });
+}
+/* 한 달 기록 공유 이미지(1080×1350) */
+async function shareMonth(month){
+  const [y, m] = month.split("-").map(Number), recs = dayRecords(month), notes = diary().notes, R = receiptData(month);
+  const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
+  const font = (w, px) => `${w} ${px}px Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
+  g.fillStyle = "#fffdf7"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#111"; g.font = font(800, 54); g.fillText(`${y}년 ${m}월의 문화생활`, 72, 120);
+  g.font = font(500, 32); g.fillStyle = "#777"; g.fillText(`${window.dataService.getNickname?.() || "회원"} · 컬처맵`, 72, 170);
+  const gx = 72, gy = 230, cw = (W - 144) / 7, ch = 118, first = new Date(y, m-1, 1).getDay(), last = new Date(y, m, 0).getDate();
+  g.font = font(600, 26); g.fillStyle = "#999"; ["일","월","화","수","목","금","토"].forEach((w,i) => g.fillText(w, gx + i*cw + 12, gy));
+  const photos = {};
+  await Promise.all(Object.entries(recs).map(([date, l]) => { const src = l.map(x => notes[`${date}|${x.id}`]?.photo).find(Boolean); if (!src) return; return new Promise(ok => { const im = new Image(); im.onload = () => { photos[date] = im; ok(); }; im.onerror = ok; im.src = src; }); }));
+  for (let d = 1; d <= last; d++){
+    const i = first + d - 1, x = gx + (i % 7) * cw, yy = gy + 24 + Math.floor(i / 7) * ch, date = `${month}-${String(d).padStart(2,"0")}`, l = recs[date] || [];
+    g.fillStyle = l.length ? "#eef6ef" : "#f4f1ea"; g.beginPath(); g.roundRect(x + 4, yy, cw - 8, ch - 10, 16); g.fill();
+    if (photos[date]) { g.save(); g.beginPath(); g.roundRect(x + 4, yy, cw - 8, ch - 10, 16); g.clip(); const im = photos[date], k = Math.max((cw-8)/im.width, (ch-10)/im.height); g.drawImage(im, x + 4 + ((cw-8) - im.width*k)/2, yy + ((ch-10) - im.height*k)/2, im.width*k, im.height*k); g.fillStyle = "rgba(0,0,0,.25)"; g.fillRect(x, yy, cw, ch); g.restore(); }
+    g.fillStyle = photos[date] ? "#fff" : "#555"; g.font = font(600, 24); g.fillText(String(d), x + 16, yy + 34);
+    if (l.length) { g.font = font(400, 40); g.fillText(l.slice(0,2).map(r => EMOJI[r.genre] || "🎫").join(""), x + 16, yy + 92); }
+  }
+  const by = gy + 24 + Math.ceil((first + last) / 7) * ch + 40;
+  g.strokeStyle = "#c9c4b8"; g.setLineDash([10, 8]); g.lineWidth = 3; g.beginPath(); g.moveTo(72, by); g.lineTo(W-72, by); g.stroke(); g.setLineDash([]);
+  const row = (label, val, yy, big) => { g.fillStyle = "#333"; g.font = font(600, big ? 40 : 34); g.fillText(label, 72, yy); g.textAlign = "right"; g.fillStyle = big ? "#1a7f4b" : "#111"; g.font = font(800, big ? 56 : 40); g.fillText(val, W-72, yy); g.textAlign = "left"; };
+  row("다녀온 곳", `${R.count}곳`, by + 70); row("쓴 금액", `${R.spent.toLocaleString()}원`, by + 135); row("아낀 금액", `${R.saved.toLocaleString()}원`, by + 215, true);
+  g.fillStyle = "#999"; g.font = font(500, 26); g.fillText(`또래 평균 한 달 ${R.avgCount.toFixed(1)}회 관람 (${R.pc.source})`, 72, H - 60);
+  const blob = await new Promise(ok => c.toBlob(ok, "image/png")), name = `culturemap-${month}.png`;
+  const file = new File([blob], name, {type:"image/png"});
+  try { if (navigator.canShare && navigator.canShare({files:[file]})) { await navigator.share({files:[file], title:`${m}월의 문화생활`}); return; } } catch(e) { if (e.name === "AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast("이미지를 저장했어요. 인스타그램 등에 올려 보세요.");
 }
 
 function myReviewsSheet(){
