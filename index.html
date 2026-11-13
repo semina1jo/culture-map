@@ -261,7 +261,7 @@ form textarea{min-height:110px;resize:vertical}
 .fabp svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2}
 .card{border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:10px}
 .rc-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin:6px 0 10px}
-.receipt{background:#fffdf7;border:1px solid var(--line);border-radius:4px;padding:16px 16px 12px;font-variant-numeric:tabular-nums;position:relative;box-shadow:0 2px 0 #eee}
+.receipt{max-width:420px;margin:0 auto;background:#fffdf7;border:1px solid var(--line);border-radius:4px;padding:16px 16px 12px;font-variant-numeric:tabular-nums;position:relative;box-shadow:0 2px 0 #eee}
 .receipt::after{content:"";position:absolute;left:0;right:0;bottom:-8px;height:8px;background:radial-gradient(circle at 6px 0,transparent 6px,#fffdf7 6.5px) 0 0/12px 8px repeat-x}
 .rc-head{text-align:center}.rc-head b{display:block;font-size:18px;letter-spacing:.2em}.rc-head small{color:var(--muted)}
 .rc-rule{border-top:1.5px dashed #c9c4b8;margin:12px 0}
@@ -368,6 +368,7 @@ form .sw{margin:0}
 
   <nav class="nav" aria-label="메뉴">
     <button data-tab="map" aria-current="page"><svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg>맵</button>
+    <button data-tab="receipt"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21V3Z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>영수증</button>
     <button data-tab="me"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>설정</button>
   </nav>
 
@@ -1277,6 +1278,7 @@ function reportSheet(){
 /* ===== 다른 탭 페이지 ===== */
 function renderPage(){
   const pg = $("#page");
+  if (S.tab === "receipt"){ receiptPage(pg); return; }
   if (S.tab === "me"){
     const left = Math.max(0, S.boxAt - Date.now());
     const stepAvail = Math.floor(S.steps/1000) - S.stepClaimed;
@@ -1288,7 +1290,7 @@ function renderPage(){
           ?`<button class="out g-btn" id="acctGoogle" style="margin-top:10px"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Google로 계속하기</button><div class="acts" style="margin-top:8px"><button class="blk" id="acctSignup">이메일로 가입</button><button class="out" id="acctLogin">로그인</button></div><p class="note" style="margin:8px 0 0">리뷰·평점·티끌 적립은 로그인 후 이용할 수 있어요. 지금 가입하면 임시 닉네임으로 남긴 제보가 그대로 내 계정에 남아요.</p>`
           :`<div class="acts" style="margin-top:10px"><button class="out w" id="acctLogout">로그아웃</button></div>`}
       </div>
-      <div class="card"><h3>내 활동</h3><button class="blk" id="receiptBtn" style="width:100%;margin-top:4px">🧾 이번 달 아낀 돈 영수증</button><div class="acts" style="margin-top:8px"><button class="out" id="myReports">내 제보 ${window.dataService.getMyReports().length}</button><button class="out" id="myReviews">내 리뷰 ${window.dataService.getMyReviews().length}</button></div></div>
+      <div class="card"><h3>내 활동</h3><div class="acts" style="margin-top:4px"><button class="out" id="myReports">내 제보 ${window.dataService.getMyReports().length}</button><button class="out" id="myReviews">내 리뷰 ${window.dataService.getMyReviews().length}</button></div></div>
       <div class="wallet${isGuest()?" guest":""}" style="margin-top:10px"><small>보유 티끌</small>${isGuest()?`<div class="big" style="font-size:20px;line-height:1.3">로그인하면 티끌을 모을 수 있어요</div>`:`<div class="big">${S.tikkle.toLocaleString()} 티끌</div>`}<div class="row"><small>응모권 ${S.tickets}장</small><small>기여 ${3+S.verified.length}회</small></div></div>
       <div class="card"><h3>내 혜택 정보 <button class="out sm" id="profBtn">${S.profile?"수정":"입력하기"}</button></h3>
         ${S.profile?profileSummary():'<p class="note" style="margin:0">나이·거주지 같은 정보를 넣으면 무료·할인 대상인 문화생활을 골라서 보여줘요.</p>'}
@@ -1478,7 +1480,8 @@ function cmpLine(mine, avg, unit){
   if (!mine) return "이번 달은 한 푼도 안 썼어요";
   return mine < avg * 0.95 ? `평균보다 <b>${won(Math.round(avg - mine))}</b> 덜 썼어요` : mine <= avg * 1.05 ? "평균만큼 썼어요" : `평균보다 ${won(Math.round(mine - avg))} 더 썼어요`;
 }
-function receiptSheet(month = TODAY.slice(0,7)){
+function receiptPage(pg, month = S.receiptMonth || TODAY.slice(0,7)){
+  S.receiptMonth = month;
   const rows = receiptEntries(month);
   const count = rows.length, spent = rows.reduce((a,r) => a + r.paid, 0), saved = rows.reduce((a,r) => a + Math.max(0, r.price - r.paid), 0);
   const free = rows.filter(r => r.price === 0).length;
@@ -1488,7 +1491,7 @@ function receiptSheet(month = TODAY.slice(0,7)){
   const [y, m] = month.split("-").map(Number);
   const shift = d => { const t = new Date(y, m - 1 + d, 1); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}`; };
   const movies = saved / RECEIPT_STATS.movie;
-  sheet(`<div class="sh-h"><h2>아낀 돈 영수증</h2><button class="x" id="rcX" aria-label="닫기">${ico.x}</button></div>
+  pg.innerHTML = `<h1>아낀 돈 영수증</h1>
     <div class="rc-nav"><button class="out sm" data-rcm="${shift(-1)}" aria-label="이전 달">‹</button><b>${y}년 ${m}월</b><button class="out sm" data-rcm="${shift(1)}" aria-label="다음 달" ${month>=TODAY.slice(0,7)?"disabled":""}>›</button></div>
     <div class="receipt">
       <div class="rc-head"><b>컬처맵</b><small>${esc(window.dataService?.getNickname?.() || "회원")}님의 ${m}월 문화생활</small></div>
@@ -1504,9 +1507,10 @@ function receiptSheet(month = TODAY.slice(0,7)){
       <div class="rc-cmp">${saved ? (movies >= 1 ? `문화가 있는 날 영화 <b>${Math.floor(movies)}편</b>을 볼 수 있는 돈이에요` : `문화가 있는 날 영화 한 편까지 ${won(RECEIPT_STATS.movie - saved)} 남았어요`) : "혜택가로 들어가면 할인받은 금액이 여기에 쌓여요"}</div>
       <div class="rc-rule"></div>
       <p class="rc-foot">아낀 금액 = 일반 가격 − 내가 받을 수 있는 혜택가<br>비교: ${esc(pc.source)} ${pc.label} 연 ${pc.v}회(영화·스포츠 포함), ${esc(ps.source)} ${ps.label} 연 ${won(ps.v)}을 12개월로 나눈 값</p>
-    </div>`);
-  $("#rcX").onclick = closeSheet;
-  document.querySelectorAll("[data-rcm]").forEach(b => b.onclick = () => receiptSheet(b.dataset.rcm));
+    </div>
+    ${myAge()==null?'<p class="note" style="margin-top:18px">설정 &gt; 내 혜택 정보에 생년월일을 넣으면 또래와 비교해 드려요.</p>':""}
+    ${rows.length?'<p class="note" style="margin-top:10px">방문 인증하거나 리뷰를 남긴 행사가 자동으로 기록돼요.</p>':""}`;
+  pg.querySelectorAll("[data-rcm]").forEach(b => b.onclick = () => receiptPage(pg, b.dataset.rcm));
 }
 
 function myReviewsSheet(){
@@ -1642,7 +1646,6 @@ document.addEventListener("click", async ev => {
     case "acctGoogle": window.dataService.signInGoogle(); break;
     case "myReports": myReportsSheet(); break;
     case "myReviews": myReviewsSheet(); break;
-    case "receiptBtn": receiptSheet(); break;
     case "benefitInputBtn": benefitInputSheet(); break;
     case "cDate": S.calYM=(S.date||FILTER_TODAY).slice(0,7); optSheet("date"); break;
     case "cPrice": optSheet("price"); break;
