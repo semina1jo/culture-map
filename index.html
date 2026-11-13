@@ -7,9 +7,9 @@
 /* Layout: 전체 화면 지도 위에 헤더·필터칩·떠 있는 버튼·하단 메뉴. 다른 탭은 지도 위 전체 페이지, 카드·시트는 아래에서 올라옴 */
 :root{
   color-scheme:light;
-  /* 컬처맵 팔레트: 딥 인디고 잉크 + 코랄 포인트 + 따뜻한 종이색. 가격 단계는 민트(무료)·레몬(저가)·라일락(만 원 이하) */
+  /* 컬처맵 팔레트: 딥 인디고 잉크 + 올리브 포인트 + 따뜻한 종이색. 가격 단계는 민트(무료)·레몬(저가)·라일락(만 원 이하) */
   --ink:#231B4D; --ink2:#4B4570; --muted:#8E89A8; --line:#ECE7F4; --chip:#F4F0FA; --white:#fff; --outer:#E7E1F1;
-  --accent:#FF5A3C; --accent-soft:#FFE9E3; --paper:#FFFAF3; --grn:#0E9F75;
+  --accent:#6F8F2E; --accent-soft:#EDF3DC; --paper:#FFFAF3; --grn:#0E9F75;
   --gold:#F0A500; --gold-soft:#FFF3CC; --green:#13B386; --green-soft:#DDF6EC; --blue:#7B61FF; --blue-soft:#EEEAFF; --red:#F0445A; --red-soft:#FFE5E9;
   --map-land:#f3f2ee; --map-road:#fff; --map-case:#e4e1da; --map-park:#d6ead0; --map-water:#cde2f4; --map-label:#9a9a9a;
   --f:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
@@ -356,7 +356,7 @@ form .sw{margin:0}
 #rF input:disabled{background:var(--chip);color:var(--muted);cursor:not-allowed}
 /* ===== 컬처맵 테마 (색·모양·아이콘만, 위치·크기는 그대로) ===== */
 svg{stroke-linecap:round;stroke-linejoin:round}
-body{background:radial-gradient(circle at 20% 10%,#F3E9FF,transparent 50%),radial-gradient(circle at 85% 90%,#FFE6DC,transparent 45%),var(--outer)}
+body{background:radial-gradient(circle at 20% 10%,#F3E9FF,transparent 50%),radial-gradient(circle at 85% 90%,#E8F0D2,transparent 45%),var(--outer)}
 .head{background:linear-gradient(var(--paper) 72%,rgba(255,250,243,0))}
 .title h1{color:var(--ink);letter-spacing:-.04em}
 .title h1::first-letter{color:var(--accent)}
@@ -366,10 +366,10 @@ body{background:radial-gradient(circle at 20% 10%,#F3E9FF,transparent 50%),radia
 .chip{border-radius:999px;box-shadow:0 2px 8px rgba(35,27,77,.10),0 0 0 1px rgba(35,27,77,.05);color:var(--ink)}
 .chip.on{background:var(--ink);box-shadow:0 3px 10px rgba(35,27,77,.25)}
 .pin .p{border-width:2px;box-shadow:0 3px 8px rgba(35,27,77,.16)}
-.pin.sel .p{background:var(--accent);border-color:var(--accent);box-shadow:0 4px 12px rgba(255,90,60,.4)}
+.pin.sel .p{background:var(--accent);border-color:var(--accent);box-shadow:0 4px 12px rgba(111,143,46,.4)}
 .more{background:var(--ink);box-shadow:0 3px 10px rgba(35,27,77,.25)}
 .dot{background:var(--accent)}
-.plus{border-radius:50%;background:var(--accent);box-shadow:0 6px 16px rgba(255,90,60,.42)}
+.plus{border-radius:50%;background:var(--accent);box-shadow:0 6px 16px rgba(111,143,46,.42)}
 .plus svg{stroke-width:2.6}
 .plus-wrap span{color:var(--ink);box-shadow:0 1px 6px rgba(35,27,77,.14)}
 .legend{border-radius:999px;box-shadow:0 1px 6px rgba(35,27,77,.12)}
@@ -380,7 +380,7 @@ body{background:radial-gradient(circle at 20% 10%,#F3E9FF,transparent 50%),radia
 .nav button[aria-current="page"] svg .f{fill:var(--accent-soft)}
 .peek{border-radius:24px;box-shadow:0 10px 30px rgba(35,27,77,.18)}
 .peek .ph,.listitem .ph,.hero{border-radius:16px}
-.blk{background:var(--accent);border-radius:999px;box-shadow:0 3px 10px rgba(255,90,60,.28)}
+.blk{background:var(--accent);border-radius:999px;box-shadow:0 3px 10px rgba(111,143,46,.28)}
 .blk:disabled{box-shadow:none}
 .out{border:1.5px solid var(--line);border-radius:999px;color:var(--ink)}
 .out.on{border-color:var(--ink);background:var(--chip);color:var(--ink)}
