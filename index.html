@@ -1611,17 +1611,18 @@ function myReportsSheet(){
       return `<button class="listitem" ${exists?`data-myreport="${esc(r.id)}"`:"disabled"}><span class="ph">${EMOJI[r.genre]||"🎫"}</span><span style="min-width:0"><b>${esc(r.name)}</b><small>${esc(r.tab)} · ${dotDate(r.created_at)} · ${r.meta?.guest?"임시 닉네임으로 제보":"회원 제보"}</small></span><span class="tag">${esc(st)}</span></button>`; }).join("") || '<p class="note" style="padding:12px 0">아직 남긴 제보가 없어요.</p>'}`);
   $("#mrX").onclick = () => { closeSheet(); renderPage(); };
 }
-/* ===== 아낀 돈 영수증: 이번 달 관람 횟수·쓴 돈·아낀 돈 + 또래 비교 ===== */
+/* ===== 아낀 돈 영수증: 이번 달 관람 횟수·쓴 돈·아낀 돈 + 서울시민 평균 비교 ===== */
 /* 비교 통계는 여기서만 고치면 된다. 연간 수치를 12로 나눠 한 달 기준으로 보여준다. */
 const RECEIPT_STATS = {
   count: { // 국가데이터처 사회조사: 지난 1년 문화예술·스포츠 관람자의 1인 평균 관람횟수(영화·스포츠 포함)
+    // 서울권만 다루므로 서울시민 평균으로 비교(2025 서울 8.2회). 참고: 연령별 20대 8.6 · 30대 7.3 · 전국 7.1
     source: "국가데이터처 사회조사(2025)", unit: "회",
-    bands: [{max:19,label:"10대",v:7.6},{max:29,label:"20대",v:8.6},{max:39,label:"30대",v:7.3},{max:49,label:"40대",v:7.0},{max:59,label:"50대",v:6.4},{max:200,label:"60세 이상",v:5.9}],
-    all: {label:"전체", v:7.1, source:"국가데이터처 사회조사(2025)"}
+    bands: [],
+    all: {label:"서울시민", v:8.2, source:"국가데이터처 사회조사(2025)"}
   },
   spend: { // 서울문화재단 2024 서울시민 문화향유 실태조사(요약보고서 표 2-8): 오프라인 문화예술 지불 경험자 일반시민 연간 총비용 21.4만 원(동반인 관람비 포함, 교통·식비 제외). 연령별은 요약본에 없음
     source: "서울문화재단 서울시민 문화향유 실태조사(2024, 지불 경험자)", unit: "원",
-    bands: [{min:30,max:39,label:"서울 30대",v:265000}],
+    bands: [],
     all: {label:"서울시민", v:214000}
   },
   movie: 10000 // 문화가 있는 날 영화 관람료(성인)
@@ -1678,7 +1679,7 @@ function receiptData(month){
   const free = rows.filter(r => r.price === 0).length;
   const pc = peerStat(RECEIPT_STATS.count), ps = peerStat(RECEIPT_STATS.spend);
   const avgCount = pc.v / 12, avgSpend = ps.v / 12;
-  const who = pc.age ? `회원님 또래(만 ${pc.age[0]}~${pc.age[1]}세)` : "다른 사람들";
+  const who = "서울시민";
   const [y, m] = month.split("-").map(Number);
   const movies = saved / RECEIPT_STATS.movie;
   return {rows, count, spent, saved, free, pc, ps, avgCount, avgSpend, who, y, m, movies};
@@ -1694,7 +1695,7 @@ function receiptHTML(month){
       <div class="rc-sum"><span>이용 횟수</span><b>${count}회</b></div>
       <div class="rc-cmp">${who}는 한 달 평균 약 ${avgCount.toFixed(1)}회 관람해요 · ${count ? cmpLine(count, avgCount, "회") : "첫 기록을 남겨 보세요"}</div>
       <div class="rc-sum"><span>쓴 금액</span><b>${spent.toLocaleString()}원</b></div>
-      <div class="rc-cmp">${ps.label === "서울시민" ? "서울시민" : "회원님 또래 서울시민"} 한 달 평균 문화비는 약 ${won(Math.round(avgSpend/100)*100)}이에요 · ${count ? cmpLine(spent, avgSpend, "원") : "기록이 쌓이면 비교해 드려요"}${free ? ` · 무료 ${free}곳` : ""}</div>
+      <div class="rc-cmp">서울시민 한 달 평균 문화비는 약 ${won(Math.round(avgSpend/100)*100)}이에요 · ${count ? cmpLine(spent, avgSpend, "원") : "기록이 쌓이면 비교해 드려요"}${free ? ` · 무료 ${free}곳` : ""}</div>
       <div class="rc-sum big"><span>아낀 금액</span><b>${saved.toLocaleString()}원</b></div>
       <div class="rc-cmp">${saved ? (movies >= 1 ? `문화가 있는 날 영화 <b>${Math.floor(movies)}편</b>을 볼 수 있는 돈이에요` : `문화가 있는 날 영화 한 편까지 ${won(RECEIPT_STATS.movie - saved)} 남았어요`) : "혜택가로 들어가면 할인받은 금액이 여기에 쌓여요"}</div>
       <div class="rc-rule"></div>
@@ -1791,8 +1792,7 @@ function recordPage(pg){
     <div class="secline" style="margin-top:18px"><b>${m}월 영수증</b><span>${visitedCount}곳</span></div>
     ${receiptHTML(month)}
     <button class="blk" id="recShare" style="width:100%;margin-top:22px">📤 ${m}월 기록 이미지로 공유</button>
-    ${myAge()==null?'<p class="note" style="margin-top:12px">설정 &gt; 내 혜택 정보에 생년월일을 넣으면 또래와 비교해 드려요.</p>':""}
-    <p class="note" style="margin-top:8px">메모·사진과 갈 날짜는 이 기기에만 저장돼요.</p>`;
+    <p class="note" style="margin-top:12px">메모·사진과 갈 날짜는 이 기기에만 저장돼요.</p>`;
   pg.querySelectorAll("[data-recm]").forEach(b => b.onclick = () => { S.recMonth = b.dataset.recm; S.recDay = null; recordPage(pg); });
   pg.querySelectorAll("[data-recday]").forEach(b => b.onclick = () => { S.recDay = b.dataset.recday; recordPage(pg); });
   pg.querySelectorAll("[data-memo]").forEach(b => b.onclick = () => memoSheet(S.recDay, b.dataset.memo));
@@ -1865,7 +1865,7 @@ async function shareMonth(month){
   g.strokeStyle = "#c9c4b8"; g.setLineDash([10, 8]); g.lineWidth = 3; g.beginPath(); g.moveTo(72, by); g.lineTo(W-72, by); g.stroke(); g.setLineDash([]);
   const row = (label, val, yy, big) => { g.fillStyle = "#333"; g.font = font(600, big ? 40 : 34); g.fillText(label, 72, yy); g.textAlign = "right"; g.fillStyle = big ? "#1a7f4b" : "#111"; g.font = font(800, big ? 56 : 40); g.fillText(val, W-72, yy); g.textAlign = "left"; };
   row("다녀온 곳", `${R.count}곳`, by + 70); row("쓴 금액", `${R.spent.toLocaleString()}원`, by + 135); row("아낀 금액", `${R.saved.toLocaleString()}원`, by + 215, true);
-  g.fillStyle = "#999"; g.font = font(500, 26); g.fillText(`또래 평균 한 달 ${R.avgCount.toFixed(1)}회 관람 (${R.pc.source})`, 72, H - 60);
+  g.fillStyle = "#999"; g.font = font(500, 26); g.fillText(`서울시민 평균 한 달 ${R.avgCount.toFixed(1)}회 관람 (${R.pc.source})`, 72, H - 60);
   const name = `culturemap-${month}.jpg`, dataUrl = c.toDataURL("image/jpeg", 0.92);
   const blob = await new Promise(ok => c.toBlob(ok, "image/jpeg", 0.92));
   // 1) 휴대폰 공유 시트(인스타그램·카카오톡 등). 지원 안 하거나 실패하면 2)로
