@@ -785,7 +785,7 @@ function isDemoCulture(e){ return !!e && !e.is_public_culture && e.src!=="사용
 /* ===== 상황 필터: 지금 내 상황에 맞는 조건 묶음 (다른 필터와 함께 적용) ===== */
 const SITUATIONS = [
   {k:"quick", e:"⏱️", l:"잠깐 짬 날 때", d:"1km 안 · 예약 없이 바로 · 오늘 아직 열려 있는 곳"},
-  {k:"evening", e:"🌙", l:"퇴근 후", d:"오늘 저녁 6시 이후에 열린 곳 · 시간 확인된 곳만"},
+  {k:"evening", e:"🌙", l:"퇴근 후", d:"오늘 저녁 8시 이후까지 열린 곳 · 시간 확인된 곳만"},
   {k:"rain",  e:"☔", l:"비 오는 날", d:"실내로 보이는 곳 (전시·공연·박물관 등)"},
   {k:"soon",  e:"⏳", l:"마감 임박", d:"3일 안에 끝나는 곳"},
   /* 이런 곳(장소 성격 태그): 처음엔 분야로 추정, 방문자 투표가 쌓이면 투표로 */
@@ -1378,7 +1378,7 @@ function listSheet(clusterIds){
     <p class="note">지금 보고 있는 지도 화면 기준 · 가까운 순 · 지도를 움직이면 바뀌어요</p>
     ${dcs.length?`<div class="secline"><b>오늘 예약 가능한 할인</b><span>${dcs.filter(d=>d.left).length}건</span></div>${dcs.map(d => dcCard(d, distM(findAny(d.ref), b))).join("")}`:""}
     <div class="secline"><b>주변 문화생활</b><span>${items.length}곳</span></div>
-    ${items.map(({it,dist}) => `<button class="listitem ${tier(effP(it))} ${isDemoCulture(it)?"demo":""}" data-open="${it.id}"><span class="ph">${EMOJI[it.genre]}</span><span style="min-width:0"><b>${esc(it.name)}</b><small>${it.genre} · ${period(it)} · ${fmtDist(dist)}${(() => { const hb = hoursBadge(it); return hb ? ` · <span class="hrs ${hb.c}">${hb.t}</span>` : ""; })()}</small><br>${eff(it).rule?'<span class="tag grn">🎟️ 내 혜택가</span>':""}${it.is_public_culture?`<span class="tag">${esc(it.source)}</span>`:it.reserve?'<span class="tag">예약</span>':'<span class="tag">바로 입장</span>'}${soon(it)?'<span class="tag red">곧 종료</span>':""}${it.src==="사용자 제보"?'<span class="tag grn">제보</span>':""}${isDemoCulture(it)?'<span class="tag">예시 데이터</span>':""}</span><span class="pr">${eff(it).rule?`<s class="note">${won(it.price)}</s><br>`:""}${priceText(it,eff(it))}</span></button>`).join("")
+    ${items.map(({it,dist}) => `<button class="listitem ${tier(effP(it))} ${isDemoCulture(it)?"demo":""}" data-open="${it.id}"><span class="ph">${EMOJI[it.genre]}</span><span style="min-width:0"><b>${esc(it.name)}</b><small>${it.genre} · ${period(it)} · ${fmtDist(dist)}${(() => { if (S.sit === "evening") { const et = window.hoursService.eveningText(hoursOn(it, REC_TODAY)); if (et) return ` · <span class="hrs grn">${et}</span>`; } const hb = hoursBadge(it); return hb ? ` · <span class="hrs ${hb.c}">${hb.t}</span>` : ""; })()}</small><br>${eff(it).rule?'<span class="tag grn">🎟️ 내 혜택가</span>':""}${it.is_public_culture?`<span class="tag">${esc(it.source)}</span>`:it.reserve?'<span class="tag">예약</span>':'<span class="tag">바로 입장</span>'}${soon(it)?'<span class="tag red">곧 종료</span>':""}${it.src==="사용자 제보"?'<span class="tag grn">제보</span>':""}${isDemoCulture(it)?'<span class="tag">예시 데이터</span>':""}</span><span class="pr">${eff(it).rule?`<s class="note">${won(it.price)}</s><br>`:""}${priceText(it,eff(it))}</span></button>`).join("")
       || '<p class="note" style="padding:12px 0">이 화면엔 조건에 맞는 곳이 없어요. 지도를 축소하거나 필터를 풀어보세요.</p>'}`);
   $("#lX").onclick = closeSheet;
 }
