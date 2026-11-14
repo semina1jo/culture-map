@@ -112,7 +112,14 @@ Deno.serve(async (req) => {
       (data ?? []).forEach((r: { id: string; updated_at: string }) => existing.set(r.id, r.updated_at)); if (!data || data.length < 1000) break;
     }
     const freshCut = new Date(Date.now() - FRESH_DAYS * 86400e3).toISOString();
-    const todo = candidates.filter(c => { const u = existing.get(`kcis_${c.seq}`); if (u && u > freshCut && !options.dry) { stats.skippedFresh++; return false; } return true; })
+    // 저장 안 하기로 확인한 행사(만 원 초과·가격 불명·서울 밖)도 7일 동안은 다시 조회하지 않는다
+    const skipped = new Set<string>();
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase.from("culture_portal_skip").select("seq").gt("checked_at", freshCut).range(from, from + 999);
+      (data ?? []).forEach((r: { seq: string }) => skipped.add(r.seq)); if (!data || data.length < 1000) break;
+    }
+    const skipRows: { seq: string; reason: string; checked_at: string }[] = [];
+    const todo = candidates.filter(c => { const u = existing.get(`kcis_${c.seq}`); if (!options.dry && ((u && u > freshCut) || skipped.has(c.seq))) { stats.skippedFresh++; return false; } return true; })
       .sort((a, b) => (existing.has(`kcis_${a.seq}`) ? 1 : 0) - (existing.has(`kcis_${b.seq}`) ? 1 : 0));
     const t0 = Date.now();
     for (let i = 0; i < todo.length; i += 1) {
@@ -123,13 +130,14 @@ Deno.serve(async (req) => {
         const it = items(details[k])[0] ?? "";
         const fee = unesc(tag(it, "price"));
         const { price, rules } = parseFee(fee);
-        if (price === null) { stats.unknownPrice++; return; }
+        if (!it) return; // 상세 조회 실패: 다음 실행에서 다시
+        if (price === null) { stats.unknownPrice++; skipRows.push({ seq: c.seq, reason: "가격 불명", checked_at: runStart }); return; }
         const minRule = rules.length ? Math.min(...rules.map(r => r.p)) : Infinity;
-        if (price > MAX_PRICE && minRule > MAX_PRICE) { stats.tooExpensive++; return; }
+        if (price > MAX_PRICE && minRule > MAX_PRICE) { stats.tooExpensive++; skipRows.push({ seq: c.seq, reason: "만 원 초과", checked_at: runStart }); return; }
+        const addr = unesc(tag(it, "placeAddr"));
+        if (addr && !addr.includes("서울")) { stats.notSeoul++; skipRows.push({ seq: c.seq, reason: "서울 밖", checked_at: runStart }); return; }
         if (price === 0) stats.free++; else if (price <= MAX_PRICE) stats.under10k++; else stats.benefitOnly++;
         if (rules.length) stats.withRules++;
-        const addr = unesc(tag(it, "placeAddr"));
-        if (addr && !addr.includes("서울")) { stats.notSeoul++; return; }
         const url = unesc(tag(it, "url"));
         const rec = {
           id: `kcis_${c.seq}`,
@@ -164,6 +172,10 @@ Deno.serve(async (req) => {
     // 4) 저장(같은 id면 덮어쓰기) → 이번에 빠진 '이 출처' 행사만 삭제
     for (let i = 0; i < records.length; i += 200) {
       const { error } = await supabase.from("culture_events").upsert(records.slice(i, i + 200), { onConflict: "id" });
+      if (error) throw error;
+    }
+    for (let i = 0; i < skipRows.length; i += 500) {
+      const { error } = await supabase.from("culture_portal_skip").upsert(skipRows.slice(i, i + 500), { onConflict: "seq" });
       if (error) throw error;
     }
     // 목록에서 사라진(끝났거나 범위를 벗어난) 행사만 삭제. 시간이 모자라 상세를 못 받은 행사는 다음 실행까지 그대로 둔다
