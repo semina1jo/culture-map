@@ -148,15 +148,15 @@
     return "오늘 운영 끝";
   }
 
-  // 퇴근 후: 저녁 8시 이후까지 열려 있는 곳(19:30 전에 연 곳), 또는 18:00~20:30에 시작하는 공연·프로그램
+  // 퇴근 후: 저녁 8시 이후까지 열려 있는 곳(20:30 전에 열고 20:30 넘어서까지), 또는 18:00~20:30에 시작하는 공연·프로그램
   function evening(info) {
     if (!info || info.state !== "open") return false;
-    return info.windows.some(([a, b]) => b >= 20 * 60 && a <= 19 * 60 + 30) || info.starts.some(s => s >= 18 * 60 && s <= 20 * 60 + 30);
+    return info.windows.some(([a, b]) => b >= 20 * 60 + 30 && a <= 20 * 60 + 30) || info.starts.some(s => s >= 18 * 60 && s <= 20 * 60 + 30);
   }
   // 저녁 기준 마감·시작 표시 (예: "21:00까지", "19:30 시작")
   function eveningText(info) {
     if (!evening(info)) return "";
-    const w = info.windows.filter(([a, b]) => b >= 20 * 60 && a <= 19 * 60 + 30).map(w => w[1]);
+    const w = info.windows.filter(([a, b]) => b >= 20 * 60 + 30 && a <= 20 * 60 + 30).map(w => w[1]);
     if (w.length) return `${fmt(Math.max(...w))}까지`;
     return info.starts.filter(s => s >= 18 * 60 && s <= 20 * 60 + 30).map(fmt).join("·") + " 시작";
   }
