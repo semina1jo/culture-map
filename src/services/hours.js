@@ -13,7 +13,7 @@
   const ALLDAY = /종일|상시|제한 없음|24시간/;
 
   const toMin = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
-  const fmt = m => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const fmt = m => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
   function range(a, b) { const out = []; let i = DAYS.indexOf(a); const j = DAYS.indexOf(b); for (let k = 0; k < 7; k++) { out.push(i); if (i === j) break; i = (i + 1) % 7; } return out; }
 
   // 문자열 안의 요일 표현 → 요일 번호 집합 (없으면 null)
