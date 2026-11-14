@@ -26,6 +26,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 button:disabled{opacity:.45;cursor:default}
 :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .sheet:focus,.sheet:focus-visible{outline:none}
+.my-rv{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}.my-rv-t{flex:1;min-width:0;text-align:left;border:0;background:none;padding:0}.my-rv-t b{display:block;font-size:14.5px}.my-rv-t small{color:var(--muted);font-size:12px}.my-rv-a{display:flex;gap:6px;flex:none}.blk.danger{background:var(--red);border-color:var(--red)}
 .rv-empty{display:block;width:100%;text-align:left;border:0;background:none;padding:6px 0;color:var(--muted);font-size:12.5px}.rv-empty u{color:var(--ink2)}
 .rv-form label .note{font-weight:500;margin-left:4px;font-size:11.5px}.rv-form .sit-vote{margin:4px 0 2px}.row2{display:grid;grid-template-columns:1.3fr 1fr;gap:8px}
 .rv-meta{display:block;color:var(--muted);font-size:12px;margin:2px 0 4px}.rv-goods{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}.rv-goods .tag{margin:0}.rv-photo{display:block;max-width:160px;max-height:160px;border-radius:10px;margin:6px 0;object-fit:cover}.rv-agg{margin:0 0 10px}.rv-agg small{color:var(--muted);font-size:12px}
@@ -1147,37 +1148,40 @@ function reviewSection(it){
     <div class="rv-bar"><div class="seg2"><button data-rsort="new" data-target="${esc(it.id)}" aria-pressed="${sort==="new"}">최신순</button><button data-rsort="like" data-target="${esc(it.id)}" aria-pressed="${sort==="like"}">좋아요순</button></div></div>
     ${list.map(item).join("") || `<button type="button" class="rv-empty" data-rwrite="${esc(it.id)}">아직 리뷰가 없어요. <u>다녀왔다면 첫 리뷰를 남겨 주세요</u></button>`}</div>`;
 }
-function reviewSheet(id){
+function reviewSheet(id, opts = {}){
   const it=findAny(id); if(!it) return;
   if(needLogin("리뷰 작성", () => backToDetail(id))) return;
+  const ed = opts.edit || null; // 수정할 내 리뷰
   // 방문 일시: 지금으로 자동 입력, 틀리면 고칠 수 있게. 행사 기간 안에서만
   const k = new Date(Date.now() + 9*3600e3), mm = Math.floor(k.getUTCMinutes()/10)*10;
   let day = REC_TODAY; if (!isAlwaysOpen(it) && it.end && it.end < day) day = it.end;
+  if (ed) day = kstDate(ed.visited_at || ed.created_at) || day;
   const minDay = !isAlwaysOpen(it) && it.start ? it.start : "", maxDay = REC_TODAY;
-  const tm = `${String(k.getUTCHours()).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
-  let rating = 0, photo = "";
-  const withSet = new Set(), goodSet = new Set();
-  const chip = (x, key) => `<button type="button" aria-pressed="false" data-${key}="${x.k}">${x.e} ${x.l}</button>`;
-  sheet(`<div class="sh-h"><h2>리뷰 남기기</h2><button class="x" id="rvX" aria-label="닫기">${ico.x}</button></div>
+  const tm = ed && ed.visited_at ? new Date(Date.parse(ed.visited_at) + 9*3600e3).toISOString().slice(11,16) : `${String(k.getUTCHours()).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
+  let rating = ed?.rating || 0, photo = undefined; // undefined = 사진 그대로, "" = 지움, dataURL = 새 사진
+  const withSet = new Set(ed?.companions || []), goodSet = new Set(ed?.highlights || []);
+  const chip = (x, key) => `<button type="button" aria-pressed="${(key==="rw"?withSet:goodSet).has(x.k)}" data-${key}="${x.k}">${x.e} ${x.l}</button>`;
+  sheet(`<div class="sh-h"><h2>${ed ? "리뷰 수정" : "리뷰 남기기"}</h2><button class="x" id="rvX" aria-label="닫기">${ico.x}</button></div>
     <p class="note">${esc(it.name)} · ${esc(window.dataService.getNickname())}(으)로 남겨요</p>
     <form id="rvF" class="rv-form" novalidate>
       <label>언제 다녀왔나요? <span class="note">지금으로 채워 뒀어요. 다르면 고쳐 주세요</span></label>
       <div class="row2"><input type="date" id="rvD" value="${day}" ${minDay?`min="${minDay}"`:""} max="${maxDay}" aria-label="방문 날짜"><input type="time" id="rvTm" value="${tm}" step="600" aria-label="방문 시간"></div>
       <label>누구와 함께 갔나요? <span class="note">여러 개 골라도 돼요</span></label>
       <div class="sit-vote">${REV_WITH.map(x => chip(x, "rw")).join("")}</div>
-      <label>별점 (필수)</label><div class="stars" id="rvStars" role="group" aria-label="별점">${[1,2,3,4,5].map(n=>`<button type="button" data-rv="${n}" aria-label="${n}점">★</button>`).join("")}</div>
+      <label>별점 (필수)</label><div class="stars" id="rvStars" role="group" aria-label="별점">${[1,2,3,4,5].map(n=>`<button type="button" class="${n<=rating?"on":""}" data-rv="${n}" aria-label="${n}점">★</button>`).join("")}</div>
       <label>어떤 점이 좋았나요? <span class="note">여러 개 골라도 돼요</span></label>
       <div class="sit-vote">${REV_GOOD.map(x => chip(x, "rg")).join("")}</div>
-      <label for="rvP">사진 (선택)</label><input type="file" id="rvP" accept="image/*"><img id="rvPv" class="prev" alt="" hidden>
-      <label for="rvT">리뷰 (선택)</label><textarea id="rvT" maxlength="300" placeholder="대기 시간, 볼거리, 꿀팁을 자유롭게 남겨 주세요."></textarea>
+      <label for="rvP">사진 (선택)</label><input type="file" id="rvP" accept="image/*"><img id="rvPv" class="prev" alt="" ${ed?.photo_url?`src="${esc(ed.photo_url)}"`:"hidden"}>${ed?.photo_url?'<button type="button" class="linkbtn" id="rvPDel">사진 지우기</button>':""}
+      <label for="rvT">리뷰 (선택)</label><textarea id="rvT" maxlength="300" placeholder="대기 시간, 볼거리, 꿀팁을 자유롭게 남겨 주세요.">${esc(ed?.text || "")}</textarea>
       <div class="err" id="rvErr"></div>
-      <div class="acts"><button class="out" type="button" id="rvC">취소</button><button class="blk" type="submit">등록</button></div>
+      <div class="acts"><button class="out" type="button" id="rvC">취소</button><button class="blk" type="submit">${ed ? "수정 완료" : "등록"}</button></div>
     </form>`);
-  const back = () => backToDetail(id);
+  const back = opts.back || (() => backToDetail(id));
   $("#rvX").onclick = back; $("#rvC").onclick = back;
   document.querySelectorAll("[data-rv]").forEach(b => b.onclick = () => { rating=+b.dataset.rv; document.querySelectorAll("[data-rv]").forEach(x=>x.classList.toggle("on", +x.dataset.rv<=rating)); $("#rvErr").textContent=""; });
   const toggle = (attr, set) => document.querySelectorAll(`[data-${attr}]`).forEach(b => b.onclick = () => { const v = b.dataset[attr]; set.has(v) ? set.delete(v) : set.add(v); b.setAttribute("aria-pressed", set.has(v)); });
   toggle("rw", withSet); toggle("rg", goodSet);
+  $("#rvPDel") && ($("#rvPDel").onclick = () => { photo = ""; $("#rvPv").hidden = true; $("#rvPDel").remove(); });
   $("#rvP").onchange = async ev => { const f = ev.target.files[0]; if (!f) return; try { photo = await shrinkPhoto(f); $("#rvPv").src = photo; $("#rvPv").hidden = false; } catch(_) { $("#rvErr").textContent = "사진을 읽지 못했어요. 다른 사진을 골라 주세요."; } };
   $("#rvF").addEventListener("submit", async ev => {
     ev.preventDefault();
@@ -1188,16 +1192,19 @@ function reviewSheet(id){
     const ds=window.dataService;
     ev.submitter && (ev.submitter.disabled=true);
     const visited_at = new Date(`${date}T${time}:00+09:00`).toISOString();
-    const result=await ds.addReview(id,$("#rvT").value,reviewType(it),rating,{visited_at, companions:[...withSet], highlights:[...goodSet], photo});
+    const fields = {visited_at, companions:[...withSet], highlights:[...goodSet]};
+    const result = ed ? await ds.updateReview(ed.id, {...fields, rating, text:$("#rvT").value, photo})
+                      : await ds.addReview(id,$("#rvT").value,reviewType(it),rating,{...fields, photo: photo || ""});
     if(!result.ok){ $("#rvErr").textContent=(result.error && result.error.message) || "저장에 실패했어요. 다시 시도해 주세요."; ev.submitter && (ev.submitter.disabled=false); return; }
     // 상황 필터 투표로도 반영 (같은 장소에 다시 남기면 덮어씀)
     const sits = [...new Set([...[...withSet].map(k => WITH_TO_SIT[k]), ...[...goodSet].map(k => GOOD_TO_SIT[k])].filter(Boolean))];
-    if (sits.length && ds.addSituationVotes) { await ds.addSituationVotes(id, sits); sitIdxLen = -1; }
+    if ((sits.length || ed) && ds.addSituationVotes) { await ds.addSituationVotes(id, sits); sitIdxLen = -1; }
+    if (ed) unlogReceipt(id, kstDate(ed.visited_at || ed.created_at));
     logReceipt(id, "리뷰", date);
     // 사진은 기록 탭 달력에도 (나만 보기, 이미 남긴 사진이 없을 때만)
     if (photo) { const d = diary(), key = `${date}|${id}`; if (!d.notes[key]?.photo) { d.notes[key] = {...(d.notes[key] || {}), photo}; saveDiary(d); } }
     back(); renderMap();
-    toast("리뷰를 남겼어요. 상황 필터에도 반영돼요.");
+    toast(ed ? "리뷰를 수정했어요." : "리뷰를 남겼어요. 상황 필터에도 반영돼요.");
   });
 }
 function flagSheet(reviewId, target){
@@ -1695,6 +1702,10 @@ function paidPrice(e){
   if (!S.profile || !e.ben) return base;
   return e.ben.reduce((m,r) => ruleOk(r) && r.p < m ? r.p : m, base);
 }
+function unlogReceipt(id, date){
+  if (!date) return; const log = receiptLog(), key = `${date.slice(0,7)}|${id}`;
+  if (log[key] && log[key].kind === "리뷰") { delete log[key]; try { localStorage.setItem(RECEIPT_KEY, JSON.stringify(log)); } catch(_) {} }
+}
 function logReceipt(id, kind, date){
   const it = findAny(id); if (!it) return; date = date || REC_TODAY;
   const log = receiptLog(), month = date.slice(0,7), key = `${month}|${id}`;
@@ -1941,11 +1952,36 @@ async function shareMonth(month){
 }
 
 function myReviewsSheet(){
-  const rows=window.dataService.getMyReviews().sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+  const ds = window.dataService;
+  const rows=ds.getMyReviews().sort((a,b)=>String(b.visited_at||b.created_at).localeCompare(String(a.visited_at||a.created_at)));
   sheet(`<div class="sh-h"><h2>내 리뷰 <span class="note">${rows.length}개</span></h2><button class="x" id="mvX" aria-label="닫기">${ico.x}</button></div>
     ${rows.map(r=>{ const it=findAny(r.target_id);
-      return `<button class="listitem" ${it?`data-myreview="${esc(r.target_id)}"`:"disabled"}><span style="min-width:0"><b>${it?esc(it.name):"지금은 볼 수 없는 장소"}</b><small><span class="rv-star">${starStr(r.rating||0)}</span> · ${dotDate(r.created_at)}${r.text?` · ${esc(r.text.length>30?r.text.slice(0,30)+"…":r.text)}`:""}</small></span><span>보기</span></button>`; }).join("") || '<p class="note" style="padding:12px 0">아직 남긴 리뷰가 없어요.</p>'}`);
+      const meta = [`${dotDate(r.visited_at || r.created_at)} ${r.visited_at ? "방문" : ""}`.trim(), (r.companions||[]).map(k => REV_WITH_L[k]?.l).filter(Boolean).join("·")].filter(Boolean).join(" · ");
+      return `<div class="my-rv">
+        <button type="button" class="my-rv-t" ${it?`data-myreview="${esc(r.target_id)}"`:"disabled"}><b>${it?esc(it.name):"지금은 볼 수 없는 장소"}</b><small><span class="rv-star">${starStr(r.rating||0)}</span> · ${esc(meta)}${r.text?` · ${esc(r.text.length>30?r.text.slice(0,30)+"…":r.text)}`:""}</small></button>
+        <span class="my-rv-a"><button type="button" class="out sm" data-rvedit="${esc(r.id)}" ${it?"":"disabled"}>수정</button><button type="button" class="out sm" data-rvdel="${esc(r.id)}">삭제</button></span>
+      </div>`; }).join("") || '<p class="note" style="padding:12px 0">아직 남긴 리뷰가 없어요.</p>'}`);
   $("#mvX").onclick = () => { closeSheet(); renderPage(); };
+  document.querySelectorAll("[data-rvedit]").forEach(b => b.onclick = () => { const r = rows.find(x => x.id === b.dataset.rvedit); if (r) reviewSheet(r.target_id, {edit:r, back:myReviewsSheet}); });
+  document.querySelectorAll("[data-rvdel]").forEach(b => b.onclick = () => { const r = rows.find(x => x.id === b.dataset.rvdel); if (r) deleteReviewSheet(r); });
+}
+function deleteReviewSheet(r){
+  const it = findAny(r.target_id);
+  sheet(`<div class="sh-h"><h2>리뷰 삭제</h2><button class="x" id="dvX" aria-label="닫기">${ico.x}</button></div>
+    <p>${it ? `<b>${esc(it.name)}</b>에 남긴 ` : ""}리뷰를 지울까요?</p>
+    <p class="note">지우면 되돌릴 수 없어요. 이 리뷰로 반영된 상황 필터 투표와 이번 달 영수증 기록도 함께 빠져요. 기록 탭에 저장된 사진·메모는 그대로 남아요.</p>
+    <div class="err" id="dvErr"></div>
+    <div class="acts"><button class="out" id="dvC">취소</button><button class="blk danger" id="dvOk">삭제</button></div>`);
+  $("#dvX").onclick = myReviewsSheet; $("#dvC").onclick = myReviewsSheet;
+  $("#dvOk").onclick = async () => {
+    const ds = window.dataService; $("#dvOk").disabled = true;
+    const res = await ds.deleteReview(r.id);
+    if (!res.ok) { $("#dvErr").textContent = (res.error && res.error.message) || "삭제에 실패했어요. 다시 시도해 주세요."; $("#dvOk").disabled = false; return; }
+    // 같은 장소에 남은 내 리뷰가 없으면 상황 투표도 지운다
+    if (!ds.getMyReviews().some(x => x.target_id === r.target_id) && ds.addSituationVotes) { await ds.addSituationVotes(r.target_id, []); sitIdxLen = -1; }
+    unlogReceipt(r.target_id, kstDate(r.visited_at || r.created_at));
+    renderMap(); myReviewsSheet(); toast("리뷰를 삭제했어요.");
+  };
 }
 function nicknameSheet(){
   const cur = window.dataService.getNickname();

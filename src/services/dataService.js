@@ -338,6 +338,23 @@
       if (configured) await insert("reviews", row);
       cache("reviews", [row, ...list("reviews")]); return row;
     }),
+    // 내 리뷰 수정·삭제 (설정 > 내 활동 > 내 리뷰)
+    updateReview: (id, patch = {}) => run(async () => {
+      const cur = list("reviews").find(r => r.id === id);
+      if (!cur || cur.user_id !== userId()) throw new Error("내 리뷰만 고칠 수 있어요.");
+      const row = { rating: patch.rating ? Number(patch.rating) : cur.rating, text: String(patch.text ?? cur.text ?? "").trim() || null,
+        visited_at: patch.visited_at ?? cur.visited_at ?? null, companions: patch.companions ? (patch.companions.length ? patch.companions : null) : cur.companions ?? null,
+        highlights: patch.highlights ? (patch.highlights.length ? patch.highlights : null) : cur.highlights ?? null, photo_url: cur.photo_url ?? null };
+      if (patch.photo !== undefined) row.photo_url = patch.photo ? (configured && patch.photo.startsWith("data:") ? await uploadPhoto(patch.photo) : patch.photo) : null;
+      if (configured) await request(`/rest/v1/reviews?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId())}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(row) });
+      cache("reviews", list("reviews").map(r => r.id === id ? { ...r, ...row } : r)); return { ...cur, ...row };
+    }),
+    deleteReview: id => run(async () => {
+      const cur = list("reviews").find(r => r.id === id);
+      if (!cur || cur.user_id !== userId()) throw new Error("내 리뷰만 지울 수 있어요.");
+      if (configured) await remove("reviews", `id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId())}`);
+      cache("reviews", list("reviews").filter(r => r.id !== id)); cache("review_likes", list("review_likes").filter(l => l.review_id !== id)); return cur;
+    }),
     nicknameOf: (uid, fallback = "") => (read().nicknames || {})[uid] || fallback,
     getLikes: reviewId => list("review_likes").filter(l => l.review_id === reviewId),
     likedByMe: reviewId => list("review_likes").some(l => l.review_id === reviewId && l.user_id === userId()),
