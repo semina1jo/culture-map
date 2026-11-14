@@ -785,9 +785,7 @@ function isDemoCulture(e){ return !!e && !e.is_public_culture && e.src!=="사용
 /* ===== 상황 필터: 지금 내 상황에 맞는 조건 묶음 (다른 필터와 함께 적용) ===== */
 const SITUATIONS = [
   {k:"quick", e:"⏱️", l:"잠깐 짬 날 때", d:"1km 안 · 예약 없이 바로 · 오늘 아직 열려 있는 곳"},
-  {k:"evening", e:"🌙", l:"퇴근 후", d:"오늘 저녁 7시 이후에 열린 곳 · 시간 확인된 곳만"},
-  {k:"free",  e:"💸", l:"무료로만", d:"돈 안 드는 곳만 (혜택가 무료 포함)"},
-  {k:"weekend", e:"☀️", l:"주말 반나절", d:"이번 주말에 하는 곳 · 3km 안"},
+  {k:"evening", e:"🌙", l:"퇴근 후", d:"오늘 저녁 6시 이후에 열린 곳 · 시간 확인된 곳만"},
   {k:"rain",  e:"☔", l:"비 오는 날", d:"실내로 보이는 곳 (전시·공연·박물관 등)"},
   {k:"soon",  e:"⏳", l:"마감 임박", d:"3일 안에 끝나는 곳"},
   /* 이런 곳(장소 성격 태그): 처음엔 분야로 추정, 방문자 투표가 쌓이면 투표로 */
@@ -798,7 +796,7 @@ const SITUATIONS = [
 ];
 const SIT_L = Object.fromEntries(SITUATIONS.map(x => [x.k, x]));
 /* 방문자가 고를 수 있는 상황(장소 성격에 관한 것만. 무료·마감 임박은 데이터로 정확히 알 수 있어 투표 안 받음) */
-const SIT_VOTE = [{k:"quick", e:"⏱️", l:"잠깐 들르기 좋았어요"}, {k:"weekend", e:"☀️", l:"반나절 보내기 좋았어요"}, {k:"rain", e:"☔", l:"비 와도 괜찮아요(실내)"},
+const SIT_VOTE = [{k:"quick", e:"⏱️", l:"잠깐 들르기 좋았어요"}, {k:"rain", e:"☔", l:"비 와도 괜찮아요(실내)"},
   {k:"solo", e:"🙋", l:"혼자 가기 좋았어요"}, {k:"quiet", e:"🤫", l:"조용했어요"}, {k:"photo", e:"📸", l:"사진 찍기 좋았어요"}, {k:"together", e:"👯", l:"같이 가기 좋았어요"}];
 const SIT_MIN_VOTERS = 3, SIT_YES_RATIO = 0.4; // 3명 이상 투표가 쌓이면, 40% 이상이 고른 상황만 인정
 let sitIdx = null, sitIdxLen = -1;
@@ -852,8 +850,6 @@ function sitOk(e){
   switch (S.sit){
     case "evening": return activeOn(e, REC_TODAY) && window.hoursService.evening(hoursOn(e, REC_TODAY));
     case "quick": { if (!activeDuring(e, REC_TODAY, REC_TODAY) || sitDistance(e) > 1000) return false; const hb = hoursBadge(e); if (hb && hb.c === "red") return false; const c = crowdSit(e, "quick"); return c ?? !e.reserve; }
-    case "free": return base === 0 || (S.profile && paidPrice(e) === 0);
-    case "weekend": { const [a, b] = nextWeekend(); if (!activeDuring(e, a, b) || sitDistance(e) > 3000) return false; if (notOpen(hoursOn(e, a)) && notOpen(hoursOn(e, b))) return false; const c = crowdSit(e, "weekend"); return c ?? true; }
     case "rain": { const c = crowdSit(e, "rain"); return c ?? isIndoor(e); }
     case "soon": { if (isAlwaysOpen(e) || !e.end) return false; const d = days(REC_TODAY, e.end); return d >= 0 && d <= 3; }
     /* 태그: 투표 3명 이상이면 투표, 아니면 분야 기반 추정 */

@@ -148,10 +148,10 @@
     return "오늘 운영 끝";
   }
 
-  // 퇴근 후(19:00 이후)에 갈 수 있는지
+  // 퇴근 후(18:00 이후)에 갈 수 있는지: 18:30 넘어서까지 열려 있거나(21시 전에 열고), 18:00~21:30에 시작
   function evening(info) {
     if (!info || info.state !== "open") return false;
-    return info.windows.some(([a, b]) => b >= 19 * 60 + 30 && a <= 21 * 60) || info.starts.some(s => s >= 18 * 60 + 30 && s <= 21 * 60 + 30);
+    return info.windows.some(([a, b]) => b >= 18 * 60 + 30 && a <= 21 * 60) || info.starts.some(s => s >= 18 * 60 && s <= 21 * 60 + 30);
   }
 
   const api = { parse, onDate, label, nowState, evening, fmt };
