@@ -714,7 +714,7 @@ const activeOn = (e, d) => isAlwaysOpen(e) || e.start <= d && e.end >= d;
 const activeDuring = (e, start, end) => isAlwaysOpen(e) || e.start <= end && e.end >= start;
 function addFilterDays(date,n){ const d=new Date(`${date}T00:00:00Z`); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
 /* 내 혜택: 프로필로 규칙을 판정해 가장 싼 가격을 고름 */
-function myAge(){ if (!S.profile || !S.profile.birth) return null; const [by,bm,bd] = ymd(S.profile.birth), [ty,tm,td] = ymd(TODAY); return ty - by - ((tm < bm || (tm === bm && td < bd)) ? 1 : 0); }
+function myAge(){ if (!S.profile || !S.profile.birth) return null; const [by,bm,bd] = ymd(S.profile.birth), [ty,tm,td] = ymd(FILTER_TODAY); return ty - by - ((tm < bm || (tm === bm && td < bd)) ? 1 : 0); }
 function ruleOk(r){
   const P = S.profile; if (!P) return false; const a = myAge();
   switch (r.t){
