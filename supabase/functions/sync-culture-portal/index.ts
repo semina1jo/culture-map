@@ -160,6 +160,7 @@ Deno.serve(async (req) => {
           source: SOURCE,
           benefit_rules: rules,
           place_addr: unesc(tag(it, "placeAddr")) || null,
+          gu: (addr.match(/서울(?:특별시|시)?\s*([가-힣]{1,4}구)/) ?? [])[1] ?? null,
           updated_at: runStart,
         };
         records.push(rec);

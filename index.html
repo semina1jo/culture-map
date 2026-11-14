@@ -26,6 +26,8 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 button:disabled{opacity:.45;cursor:default}
 :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .sheet:focus,.sheet:focus-visible{outline:none}
+.gu-chips .opt{gap:6px}.gu-chips .opt button{padding:6px 11px;font-size:12.5px}
+.flab .note{font-weight:500;margin-left:6px;font-size:11.5px}
 .task>.out,.task>.blk,.task>a.out{flex:none;white-space:nowrap}
 .go small,.dc small{white-space:normal}.nowrap{white-space:nowrap}
 .verify .note{display:block}
@@ -615,7 +617,7 @@ const S = {tab:"map",layer:"culture",date:null,dateEnd:null,dateMode:"all",dateL
   hideSamples:false,demoMode:true,sel:null,
   bells:new Set(["e5"]),saved:new Set(["e1"]),
   verified:[],judged:new Set(),bookings:[],
-  prefs:{open:true,end:true,free:true,judge:true,regions:new Set(["홍대입구","연남동"]),genres:new Set(["전시","공연","체험","축제"])},
+  prefs:{open:true,end:true,free:true,judge:true,regions:new Set(),genres:new Set(["전시","공연","체험","축제"])},
   notis:[
     {kind:"신청 오픈",text:"향 만들기 체험 팝업, 오늘 현장 대기 명단이 열렸어요",time:"오늘 11:02",read:false,id:"e3"},
     {kind:"곧 종료",text:"알림 켠 '신진 작가 판화전'이 11월 4일(수)에 끝나요",time:"오늘 09:00",read:false,id:"e5"},
@@ -1366,11 +1368,15 @@ function listSheet(clusterIds){
 }
 
 /* ④ 알림 */
+/* 관심 지역(자치구): 수집 데이터의 gu, 없으면 주소·장소명에서 구 이름을 찾는다 */
+const OLD_REGION = {"홍대입구":"마포구","연남동":"마포구","서교동":"마포구","대현동":"서대문구"};
+function eventGu(e){ if (e.gu) return e.gu; const hay = [e.place_addr, e.place, e.org_name].filter(Boolean).join(" "); return SEOUL_GU.find(g => hay.includes(g)) || null; }
+const inRegion = e => !S.prefs.regions.size || S.prefs.regions.has(eventGu(e));
 function refreshNotifications(){
   if(window.dataService.mode==="connecting" || window.dataService.mode==="remote-error") return;
   const now = [];
   if(S.prefs.end){ events.filter(e=>S.saved.has(e.id)&&soon(e)).forEach(e=>now.push({id:`end-${e.id}`,kind:"곧 종료",text:`찜한 ${e.name}이 곧 종료돼요`,time:"지금",read:false,target_id:e.id})); }
-  if(S.prefs.free){ events.filter(e=>(e.price_min===0||e.price===0)&&S.prefs.genres.has(e.genre4||e.genre)).slice(0,5).forEach(e=>now.push({id:`free-${e.id}`,kind:"새 무료 행사",text:`관심 분야 무료 행사 ${e.name}`,time:"지금",read:false,target_id:e.id})); }
+  if(S.prefs.free){ events.filter(e=>(e.price_min===0||e.price===0)&&S.prefs.genres.has(e.genre4||e.genre)&&inRegion(e)).slice(0,5).forEach(e=>now.push({id:`free-${e.id}`,kind:"새 무료 행사",text:`${eventGu(e)?eventGu(e)+" · ":""}관심 분야 무료 행사 ${e.name}`,time:"지금",read:false,target_id:e.id})); }
   if(S.prefs.judge){ judgeList.filter(j=>j.status==="승격"&&j.ref&&(!j.user_id||j.user_id===window.dataService.userId())).forEach(j=>now.push({id:`judge-${j.id}`,kind:"제보 승격",text:`내 제보 ${j.name}이 확인을 받아 지도에 정식으로 올라갔어요`,time:"지금",read:false,target_id:j.ref})); }
   const tmr = addFilterDays(REC_TODAY, 1);
   Object.entries(diary().plans).forEach(([pid, date]) => { const it = findAny(pid); if (!it) return;
@@ -1389,11 +1395,11 @@ function notiSheet(){
     <div class="sec"><h3>받은 알림</h3>${S.notis.map((n,i)=>`<button class="noti" data-noti="${i}"><i class="${n.read?"read":""}"></i><span><b>${esc(n.kind)}</b><p>${esc(n.text)}</p><time>${esc(n.time)}</time></span></button>`).join("")}</div>
     <div class="sec"><h3>예정된 알림 <span>알림 켠 행사</span></h3>${up || '<p class="note">상세 화면에서 "알림 받기"를 누르면 여기에 쌓여요.</p>'}</div>
     <div class="sec"><h3>알림 설정</h3>
-      <div class="flab">관심 지역</div>${chipsOf(["홍대입구","연남동","서교동","대현동"],S.prefs.regions,"pr")}
+      <div class="flab">관심 지역 <span class="note">아무 구도 고르지 않으면 서울 전체</span></div><div class="gu-chips">${chipsOf(SEOUL_GU,S.prefs.regions,"pr")}</div>
       <div class="flab">관심 장르</div>${chipsOf(["전시","공연","체험","축제"],S.prefs.genres,"pg")}
       <label class="sw" for="pO"><span>관심 지역·장르의 선착순·사전예약이 열리면 알림</span><input type="checkbox" id="pO" ${S.prefs.open?"checked":""}></label>
       <label class="sw" for="pE"><span>찜한 행사 종료 3일 전 알림</span><input type="checkbox" id="pE" ${S.prefs.end?"checked":""}></label>
-      <label class="sw" for="pFree"><span>관심 분야 새 무료 행사 알림</span><input type="checkbox" id="pFree" ${S.prefs.free?"checked":""}></label>
+      <label class="sw" for="pFree"><span>관심 지역·장르의 새 무료 행사 알림</span><input type="checkbox" id="pFree" ${S.prefs.free?"checked":""}></label>
       <label class="sw" for="pJudge"><span>내 제보가 확인되면 알림</span><input type="checkbox" id="pJudge" ${S.prefs.judge?"checked":""}></label></div>`);
   $("#nX").onclick = closeSheet;
   $("#pO").onchange = ev => { S.prefs.open=ev.target.checked; persistPreferences(); };
@@ -2046,7 +2052,7 @@ function applyDataState(){
   S.profile=ds.getProfile(); S.benefit=Boolean(ds.read().benefit_enabled);
   S.saved=new Set(ds.getSaved().map(r=>r.target_id)); S.notis=ds.getNotifications();
   const preferences=ds.read().app_state;
-  if(preferences){ S.hideSamples=Boolean(preferences.hideSamples); S.demoMode=preferences.demoMode??true; S.bells=new Set(preferences.bells||[]); if(preferences.prefs){ S.prefs={...S.prefs,...preferences.prefs,regions:new Set(preferences.prefs.regions||[]),genres:new Set(preferences.prefs.genres||[])}; } }
+  if(preferences){ S.hideSamples=Boolean(preferences.hideSamples); S.demoMode=preferences.demoMode??true; S.bells=new Set(preferences.bells||[]); if(preferences.prefs){ S.prefs={...S.prefs,...preferences.prefs,regions:new Set((preferences.prefs.regions||[]).map(r=>OLD_REGION[r]||r).filter(r=>SEOUL_GU.includes(r))),genres:new Set(preferences.prefs.genres||[])}; } }
   const baseJudges=judgeList.filter(j=>/^j[123]$/.test(j.id));
   const reports=ds.getReports().map(r=>{
     const demoVotes=S.demoMode?(ds.read().demo_votes||[]).filter(v=>v.report_id===r.id):[];

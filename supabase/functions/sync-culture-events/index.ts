@@ -146,6 +146,7 @@ Deno.serve(async (req) => {
         category,
         raw_category: r.CODENAME,
         place: r.PLACE,
+        gu: (r.GUNAME ?? "").trim() || null,
         org_name: r.ORG_NAME,
         start_date: (r.STRTDATE ?? "").slice(0, 10) || null,
         end_date: end,
