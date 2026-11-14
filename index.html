@@ -26,6 +26,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 button:disabled{opacity:.45;cursor:default}
 :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .sheet:focus,.sheet:focus-visible{outline:none}
+.rv-empty{display:block;width:100%;text-align:left;border:0;background:none;padding:6px 0;color:var(--muted);font-size:12.5px}.rv-empty u{color:var(--ink2)}
 .rv-form label .note{font-weight:500;margin-left:4px;font-size:11.5px}.rv-form .sit-vote{margin:4px 0 2px}.row2{display:grid;grid-template-columns:1.3fr 1fr;gap:8px}
 .rv-meta{display:block;color:var(--muted);font-size:12px;margin:2px 0 4px}.rv-goods{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}.rv-goods .tag{margin:0}.rv-photo{display:block;max-width:160px;max-height:160px;border-radius:10px;margin:6px 0;object-fit:cover}.rv-agg{margin:0 0 10px}.rv-agg small{color:var(--muted);font-size:12px}
 .hrs{font-weight:700}.hrs.grn{color:var(--accent)}.hrs.red{color:var(--red)}.rowi b.hrs{display:block}.hrs-raw{display:block;color:var(--ink2);font-size:13px}
@@ -1143,8 +1144,8 @@ function reviewSection(it){
       const g = Object.entries(cg).sort((a,b)=>b[1]-a[1]).slice(0,4).filter(([k]) => REV_GOOD_L[k]).map(([k,n]) => `<span class="tag">${REV_GOOD_L[k].e} ${REV_GOOD_L[k].l} ${n}</span>`).join("");
       const w = Object.entries(cw).sort((a,b)=>b[1]-a[1]).filter(([k]) => REV_WITH_L[k]).map(([k,n]) => `${REV_WITH_L[k].l} ${n}`).join(" · ");
       return g || w ? `<div class="rv-agg">${g?`<div class="rv-goods">${g}</div>`:""}${w?`<small>함께 온 사람: ${esc(w)}</small>`:""}</div>` : ""; })()}
-    <div class="rv-bar"><div class="seg2"><button data-rsort="new" data-target="${esc(it.id)}" aria-pressed="${sort==="new"}">최신순</button><button data-rsort="like" data-target="${esc(it.id)}" aria-pressed="${sort==="like"}">좋아요순</button></div><button class="blk sm" data-rwrite="${esc(it.id)}">★ 리뷰 쓰기</button></div>
-    ${list.map(item).join("") || '<p class="note">아직 리뷰가 없어요. 첫 리뷰를 남겨주세요.</p>'}</div>`;
+    <div class="rv-bar"><div class="seg2"><button data-rsort="new" data-target="${esc(it.id)}" aria-pressed="${sort==="new"}">최신순</button><button data-rsort="like" data-target="${esc(it.id)}" aria-pressed="${sort==="like"}">좋아요순</button></div></div>
+    ${list.map(item).join("") || `<button type="button" class="rv-empty" data-rwrite="${esc(it.id)}">아직 리뷰가 없어요. <u>다녀왔다면 첫 리뷰를 남겨 주세요</u></button>`}</div>`;
 }
 function reviewSheet(id){
   const it=findAny(id); if(!it) return;
