@@ -26,6 +26,8 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 button:disabled{opacity:.45;cursor:default}
 :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .sheet:focus,.sheet:focus-visible{outline:none}
+.rv-form label .note{font-weight:500;margin-left:4px;font-size:11.5px}.rv-form .sit-vote{margin:4px 0 2px}.row2{display:grid;grid-template-columns:1.3fr 1fr;gap:8px}
+.rv-meta{display:block;color:var(--muted);font-size:12px;margin:2px 0 4px}.rv-goods{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}.rv-goods .tag{margin:0}.rv-photo{display:block;max-width:160px;max-height:160px;border-radius:10px;margin:6px 0;object-fit:cover}.rv-agg{margin:0 0 10px}.rv-agg small{color:var(--muted);font-size:12px}
 .hrs{font-weight:700}.hrs.grn{color:var(--accent)}.hrs.red{color:var(--red)}.rowi b.hrs{display:block}.hrs-raw{display:block;color:var(--ink2);font-size:13px}
 .gu-chips .opt{gap:6px}.gu-chips .opt button{padding:6px 11px;font-size:12.5px}
 .flab .note{font-weight:500;margin-left:6px;font-size:11.5px}
@@ -640,7 +642,7 @@ const STATUS_ICON = {ended:"⛔", went:"✅", wrong:"✏️"};
 function liveLine(it){
   const v = it.votes; if (!v) return "";
   const warn = v.ended >= 2 ? `<b style="color:var(--red)">없어졌다는 제보 ${v.ended}건 · 가기 전에 확인하세요</b>` : v.wrong >= 2 ? `<b style="color:var(--red)">정보가 다르다는 제보 ${v.wrong}건</b>` : "";
-  return `<div class="sec"><h3>현장 상태 <span>방문 인증한 사람만 표시</span></h3>
+  return `<div class="sec"><h3>현장 상태 <span>다녀온 사람들이 남긴 확인</span></h3>
     <div class="votes ro">${STATUS_ORDER.map(k=>`<div><b>${v[k]}</b>${STATUS_L[k]}</div>`).join("")}</div>
     ${warn?`<div class="status">${warn}</div>`:""}${S.myStatus[it.id]?`<div class="status">내 상태: ${STATUS_L[S.myStatus[it.id]]}</div>`:""}</div>`;
 }
@@ -795,12 +797,26 @@ const SITUATIONS = [
   {k:"solo",    e:"🙋", l:"혼자 가기 좋은", d:"예약 없이 혼자 둘러보기 좋은 곳", group:"tag"},
   {k:"quiet",   e:"🤫", l:"조용한", d:"차분하게 머물 수 있는 실내", group:"tag"},
   {k:"photo",   e:"📸", l:"사진 찍기 좋은", d:"볼거리·포토존이 있는 곳", group:"tag"},
-  {k:"together",e:"👯", l:"같이 가기 좋은", d:"친구·연인과 함께 즐기기 좋은 곳", group:"tag"}
+  {k:"together",e:"👯", l:"같이 가기 좋은", d:"친구·동료와 함께 즐기기 좋은 곳", group:"tag"},
+  /* 리뷰의 '누구와 함께'에서 나온 태그: 같은 동행으로 다녀온 리뷰가 2개 이상이면 확정, 그전엔 분야로 추정 */
+  {k:"date",    e:"💑", l:"데이트하기 좋은", d:"연인·배우자와 다녀온 리뷰 기준", group:"tag"},
+  {k:"kids",    e:"🧒", l:"아이와 가기 좋은", d:"아이와 다녀온 리뷰 기준", group:"tag"},
+  {k:"parents", e:"👵", l:"부모님과 가기 좋은", d:"부모님과 다녀온 리뷰 기준", group:"tag"},
+  {k:"pet",     e:"🐶", l:"반려동물과 함께", d:"반려동물과 다녀온 리뷰가 있는 곳만", group:"tag"}
 ];
+/* 리뷰 항목: 누구와 함께(복수) · 좋았던 점(복수). 값은 키로 저장하고 상황 필터 투표로도 쓴다 */
+const REV_WITH = [{k:"solo",e:"🙋",l:"혼자"},{k:"partner",e:"💑",l:"연인·배우자"},{k:"friend",e:"👯",l:"친구"},{k:"coworker",e:"🤝",l:"지인·동료"},{k:"kid",e:"🧒",l:"아이"},{k:"parent",e:"👵",l:"부모님"},{k:"pet",e:"🐶",l:"반려동물"}];
+const REV_GOOD = [{k:"concept",e:"✨",l:"컨셉이 독특해요"},{k:"content",e:"🎨",l:"작품·공연이 알차요"},{k:"clean",e:"🧹",l:"시설이 깔끔해요"},{k:"photo",e:"📸",l:"사진 찍기 좋아요"},{k:"quiet",e:"🤫",l:"조용히 즐기기 좋아요"},{k:"quick",e:"⏱️",l:"잠깐 들르기 좋아요"},{k:"stay",e:"🕰️",l:"오래 머물기 좋아요"},{k:"indoor",e:"☔",l:"날씨 상관없어요(실내)"},{k:"guide",e:"💬",l:"설명·해설이 친절해요"},{k:"value",e:"💸",l:"가격 대비 만족해요"},{k:"access",e:"🚇",l:"찾아가기 쉬워요"}];
+const REV_WITH_L = Object.fromEntries(REV_WITH.map(x => [x.k, x])), REV_GOOD_L = Object.fromEntries(REV_GOOD.map(x => [x.k, x]));
+const WITH_TO_SIT = {solo:"solo", partner:"date", friend:"together", coworker:"together", kid:"kids", parent:"parents", pet:"pet"};
+const GOOD_TO_SIT = {photo:"photo", quiet:"quiet", quick:"quick", indoor:"rain"};
+const COMPANION_SITS = ["date","kids","parents","pet"];
+const kstDate = iso => iso ? new Date(Date.parse(iso) + 9*3600e3).toISOString().slice(0,10) : "";
 const SIT_L = Object.fromEntries(SITUATIONS.map(x => [x.k, x]));
 /* 방문자가 고를 수 있는 상황(장소 성격에 관한 것만. 무료·마감 임박은 데이터로 정확히 알 수 있어 투표 안 받음) */
 const SIT_VOTE = [{k:"quick", e:"⏱️", l:"잠깐 들르기 좋았어요"}, {k:"rain", e:"☔", l:"비 와도 괜찮아요(실내)"},
-  {k:"solo", e:"🙋", l:"혼자 가기 좋았어요"}, {k:"quiet", e:"🤫", l:"조용했어요"}, {k:"photo", e:"📸", l:"사진 찍기 좋았어요"}, {k:"together", e:"👯", l:"같이 가기 좋았어요"}];
+  {k:"solo", e:"🙋", l:"혼자 가기 좋았어요"}, {k:"quiet", e:"🤫", l:"조용했어요"}, {k:"photo", e:"📸", l:"사진 찍기 좋았어요"}, {k:"together", e:"👯", l:"같이 가기 좋았어요"},
+  {k:"date", e:"💑", l:"데이트"}, {k:"kids", e:"🧒", l:"아이와"}, {k:"parents", e:"👵", l:"부모님과"}, {k:"pet", e:"🐶", l:"반려동물과"}];
 const SIT_MIN_VOTERS = 3, SIT_YES_RATIO = 0.4; // 3명 이상 투표가 쌓이면, 40% 이상이 고른 상황만 인정
 let sitIdx = null, sitIdxLen = -1;
 function sitVotes(id){
@@ -814,7 +830,7 @@ function crowdSit(e, k){ const v = sitVotes(e.id); return v.voters >= SIT_MIN_VO
 function sitVoteLine(e){
   const v = sitVotes(e.id); if (!v.voters) return "";
   const tags = SIT_VOTE.filter(x => v.n[x.k]).sort((a,b) => v.n[b.k] - v.n[a.k]).map(x => `<span class="tag">${x.e} ${x.l.replace(/좋았어요|괜찮아요/,"").trim()} ${v.n[x.k]}</span>`).join("");
-  return `<div class="sec"><h3>방문자들이 고른 상황 <span>${v.voters}명 참여${v.voters < SIT_MIN_VOTERS ? ` · ${SIT_MIN_VOTERS}명부터 필터에 반영` : " · 필터에 반영 중"}</span></h3>${tags || '<p class="note">아직 고른 상황이 없어요.</p>'}</div>`;
+  return `<div class="sec"><h3>리뷰로 모인 상황 <span>${v.voters}명 참여${v.voters < SIT_MIN_VOTERS ? ` · ${SIT_MIN_VOTERS}명부터 필터에 반영` : " · 필터에 반영 중"}</span></h3>${tags || '<p class="note">아직 고른 상황이 없어요.</p>'}</div>`;
 }
 /* 거리 기준: 내 실제 위치가 있으면 내 위치, 없으면 지금 보는 지도 가운데 */
 function sitDistance(it){
@@ -859,12 +875,16 @@ function sitOk(e){
     case "solo": { const c = crowdSit(e, "solo"); return c ?? (!e.reserve && (["전시","체험"].includes(e.genre4 || e.genre) || isAlwaysOpen(e))); }
     case "quiet": { const c = crowdSit(e, "quiet"); return c ?? (isIndoor(e) && !["공연","축제"].includes(e.genre4 || e.genre)); }
     case "photo": { const c = crowdSit(e, "photo"); return c ?? ["전시","축제"].includes(e.genre4 || e.genre); }
+    case "date": { const n = sitVotes(e.id).n.date || 0; return n >= 2 || ["전시","공연"].includes(e.genre4 || e.genre); }
+    case "kids": { const n = sitVotes(e.id).n.kids || 0; return n >= 2 || ["체험","축제"].includes(e.genre4 || e.genre); }
+    case "parents": { const n = sitVotes(e.id).n.parents || 0; return n >= 2 || ["전시","공연"].includes(e.genre4 || e.genre) || isAlwaysOpen(e); }
+    case "pet": return (sitVotes(e.id).n.pet || 0) >= 1;
     case "together": { const c = crowdSit(e, "together"); return c ?? ["공연","축제","체험"].includes(e.genre4 || e.genre); }
     default: return true;
   }
 }
 const sitBtn = x => `<button aria-pressed="${S.sit===x.k}" data-sit="${x.k}"><span class="sit-e">${x.e}</span><span><b>${x.l}</b><small>${x.d}</small></span></button>`;
-const sitHTML = () => `<p class="note" style="margin:0 0 6px">하나를 고르면 다른 필터와 함께 걸러줘요. 거리는 ${S.me && !S.me.demo ? "내 위치" : "지금 보는 지도 가운데"} 기준이에요. 방문 인증한 사람이 ${SIT_MIN_VOTERS}명 이상 고른 곳은 그 투표 결과로 걸러요.</p>
+const sitHTML = () => `<p class="note" style="margin:0 0 6px">하나를 고르면 다른 필터와 함께 걸러줘요. 거리는 ${S.me && !S.me.demo ? "내 위치" : "지금 보는 지도 가운데"} 기준이에요. 리뷰를 남긴 사람이 ${SIT_MIN_VOTERS}명 이상 고른 곳은 그 결과로 걸러요.</p>
   <div class="sit-g">지금 내 상황</div><div class="sit-list">${SITUATIONS.filter(x => !x.group).map(sitBtn).join("")}</div>
   <div class="sit-g">이런 곳을 찾아요</div><div class="sit-list">${SITUATIONS.filter(x => x.group === "tag").map(sitBtn).join("")}</div>`;
 function cultureList(){
@@ -1090,7 +1110,7 @@ const reviewType = () => "event";
 function applyReviews(it){
   const ds=window.dataService;
   if(!it.baseInit){ it.baseInit=true; if(typeof it.cnt==="number"&&it.cnt>0){ it.baseCnt=it.cnt; it.baseStar=it.star||0; } }
-  const db=ds.getReviews(it.id).map(r=>({id:r.id,user_id:r.user_id,n:ds.nicknameOf(r.user_id,r.nickname||"이름 없음"),r:r.rating||0,c:r.text||"",at:r.created_at,likes:ds.getLikes(r.id).length,liked:ds.likedByMe(r.id),flagged:ds.flaggedByMe(r.id),mine:r.user_id===ds.userId()}));
+  const db=ds.getReviews(it.id).map(r=>({id:r.id,user_id:r.user_id,n:ds.nicknameOf(r.user_id,r.nickname||"이름 없음"),r:r.rating||0,c:r.text||"",at:r.created_at,likes:ds.getLikes(r.id).length,liked:ds.likedByMe(r.id),flagged:ds.flaggedByMe(r.id),mine:r.user_id===ds.userId(),visited:r.visited_at,with:r.companions||[],good:r.highlights||[],photo:r.photo_url||""}));
   const samples=(it.sampleComments||[]).map((c,i)=>({id:null,sample:true,n:SAMPLE_NICKS[hashNum(it.id+i)%SAMPLE_NICKS.length],r:3+hashNum(c.c)%3,c:c.c,t:c.t,likes:hashNum(c.c+it.id)%6,at:""}));
   it.reviewList=[...db,...samples];
   const rated=db.filter(r=>r.r);
@@ -1108,42 +1128,75 @@ function reviewSection(it){
       ? `<span class="rv-sample">예시</span><span class="rv-likes">♡ ${r.likes}</span>`
       : `<button class="rv-btn ${r.liked?"on":""}" data-like="${r.id}" data-target="${esc(it.id)}" aria-label="좋아요">${r.liked?"♥":"♡"} ${r.likes}</button>${r.mine?`<span class="rv-sample">내 리뷰</span>`:`<button class="rv-btn" data-flag="${r.id}" data-target="${esc(it.id)}" ${r.flagged?"disabled":""}>${r.flagged?"신고됨":"신고"}</button>`}`;
     const when = r.sample ? esc(r.t||"") : dotDate(r.at);
-    if(!r.c) return `<div class="rv mini"><b>${esc(r.n)}</b><span class="rv-star">${starStr(r.r)}</span><small>${when}</small><span class="rv-acts">${acts}</span></div>`;
-    return `<div class="rv"><div class="rv-h"><b>${esc(r.n)}</b><span class="rv-star">${starStr(r.r)}</span></div><p>${esc(r.c)}</p><div class="rv-f"><small>${when}</small><span class="rv-acts">${acts}</span></div></div>`;
+    const meta = [r.visited ? `${dotDate(r.visited)} 방문` : "", (r.with||[]).map(k => REV_WITH_L[k]?.l).filter(Boolean).join("·")].filter(Boolean).join(" · ");
+    const goods = (r.good||[]).map(k => REV_GOOD_L[k]).filter(Boolean).map(x => `<span class="tag">${x.e} ${x.l}</span>`).join("");
+    const extra = `${meta?`<small class="rv-meta">${esc(meta)}</small>`:""}${goods?`<div class="rv-goods">${goods}</div>`:""}${r.photo?`<img class="rv-photo" src="${esc(r.photo)}" alt="리뷰 사진" loading="lazy">`:""}`;
+    if(!r.c && !extra) return `<div class="rv mini"><b>${esc(r.n)}</b><span class="rv-star">${starStr(r.r)}</span><small>${when}</small><span class="rv-acts">${acts}</span></div>`;
+    return `<div class="rv"><div class="rv-h"><b>${esc(r.n)}</b><span class="rv-star">${starStr(r.r)}</span></div>${extra}${r.c?`<p>${esc(r.c)}</p>`:""}<div class="rv-f"><small>${when}</small><span class="rv-acts">${acts}</span></div></div>`;
   };
   const full=Math.round(it.star||0);
   return `<div class="sec"><h3>리뷰</h3>
     <div class="rv-sum">${it.cnt
       ?`<b class="rv-avg">${it.star.toFixed(1)}</b><div><div class="rv-sum-stars" aria-label="5점 만점에 ${it.star.toFixed(1)}점">${starStr(full)}</div><small>평가 ${it.cnt}개</small></div>`
       :`<b class="rv-avg muted">-</b><div><div class="rv-sum-stars">${starStr(0)}</div><small>아직 평가가 없어요. 첫 별점을 남겨주세요.</small></div>`}</div>
+    ${(() => { const db = it.reviewList.filter(r => !r.sample); const cg = {}, cw = {}; db.forEach(r => { (r.good||[]).forEach(k => cg[k] = (cg[k]||0)+1); (r.with||[]).forEach(k => cw[k] = (cw[k]||0)+1); });
+      const g = Object.entries(cg).sort((a,b)=>b[1]-a[1]).slice(0,4).filter(([k]) => REV_GOOD_L[k]).map(([k,n]) => `<span class="tag">${REV_GOOD_L[k].e} ${REV_GOOD_L[k].l} ${n}</span>`).join("");
+      const w = Object.entries(cw).sort((a,b)=>b[1]-a[1]).filter(([k]) => REV_WITH_L[k]).map(([k,n]) => `${REV_WITH_L[k].l} ${n}`).join(" · ");
+      return g || w ? `<div class="rv-agg">${g?`<div class="rv-goods">${g}</div>`:""}${w?`<small>함께 온 사람: ${esc(w)}</small>`:""}</div>` : ""; })()}
     <div class="rv-bar"><div class="seg2"><button data-rsort="new" data-target="${esc(it.id)}" aria-pressed="${sort==="new"}">최신순</button><button data-rsort="like" data-target="${esc(it.id)}" aria-pressed="${sort==="like"}">좋아요순</button></div><button class="blk sm" data-rwrite="${esc(it.id)}">★ 리뷰 쓰기</button></div>
     ${list.map(item).join("") || '<p class="note">아직 리뷰가 없어요. 첫 리뷰를 남겨주세요.</p>'}</div>`;
 }
 function reviewSheet(id){
   const it=findAny(id); if(!it) return;
   if(needLogin("리뷰 작성", () => backToDetail(id))) return;
-  let rating=0;
-  sheet(`<div class="sh-h"><h2>리뷰 쓰기</h2><button class="x" id="rvX" aria-label="닫기">${ico.x}</button></div>
+  // 방문 일시: 지금으로 자동 입력, 틀리면 고칠 수 있게. 행사 기간 안에서만
+  const k = new Date(Date.now() + 9*3600e3), mm = Math.floor(k.getUTCMinutes()/10)*10;
+  let day = REC_TODAY; if (!isAlwaysOpen(it) && it.end && it.end < day) day = it.end;
+  const minDay = !isAlwaysOpen(it) && it.start ? it.start : "", maxDay = REC_TODAY;
+  const tm = `${String(k.getUTCHours()).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
+  let rating = 0, photo = "";
+  const withSet = new Set(), goodSet = new Set();
+  const chip = (x, key) => `<button type="button" aria-pressed="false" data-${key}="${x.k}">${x.e} ${x.l}</button>`;
+  sheet(`<div class="sh-h"><h2>리뷰 남기기</h2><button class="x" id="rvX" aria-label="닫기">${ico.x}</button></div>
     <p class="note">${esc(it.name)} · ${esc(window.dataService.getNickname())}(으)로 남겨요</p>
-    <form id="rvF" novalidate>
+    <form id="rvF" class="rv-form" novalidate>
+      <label>언제 다녀왔나요? <span class="note">지금으로 채워 뒀어요. 다르면 고쳐 주세요</span></label>
+      <div class="row2"><input type="date" id="rvD" value="${day}" ${minDay?`min="${minDay}"`:""} max="${maxDay}" aria-label="방문 날짜"><input type="time" id="rvTm" value="${tm}" step="600" aria-label="방문 시간"></div>
+      <label>누구와 함께 갔나요? <span class="note">여러 개 골라도 돼요</span></label>
+      <div class="sit-vote">${REV_WITH.map(x => chip(x, "rw")).join("")}</div>
       <label>별점 (필수)</label><div class="stars" id="rvStars" role="group" aria-label="별점">${[1,2,3,4,5].map(n=>`<button type="button" data-rv="${n}" aria-label="${n}점">★</button>`).join("")}</div>
-      <label for="rvT">리뷰 (선택)</label><textarea id="rvT" maxlength="300" placeholder="가격·양·대기 시간 같은 현장 정보를 남겨주세요. 별점만 남겨도 돼요."></textarea>
+      <label>어떤 점이 좋았나요? <span class="note">여러 개 골라도 돼요</span></label>
+      <div class="sit-vote">${REV_GOOD.map(x => chip(x, "rg")).join("")}</div>
+      <label for="rvP">사진 (선택)</label><input type="file" id="rvP" accept="image/*"><img id="rvPv" class="prev" alt="" hidden>
+      <label for="rvT">리뷰 (선택)</label><textarea id="rvT" maxlength="300" placeholder="대기 시간, 볼거리, 꿀팁을 자유롭게 남겨 주세요."></textarea>
       <div class="err" id="rvErr"></div>
       <div class="acts"><button class="out" type="button" id="rvC">취소</button><button class="blk" type="submit">등록</button></div>
     </form>`);
   const back = () => backToDetail(id);
   $("#rvX").onclick = back; $("#rvC").onclick = back;
   document.querySelectorAll("[data-rv]").forEach(b => b.onclick = () => { rating=+b.dataset.rv; document.querySelectorAll("[data-rv]").forEach(x=>x.classList.toggle("on", +x.dataset.rv<=rating)); $("#rvErr").textContent=""; });
+  const toggle = (attr, set) => document.querySelectorAll(`[data-${attr}]`).forEach(b => b.onclick = () => { const v = b.dataset[attr]; set.has(v) ? set.delete(v) : set.add(v); b.setAttribute("aria-pressed", set.has(v)); });
+  toggle("rw", withSet); toggle("rg", goodSet);
+  $("#rvP").onchange = async ev => { const f = ev.target.files[0]; if (!f) return; try { photo = await shrinkPhoto(f); $("#rvPv").src = photo; $("#rvPv").hidden = false; } catch(_) { $("#rvErr").textContent = "사진을 읽지 못했어요. 다른 사진을 골라 주세요."; } };
   $("#rvF").addEventListener("submit", async ev => {
     ev.preventDefault();
+    const date = $("#rvD").value, time = $("#rvTm").value || "12:00";
+    if(!date){ $("#rvErr").textContent="다녀온 날짜를 골라 주세요."; return; }
+    if(date > REC_TODAY){ $("#rvErr").textContent="미래 날짜는 고를 수 없어요."; return; }
     if(!rating){ $("#rvErr").textContent="별점을 골라 주세요."; return; }
-    const ds=window.dataService, first=!ds.getReviews(id).some(r=>r.user_id===ds.userId());
+    const ds=window.dataService;
     ev.submitter && (ev.submitter.disabled=true);
-    const result=await ds.addReview(id,$("#rvT").value,reviewType(it),rating);
-    if(!result.ok){ $("#rvErr").textContent="저장에 실패했어요. 다시 시도해 주세요."; ev.submitter && (ev.submitter.disabled=false); return; }
-    logReceipt(id, "리뷰");
+    const visited_at = new Date(`${date}T${time}:00+09:00`).toISOString();
+    const result=await ds.addReview(id,$("#rvT").value,reviewType(it),rating,{visited_at, companions:[...withSet], highlights:[...goodSet], photo});
+    if(!result.ok){ $("#rvErr").textContent=(result.error && result.error.message) || "저장에 실패했어요. 다시 시도해 주세요."; ev.submitter && (ev.submitter.disabled=false); return; }
+    // 상황 필터 투표로도 반영 (같은 장소에 다시 남기면 덮어씀)
+    const sits = [...new Set([...[...withSet].map(k => WITH_TO_SIT[k]), ...[...goodSet].map(k => GOOD_TO_SIT[k])].filter(Boolean))];
+    if (sits.length && ds.addSituationVotes) { await ds.addSituationVotes(id, sits); sitIdxLen = -1; }
+    logReceipt(id, "리뷰", date);
+    // 사진은 기록 탭 달력에도 (나만 보기, 이미 남긴 사진이 없을 때만)
+    if (photo) { const d = diary(), key = `${date}|${id}`; if (!d.notes[key]?.photo) { d.notes[key] = {...(d.notes[key] || {}), photo}; saveDiary(d); } }
     back(); renderMap();
-    toast("리뷰를 남겼어요.");
+    toast("리뷰를 남겼어요. 상황 필터에도 반영돼요.");
   });
 }
 function flagSheet(reviewId, target){
@@ -1193,7 +1246,7 @@ function detail(id,level){
       </div>
       <button class="blk w" id="dNaver">네이버 지도에서 보기</button>
       ${e.is_public_culture&&e.homepage_url?`<button class="out w" id="dHomepage">홈페이지에서 보기</button>`:""}
-      <button class="out w" id="dVer" ${done?"disabled":""}>${done?"방문 인증 완료":"📍 방문 인증하기"}</button>
+      <button class="out w" id="dVer">✍️ 다녀왔어요 · 리뷰 남기기</button>
     </div>
     <button class="linkbtn" id="dReport">광고·허위 정보 신고</button></div>`,{placeId:id,level});
   $("#dX").onclick = closeSheet;
@@ -1209,7 +1262,7 @@ function detail(id,level){
   if($("#dHomepage")) $("#dHomepage").onclick=()=>{const url=e.homepage_url;if(/^https?:\/\//i.test(url))window.open(url,"_blank","noopener,noreferrer");else toast("홈페이지 주소를 확인해 주세요.");};
   $("#dShare").onclick = async () => { const url = `${location.href.split("#")[0]}#${id}`; try { await navigator.clipboard.writeText(url); toast("공유 링크를 복사했어요."); } catch (_) { toast("공유 링크는 데모에서만 안내해요."); } };
   const backE = () => detail(id);
-  $("#dVer").onclick = () => { if(!needLogin("방문 인증", backE)) verify(id); };
+  $("#dVer").onclick = () => reviewSheet(id);
   $("#dReport").onclick = () => reportAbuse(id);
   if ($("#goProfile")) $("#goProfile").onclick = () => profileSheet(true);
   $("#aPhoto").onclick = () => { if(!needLogin("현장 사진 추가", backE)) photoUpdate(id); };
@@ -1641,12 +1694,12 @@ function paidPrice(e){
   if (!S.profile || !e.ben) return base;
   return e.ben.reduce((m,r) => ruleOk(r) && r.p < m ? r.p : m, base);
 }
-function logReceipt(id, kind){
-  const it = findAny(id); if (!it) return;
-  const log = receiptLog(), month = REC_TODAY.slice(0,7), key = `${month}|${id}`;
+function logReceipt(id, kind, date){
+  const it = findAny(id); if (!it) return; date = date || REC_TODAY;
+  const log = receiptLog(), month = date.slice(0,7), key = `${month}|${id}`;
   if (log[key]) return; // 같은 달 같은 행사는 한 번만
   const price = it.price_min ?? it.price ?? 0;
-  log[key] = {id, name:it.name, genre:it.genre, date:REC_TODAY, kind, price, paid:Math.min(price, paidPrice(it))};
+  log[key] = {id, name:it.name, genre:it.genre, date, kind, price, paid:Math.min(price, paidPrice(it))};
   try { localStorage.setItem(RECEIPT_KEY, JSON.stringify(log)); } catch(_) {}
 }
 /* 한 달 기록: 저장된 영수증 + 서버의 방문 인증·내 리뷰(같은 달 같은 행사는 1회) */
@@ -1660,7 +1713,7 @@ function receiptEntries(month){
     out.set(id, {id, name:it.name, genre:it.genre, date:String(date).slice(0,10), kind, price, paid:Math.min(price, paidPrice(it))});
   };
   const ds = window.dataService;
-  if (ds) { ds.getVisits().forEach(v => add(v.event_id, v.visit_date, "방문 인증")); ds.getMyReviews().forEach(r => add(r.target_id, r.created_at, "리뷰")); }
+  if (ds) { ds.getVisits().forEach(v => add(v.event_id, v.visit_date, "방문 인증")); ds.getMyReviews().forEach(r => add(r.target_id, kstDate(r.visited_at || r.created_at), "리뷰")); }
   return [...out.values()].sort((a,b) => a.date.localeCompare(b.date));
 }
 function peerStat(stat){
@@ -1695,7 +1748,7 @@ function receiptHTML(month){
       <div class="rc-head"><b>컬처맵</b><small>${esc(window.dataService?.getNickname?.() || "회원")}님의 ${m}월 문화생활</small></div>
       <div class="rc-rule"></div>
       ${rows.length ? rows.map(r => `<div class="rc-row"><span><small>${r.date.slice(5).replace("-",".")}</small> ${esc(r.name)}</span><span>${r.paid ? won(r.paid) : "무료"}${r.price > r.paid ? `<s>${won(r.price)}</s>` : ""}</span></div>`).join("")
-        : '<p class="note" style="text-align:center;margin:14px 0">이번 달 기록이 아직 없어요.<br>방문 인증하거나 리뷰를 남기면 여기에 쌓여요.</p>'}
+        : '<p class="note" style="text-align:center;margin:14px 0">이번 달 기록이 아직 없어요.<br>다녀온 곳에 리뷰를 남기면 여기에 쌓여요.</p>'}
       <div class="rc-rule"></div>
       <div class="rc-sum"><span>이용 횟수</span><b>${count}회</b></div>
       <div class="rc-cmp">${who}는 한 달 평균 약 ${avgCount.toFixed(1)}회 관람해요 · ${count ? cmpLine(count, avgCount, "회") : "첫 기록을 남겨 보세요"}</div>
@@ -1727,7 +1780,7 @@ function dayRecords(month){
   };
   const ds = window.dataService;
   ds.getVisits().forEach(v => add(v.event_id, v.visit_date, "방문 인증"));
-  ds.getMyReviews().forEach(r => add(r.target_id, r.created_at, "리뷰"));
+  ds.getMyReviews().forEach(r => add(r.target_id, kstDate(r.visited_at || r.created_at), "리뷰"));
   Object.values(receiptLog()).forEach(r => add(r.id, r.date, r.kind, r));
   const demo = diary().demo; if (demo && S.showDemo) add(demo.id, demo.date, "예시 기록", demo);
   return out;
@@ -1792,7 +1845,7 @@ function recordPage(pg){
       ${dayP.map(x => x.type==="plan"
         ? `<div class="day-i"><span class="ph">📅</span><div style="min-width:0;flex:1"><button class="linkbtn" data-open="${esc(x.id)}" style="padding:0;text-align:left"><b>${esc(x.name)}</b></button><small>가기로 한 날</small></div><button class="out sm" data-unplan="${esc(x.id)}">취소</button></div>`
         : `<div class="day-i"><span class="ph">⏰</span><div style="min-width:0;flex:1"><button class="linkbtn" data-open="${esc(x.id)}" style="padding:0;text-align:left"><b>${esc(x.name)}</b></button><small>찜한 행사 마지막 날</small></div></div>`).join("")}
-      ${!dayR.length && !dayP.length ? `<p class="note" style="margin:6px 0 0">${future ? "찜한 행사 상세에서 '갈 날짜 정하기'를 누르면 여기에 표시돼요." : "이날은 기록이 없어요. 방문 인증하거나 리뷰를 남기면 도장이 찍혀요."}</p>` : ""}
+      ${!dayR.length && !dayP.length ? `<p class="note" style="margin:6px 0 0">${future ? "찜한 행사 상세에서 '갈 날짜 정하기'를 누르면 여기에 표시돼요." : "이날은 기록이 없어요. 리뷰를 남기면 도장이 찍혀요."}</p>` : ""}
     </div>
     <div class="secline" style="margin-top:18px"><b>${m}월 영수증</b><span>${visitedCount}곳</span></div>
     ${receiptHTML(month)}

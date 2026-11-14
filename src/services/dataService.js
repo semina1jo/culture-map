@@ -19,7 +19,7 @@
     event_benefits: "id,rule_key,event_id,type,value,price_after,label,auto_extracted,user_id",
     places: "id,category,subcategory,name,price,ref_price,address,lat,lng,hours,note,source,is_sample,user_id,meta,updated_at",
     user_profiles: "user_id,nickname,birth,student_type,gu,soldier,interest_genres,demo_mode,noti_settings,extra_fields,updated_at",
-    reviews: "id,target_type,target_id,user_id,nickname,rating,text,created_at",
+    reviews: "id,target_type,target_id,user_id,nickname,rating,text,created_at,visited_at,companions,highlights,photo_url",
     reports: "id,tab,name,genre,subcategory,price,ref_price,start_date,end_date,address,lat,lng,photo_url,source_url,status,yes,ended,wrong,user_id,meta,created_at",
     report_votes: "id,report_id,user_id,vote,created_at",
     visits: "id,user_id,event_id,visit_date,verified_at,demo_mode,distance_m",
@@ -296,12 +296,12 @@
   async function uploadPhoto(value) {
     if (!value || !value.startsWith("data:")) return value || "";
     const blob = await (await fetch(value)).blob();
-    if (blob.size > 5 * 1024 * 1024) throw new Error("제보 사진은 5MB 이하로 선택해 주세요.");
+    if (blob.size > 5 * 1024 * 1024) throw new Error("사진은 5MB 이하로 선택해 주세요.");
     if (!["image/jpeg","image/png","image/webp","image/gif"].includes(blob.type)) throw new Error("JPG, PNG, WebP, GIF 사진을 사용해 주세요.");
     const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" }[blob.type];
     const path = `${userId()}/${uuid()}.${extension}`;
     const response = await fetch(`${base}/storage/v1/object/report-photos/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type }), body: blob });
-    if (!response.ok) throw new Error("제보 사진 업로드에 실패했어요.");
+    if (!response.ok) throw new Error("사진 업로드에 실패했어요.");
     return `${base}/storage/v1/object/public/report-photos/${path}`;
   }
   const service = {
@@ -329,9 +329,12 @@
       cache("event_benefits", rows); return rows;
     }),
     getReviews: target => list("reviews").filter(r => r.target_id === target),
-    addReview: (targetId, text, targetType = "event", rating = null) => run(async () => {
+    // extra: { visited_at, companions[], highlights[], photo(dataURL) } — 컬처맵 리뷰 항목
+    addReview: (targetId, text, targetType = "event", rating = null, extra = {}) => run(async () => {
       if (!nickname()) cache("nickname", randomNickname());
-      const row = { id: uuid(), user_id: userId(), nickname: nickname(), rating: rating ? Number(rating) : null, target_type: targetType, target_id: targetId, text: String(text || "").trim() || null, created_at: now() };
+      const row = { id: uuid(), user_id: userId(), nickname: nickname(), rating: rating ? Number(rating) : null, target_type: targetType, target_id: targetId, text: String(text || "").trim() || null, created_at: now(),
+        visited_at: extra.visited_at || null, companions: extra.companions && extra.companions.length ? extra.companions : null, highlights: extra.highlights && extra.highlights.length ? extra.highlights : null, photo_url: null };
+      if (extra.photo) row.photo_url = configured ? await uploadPhoto(extra.photo) : extra.photo;
       if (configured) await insert("reviews", row);
       cache("reviews", [row, ...list("reviews")]); return row;
     }),
