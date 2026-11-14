@@ -26,6 +26,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 button:disabled{opacity:.45;cursor:default}
 :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .sheet:focus,.sheet:focus-visible{outline:none}
+.rv-gt{font-size:11.5px;font-weight:700;color:var(--muted);margin:8px 0 2px}
 .my-rv{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}.my-rv-t{flex:1;min-width:0;text-align:left;border:0;background:none;padding:0}.my-rv-t b{display:block;font-size:14.5px}.my-rv-t small{color:var(--muted);font-size:12px}.my-rv-a{display:flex;gap:6px;flex:none}.blk.danger{background:var(--red);border-color:var(--red)}
 .rv-empty{display:block;width:100%;text-align:left;border:0;background:none;padding:6px 0;color:var(--muted);font-size:12.5px}.rv-empty u{color:var(--ink2)}
 .rv-form label .note{font-weight:500;margin-left:4px;font-size:11.5px}.rv-form .sit-vote{margin:4px 0 2px}.row2{display:grid;grid-template-columns:1.3fr 1fr;gap:8px}
@@ -791,48 +792,57 @@ const hideDemo = e => !S.showDemo && isDemoCulture(e);
 const hideDemoNoti = n => !S.showDemo && isDemoCulture(findAny(n.target_id || n.id));
 /* ===== 상황 필터: 지금 내 상황에 맞는 조건 묶음 (다른 필터와 함께 적용) ===== */
 const SITUATIONS = [
-  {k:"quick", e:"⏱️", l:"잠깐 짬 날 때", d:"1km 안 · 예약 없이 바로 · 오늘 아직 열려 있는 곳"},
+  /* 지금 내 상황: 시간·날씨·거리 조건 */
+  {k:"quick", e:"⏱️", l:"잠깐 짬 날 때", d:"1km 안 · 예약 없이 · 오늘 아직 열린 곳 (리뷰 '잠깐 들러도 충분해요·대기 없이 봤어요' 반영)"},
   {k:"evening", e:"🌙", l:"퇴근 후", d:"오늘 저녁 8시 이후까지 열린 곳 · 시간 확인된 곳만"},
-  {k:"rain",  e:"☔", l:"비 오는 날", d:"실내로 보이는 곳 (전시·공연·박물관 등)"},
+  {k:"rain",  e:"☔", l:"비 오는 날", d:"실내인 곳 (리뷰 '실내라 날씨 상관없어요' 반영)"},
   {k:"soon",  e:"⏳", l:"마감 임박", d:"3일 안에 끝나는 곳"},
-  /* 이런 곳(장소 성격 태그): 처음엔 분야로 추정, 방문자 투표가 쌓이면 투표로 */
-  {k:"solo",    e:"🙋", l:"혼자 가기 좋은", d:"예약 없이 혼자 둘러보기 좋은 곳", group:"tag"},
-  {k:"quiet",   e:"🤫", l:"조용한", d:"차분하게 머물 수 있는 실내", group:"tag"},
-  {k:"photo",   e:"📸", l:"사진 찍기 좋은", d:"볼거리·포토존이 있는 곳", group:"tag"},
-  {k:"together",e:"👯", l:"같이 가기 좋은", d:"친구·동료와 함께 즐기기 좋은 곳", group:"tag"},
-  /* 리뷰의 '누구와 함께'에서 나온 태그: 같은 동행으로 다녀온 리뷰가 2개 이상이면 확정, 그전엔 분야로 추정 */
-  {k:"date",    e:"💑", l:"데이트하기 좋은", d:"연인·배우자와 다녀온 리뷰 기준", group:"tag"},
-  {k:"kids",    e:"🧒", l:"아이와 가기 좋은", d:"아이와 다녀온 리뷰 기준", group:"tag"},
-  {k:"parents", e:"👵", l:"부모님과 가기 좋은", d:"부모님과 다녀온 리뷰 기준", group:"tag"},
-  {k:"pet",     e:"🐶", l:"반려동물과 함께", d:"반려동물과 다녀온 리뷰가 있는 곳만", group:"tag"}
+  /* 누구와 가나요: 리뷰 '누구와 함께 다녀왔나요?' 기준 */
+  {k:"w_solo",     e:"🙋", l:"혼자", d:"혼자 다녀온 리뷰가 있는 곳 · 리뷰 전엔 예약 없는 전시·상설", group:"with"},
+  {k:"w_partner",  e:"💑", l:"연인·배우자와", d:"연인·배우자와 다녀온 리뷰 기준 · 리뷰 전엔 공연·축제", group:"with"},
+  {k:"w_friend",   e:"👯", l:"친구와", d:"친구와 다녀온 리뷰 기준 · 리뷰 전엔 공연·축제·체험", group:"with"},
+  {k:"w_coworker", e:"🤝", l:"지인·동료와", d:"지인·동료와 다녀온 리뷰 기준 · 리뷰 전엔 퇴근 후 열린 곳", group:"with"},
+  {k:"w_kid",      e:"🧒", l:"아이와", d:"아이와 다녀온 리뷰 기준 · 리뷰 전엔 체험·축제", group:"with"},
+  {k:"w_parent",   e:"👵", l:"부모님과", d:"부모님과 다녀온 리뷰 기준 · 리뷰 전엔 상설 시설·국악·클래식", group:"with"},
+  {k:"w_pet",      e:"🐶", l:"반려동물과", d:"반려동물과 다녀온 리뷰가 있는 곳만", group:"with"},
+  /* 이런 곳을 찾아요: 리뷰 '좋았던 점·분위기' 기준 */
+  {k:"quiet",       e:"🤫", l:"조용한", d:"리뷰 분위기 '조용해요' · 리뷰 전엔 실내 전시·상설", group:"tag"},
+  {k:"lively",      e:"🎉", l:"활기찬", d:"리뷰 분위기 '활기차요' · 리뷰 전엔 공연·축제", group:"tag"},
+  {k:"photo",       e:"📸", l:"사진이 잘 나오는", d:"리뷰 '사진이 잘 나와요' · 리뷰 전엔 전시·축제", group:"tag"},
+  {k:"concept",     e:"✨", l:"컨셉이 독특한", d:"리뷰에서 '컨셉이 독특해요'를 고른 곳만", group:"tag"},
+  {k:"interactive", e:"🙌", l:"체험할 수 있는", d:"리뷰 '체험·참여 요소가 재밌어요' · 리뷰 전엔 체험", group:"tag"},
+  {k:"rest",        e:"🛋️", l:"쉬어 가기 좋은", d:"리뷰에서 '휴식 공간이 잘 되어 있어요'를 고른 곳만", group:"tag"}
 ];
-/* 리뷰 항목: 누구와 함께(복수) · 좋았던 점(복수). 값은 키로 저장하고 상황 필터 투표로도 쓴다 */
+/* 리뷰 항목: 누구와 함께(복수) · 좋았던 점(복수, 3묶음) · 분위기(하나). 값은 키로 저장 */
 const REV_WITH = [{k:"solo",e:"🙋",l:"혼자"},{k:"partner",e:"💑",l:"연인·배우자"},{k:"friend",e:"👯",l:"친구"},{k:"coworker",e:"🤝",l:"지인·동료"},{k:"kid",e:"🧒",l:"아이"},{k:"parent",e:"👵",l:"부모님"},{k:"pet",e:"🐶",l:"반려동물"}];
-const REV_GOOD = [{k:"concept",e:"✨",l:"컨셉이 독특해요"},{k:"content",e:"🎨",l:"작품·공연이 알차요"},{k:"clean",e:"🧹",l:"시설이 깔끔해요"},{k:"photo",e:"📸",l:"사진 찍기 좋아요"},{k:"quiet",e:"🤫",l:"조용히 즐기기 좋아요"},{k:"quick",e:"⏱️",l:"잠깐 들르기 좋아요"},{k:"stay",e:"🕰️",l:"오래 머물기 좋아요"},{k:"indoor",e:"☔",l:"날씨 상관없어요(실내)"},{k:"guide",e:"💬",l:"설명·해설이 친절해요"},{k:"value",e:"💸",l:"가격 대비 만족해요"},{k:"access",e:"🚇",l:"찾아가기 쉬워요"}];
-const REV_WITH_L = Object.fromEntries(REV_WITH.map(x => [x.k, x])), REV_GOOD_L = Object.fromEntries(REV_GOOD.map(x => [x.k, x]));
-const WITH_TO_SIT = {solo:"solo", partner:"date", friend:"together", coworker:"together", kid:"kids", parent:"parents", pet:"pet"};
-const GOOD_TO_SIT = {photo:"photo", quiet:"quiet", quick:"quick", indoor:"rain"};
-const COMPANION_SITS = ["date","kids","parents","pet"];
+const REV_GOOD_GROUPS = [
+  {t:"콘텐츠·기획", items:[{k:"concept",e:"✨",l:"컨셉이 독특해요"},{k:"content",e:"🎨",l:"볼거리가 풍성해요"},{k:"staging",e:"🎬",l:"연출·구성이 탄탄해요"},{k:"interactive",e:"🙌",l:"체험·참여 요소가 재밌어요"},{k:"guide",e:"💬",l:"도슨트·해설이 유익해요"}]},
+  {t:"공간·분위기", items:[{k:"clean",e:"🧹",l:"시설이 깔끔해요"},{k:"photo",e:"📸",l:"사진이 잘 나와요(포토존)"},{k:"vibe",e:"🎶",l:"분위기가 감성적이에요(음악·조명)"},{k:"rest",e:"🛋️",l:"휴식 공간이 잘 되어 있어요"},{k:"indoor",e:"☔",l:"실내라 날씨 상관없어요"}]},
+  {t:"접근성·편의", items:[{k:"access",e:"🚇",l:"대중교통으로 가기 편해요"},{k:"nowait",e:"🎟️",l:"대기 없이 봤어요"},{k:"quick",e:"⏱️",l:"잠깐 들러도 충분해요"}]}];
+const REV_MOOD = [{k:"quiet",e:"🤫",l:"조용해요"},{k:"lively",e:"🎉",l:"활기차요"}];
+const REV_GOOD = REV_GOOD_GROUPS.flatMap(g => g.items);
+const REV_GOOD_LEGACY = [{k:"stay",e:"🕰️",l:"오래 머물기 좋아요"},{k:"value",e:"💸",l:"가격 대비 만족해요"}]; // 이전 리뷰 표시용
+const REV_WITH_L = Object.fromEntries(REV_WITH.map(x => [x.k, x])), REV_GOOD_L = Object.fromEntries([...REV_GOOD, ...REV_MOOD, ...REV_GOOD_LEGACY].map(x => [x.k, x]));
 const kstDate = iso => iso ? new Date(Date.parse(iso) + 9*3600e3).toISOString().slice(0,10) : "";
 const SIT_L = Object.fromEntries(SITUATIONS.map(x => [x.k, x]));
-/* 방문자가 고를 수 있는 상황(장소 성격에 관한 것만. 무료·마감 임박은 데이터로 정확히 알 수 있어 투표 안 받음) */
-const SIT_VOTE = [{k:"quick", e:"⏱️", l:"잠깐 들르기 좋았어요"}, {k:"rain", e:"☔", l:"비 와도 괜찮아요(실내)"},
-  {k:"solo", e:"🙋", l:"혼자 가기 좋았어요"}, {k:"quiet", e:"🤫", l:"조용했어요"}, {k:"photo", e:"📸", l:"사진 찍기 좋았어요"}, {k:"together", e:"👯", l:"같이 가기 좋았어요"},
-  {k:"date", e:"💑", l:"데이트"}, {k:"kids", e:"🧒", l:"아이와"}, {k:"parents", e:"👵", l:"부모님과"}, {k:"pet", e:"🐶", l:"반려동물과"}];
-const SIT_MIN_VOTERS = 3, SIT_YES_RATIO = 0.4; // 3명 이상 투표가 쌓이면, 40% 이상이 고른 상황만 인정
-let sitIdx = null, sitIdxLen = -1;
-function sitVotes(id){
-  const all = window.dataService.getSituationVotes ? window.dataService.getSituationVotes() : [];
-  if (sitIdxLen !== all.length) { sitIdx = {}; sitIdxLen = all.length;
-    all.forEach(v => { const x = sitIdx[v.event_id] = sitIdx[v.event_id] || {voters:new Set(), n:{}}; x.voters.add(v.user_id); x.n[v.situation] = (x.n[v.situation] || 0) + 1; }); }
-  const x = sitIdx[id]; return x ? {voters:x.voters.size, n:x.n} : {voters:0, n:{}};
-}
-/* 투표가 충분하면 true/false, 부족하면 null(기본 규칙 사용) */
-function crowdSit(e, k){ const v = sitVotes(e.id); return v.voters >= SIT_MIN_VOTERS ? (v.n[k] || 0) / v.voters >= SIT_YES_RATIO : null; }
-function sitVoteLine(e){
-  const v = sitVotes(e.id); if (!v.voters) return "";
-  const tags = SIT_VOTE.filter(x => v.n[x.k]).sort((a,b) => v.n[b.k] - v.n[a.k]).map(x => `<span class="tag">${x.e} ${x.l.replace(/좋았어요|괜찮아요/,"").trim()} ${v.n[x.k]}</span>`).join("");
-  return `<div class="sec"><h3>리뷰로 모인 상황 <span>${v.voters}명 참여${v.voters < SIT_MIN_VOTERS ? ` · ${SIT_MIN_VOTERS}명부터 필터에 반영` : " · 필터에 반영 중"}</span></h3>${tags || '<p class="note">아직 고른 상황이 없어요.</p>'}</div>`;
+const SIT_MIN_VOTERS = 3, SIT_YES_RATIO = 0.4; // 리뷰 3명 이상이면 40% 이상이 고른 항목만 인정
+/* 장소별 리뷰 집계: 사람당 가장 최근 리뷰 1개. 예전 방문 인증 투표(situation_votes)는 리뷰가 없는 사람 것만 더한다 */
+const LEGACY_SIT = {quick:["n","quick"], rain:["n","indoor"], quiet:["n","quiet"], photo:["n","photo"], solo:["w","solo"], together:["w","friend"], date:["w","partner"], kids:["w","kid"], parents:["w","parent"], pet:["w","pet"]};
+let revIdx = null, revIdxSig = "";
+function revStats(id){
+  const ds = window.dataService, reviews = ds.read().reviews || [], votes = ds.getSituationVotes ? ds.getSituationVotes() : [];
+  const sig = `${reviews.length}|${votes.length}|${reviews.reduce((a, r) => a + (r.companions||[]).length*7 + (r.highlights||[]).length, 0)}|${reviews[0]?.id||""}`;
+  if (!revIdx || sig !== revIdxSig) {
+    revIdx = {}; revIdxSig = sig;
+    const latest = new Map();
+    reviews.forEach(r => { if (!r.target_id || !r.user_id) return; const key = `${r.target_id}|${r.user_id}`, prev = latest.get(key); if (!prev || String(r.created_at) > String(prev.created_at)) latest.set(key, r); });
+    const slot = id => revIdx[id] = revIdx[id] || {users:new Set(), n:{}, w:{}};
+    latest.forEach(r => { const x = slot(r.target_id); x.users.add(r.user_id); (r.highlights||[]).forEach(k => x.n[k] = (x.n[k]||0)+1); (r.companions||[]).forEach(k => x.w[k] = (x.w[k]||0)+1); });
+    const legacyUsers = {};
+    votes.forEach(v => { const x = slot(v.event_id); if (latest.has(`${v.event_id}|${v.user_id}`)) return; const m = LEGACY_SIT[v.situation]; if (!m) return;
+      x.users.add(v.user_id); const lk = `${v.event_id}|${v.user_id}|${m[1]}`; if (legacyUsers[lk]) return; legacyUsers[lk] = 1; x[m[0]][m[1]] = (x[m[0]][m[1]]||0)+1; });
+  }
+  const x = revIdx[id]; return x ? {reviewers:x.users.size, n:x.n, w:x.w} : {reviewers:0, n:{}, w:{}};
 }
 /* 거리 기준: 내 실제 위치가 있으면 내 위치, 없으면 지금 보는 지도 가운데 */
 function sitDistance(it){
@@ -867,27 +877,36 @@ function hoursBadge(e){
   return {t:n, c:n === "운영 중" ? "grn" : n === "오늘 운영 끝" ? "red" : ""};
 }
 function sitOk(e){
-  const base = e.price_min ?? e.price;
+  const g = e.genre4 || e.genre, R = revStats(e.id);
+  // 좋았던 점·분위기: 리뷰 3명 이상이면 40% 이상, 그 전엔 한 명이라도 고르면 포함, 아무도 안 골랐으면 분야 추정
+  const vote = (keys, def) => { const n = Math.max(...[].concat(keys).map(k => R.n[k] || 0)); return R.reviewers >= SIT_MIN_VOTERS ? n / R.reviewers >= SIT_YES_RATIO : (n >= 1 || def); };
+  // 누구와: 그 동행으로 다녀온 리뷰가 1개라도 있으면 포함. 리뷰 3명 이상인데 아무도 없으면 제외, 그 전엔 분야 추정
+  const withOk = (k, def) => (R.w[k] || 0) >= 1 || (R.reviewers < SIT_MIN_VOTERS && def);
   switch (S.sit){
     case "evening": return activeOn(e, REC_TODAY) && window.hoursService.evening(hoursOn(e, REC_TODAY));
-    case "quick": { if (!activeDuring(e, REC_TODAY, REC_TODAY) || sitDistance(e) > 1000) return false; const hb = hoursBadge(e); if (hb && hb.c === "red") return false; const c = crowdSit(e, "quick"); return c ?? !e.reserve; }
-    case "rain": { const c = crowdSit(e, "rain"); return c ?? isIndoor(e); }
+    case "quick": { if (!activeDuring(e, REC_TODAY, REC_TODAY) || sitDistance(e) > 1000) return false; const hb = hoursBadge(e); if (hb && hb.c === "red") return false; return vote(["quick","nowait"], !e.reserve); }
+    case "rain": return vote("indoor", isIndoor(e));
     case "soon": { if (isAlwaysOpen(e) || !e.end) return false; const d = days(REC_TODAY, e.end); return d >= 0 && d <= 3; }
-    /* 태그: 투표 3명 이상이면 투표, 아니면 분야 기반 추정 */
-    case "solo": { const c = crowdSit(e, "solo"); return c ?? (!e.reserve && (["전시","체험"].includes(e.genre4 || e.genre) || isAlwaysOpen(e))); }
-    case "quiet": { const c = crowdSit(e, "quiet"); return c ?? (isIndoor(e) && !["공연","축제"].includes(e.genre4 || e.genre)); }
-    case "photo": { const c = crowdSit(e, "photo"); return c ?? ["전시","축제"].includes(e.genre4 || e.genre); }
-    case "date": { const n = sitVotes(e.id).n.date || 0; return n >= 2 || ["전시","공연"].includes(e.genre4 || e.genre); }
-    case "kids": { const n = sitVotes(e.id).n.kids || 0; return n >= 2 || ["체험","축제"].includes(e.genre4 || e.genre); }
-    case "parents": { const n = sitVotes(e.id).n.parents || 0; return n >= 2 || ["전시","공연"].includes(e.genre4 || e.genre) || isAlwaysOpen(e); }
-    case "pet": return (sitVotes(e.id).n.pet || 0) >= 1;
-    case "together": { const c = crowdSit(e, "together"); return c ?? ["공연","축제","체험"].includes(e.genre4 || e.genre); }
+    case "w_solo": return withOk("solo", !e.reserve && (g === "전시" || isAlwaysOpen(e)));
+    case "w_partner": return withOk("partner", ["공연","축제"].includes(g));
+    case "w_friend": return withOk("friend", ["공연","축제","체험"].includes(g));
+    case "w_coworker": return withOk("coworker", activeOn(e, REC_TODAY) && window.hoursService.evening(hoursOn(e, REC_TODAY)));
+    case "w_kid": return withOk("kid", ["체험","축제"].includes(g));
+    case "w_parent": return withOk("parent", isAlwaysOpen(e) || /국악|클래식/.test(e.raw_category || ""));
+    case "w_pet": return withOk("pet", false);
+    case "quiet": return vote("quiet", isIndoor(e) && (g === "전시" || isAlwaysOpen(e)));
+    case "lively": return vote("lively", ["공연","축제"].includes(g));
+    case "photo": return vote("photo", ["전시","축제"].includes(g));
+    case "concept": return vote("concept", false);
+    case "interactive": return vote("interactive", g === "체험");
+    case "rest": return vote("rest", false);
     default: return true;
   }
 }
 const sitBtn = x => `<button aria-pressed="${S.sit===x.k}" data-sit="${x.k}"><span class="sit-e">${x.e}</span><span><b>${x.l}</b><small>${x.d}</small></span></button>`;
-const sitHTML = () => `<p class="note" style="margin:0 0 6px">하나를 고르면 다른 필터와 함께 걸러줘요. 거리는 ${S.me && !S.me.demo ? "내 위치" : "지금 보는 지도 가운데"} 기준이에요. 리뷰를 남긴 사람이 ${SIT_MIN_VOTERS}명 이상 고른 곳은 그 결과로 걸러요.</p>
+const sitHTML = () => `<p class="note" style="margin:0 0 6px">하나를 고르면 다른 필터와 함께 걸러줘요. 거리는 ${S.me && !S.me.demo ? "내 위치" : "지금 보는 지도 가운데"} 기준이에요. 리뷰가 쌓이면 리뷰 내용으로, 그 전엔 행사 분야로 추정해서 걸러요.</p>
   <div class="sit-g">지금 내 상황</div><div class="sit-list">${SITUATIONS.filter(x => !x.group).map(sitBtn).join("")}</div>
+  <div class="sit-g">누구와 가나요?</div><div class="sit-list">${SITUATIONS.filter(x => x.group === "with").map(sitBtn).join("")}</div>
   <div class="sit-g">이런 곳을 찾아요</div><div class="sit-list">${SITUATIONS.filter(x => x.group === "tag").map(sitBtn).join("")}</div>`;
 function cultureList(){
   return events.filter(e => {
@@ -1159,7 +1178,9 @@ function reviewSheet(id, opts = {}){
   const minDay = !isAlwaysOpen(it) && it.start ? it.start : "", maxDay = REC_TODAY;
   const tm = ed && ed.visited_at ? new Date(Date.parse(ed.visited_at) + 9*3600e3).toISOString().slice(11,16) : `${String(k.getUTCHours()).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
   let rating = ed?.rating || 0, photo = undefined; // undefined = 사진 그대로, "" = 지움, dataURL = 새 사진
-  const withSet = new Set(ed?.companions || []), goodSet = new Set(ed?.highlights || []);
+  const moodKeys = REV_MOOD.map(x => x.k);
+  let mood = (ed?.highlights || []).find(k => moodKeys.includes(k)) || "";
+  const withSet = new Set(ed?.companions || []), goodSet = new Set((ed?.highlights || []).filter(k => !moodKeys.includes(k)));
   const chip = (x, key) => `<button type="button" aria-pressed="${(key==="rw"?withSet:goodSet).has(x.k)}" data-${key}="${x.k}">${x.e} ${x.l}</button>`;
   sheet(`<div class="sh-h"><h2>${ed ? "리뷰 수정" : "리뷰 남기기"}</h2><button class="x" id="rvX" aria-label="닫기">${ico.x}</button></div>
     <p class="note">${esc(it.name)} · ${esc(window.dataService.getNickname())}(으)로 남겨요</p>
@@ -1170,7 +1191,9 @@ function reviewSheet(id, opts = {}){
       <div class="sit-vote">${REV_WITH.map(x => chip(x, "rw")).join("")}</div>
       <label>별점 (필수)</label><div class="stars" id="rvStars" role="group" aria-label="별점">${[1,2,3,4,5].map(n=>`<button type="button" class="${n<=rating?"on":""}" data-rv="${n}" aria-label="${n}점">★</button>`).join("")}</div>
       <label>어떤 점이 좋았나요? <span class="note">여러 개 골라도 돼요</span></label>
-      <div class="sit-vote">${REV_GOOD.map(x => chip(x, "rg")).join("")}</div>
+      ${REV_GOOD_GROUPS.map(gr => `<div class="rv-gt">${gr.t}</div><div class="sit-vote">${gr.items.map(x => chip(x, "rg")).join("")}</div>`).join("")}
+      <label>분위기는 어땠나요? <span class="note">하나만</span></label>
+      <div class="sit-vote">${REV_MOOD.map(x => `<button type="button" aria-pressed="${mood===x.k}" data-rm="${x.k}">${x.e} ${x.l}</button>`).join("")}</div>
       <label for="rvP">사진 (선택)</label><input type="file" id="rvP" accept="image/*"><img id="rvPv" class="prev" alt="" ${ed?.photo_url?`src="${esc(ed.photo_url)}"`:"hidden"}>${ed?.photo_url?'<button type="button" class="linkbtn" id="rvPDel">사진 지우기</button>':""}
       <label for="rvT">리뷰 (선택)</label><textarea id="rvT" maxlength="300" placeholder="대기 시간, 볼거리, 꿀팁을 자유롭게 남겨 주세요.">${esc(ed?.text || "")}</textarea>
       <div class="err" id="rvErr"></div>
@@ -1181,6 +1204,7 @@ function reviewSheet(id, opts = {}){
   document.querySelectorAll("[data-rv]").forEach(b => b.onclick = () => { rating=+b.dataset.rv; document.querySelectorAll("[data-rv]").forEach(x=>x.classList.toggle("on", +x.dataset.rv<=rating)); $("#rvErr").textContent=""; });
   const toggle = (attr, set) => document.querySelectorAll(`[data-${attr}]`).forEach(b => b.onclick = () => { const v = b.dataset[attr]; set.has(v) ? set.delete(v) : set.add(v); b.setAttribute("aria-pressed", set.has(v)); });
   toggle("rw", withSet); toggle("rg", goodSet);
+  document.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => { mood = mood === b.dataset.rm ? "" : b.dataset.rm; document.querySelectorAll("[data-rm]").forEach(x => x.setAttribute("aria-pressed", x.dataset.rm === mood)); });
   $("#rvPDel") && ($("#rvPDel").onclick = () => { photo = ""; $("#rvPv").hidden = true; $("#rvPDel").remove(); });
   $("#rvP").onchange = async ev => { const f = ev.target.files[0]; if (!f) return; try { photo = await shrinkPhoto(f); $("#rvPv").src = photo; $("#rvPv").hidden = false; } catch(_) { $("#rvErr").textContent = "사진을 읽지 못했어요. 다른 사진을 골라 주세요."; } };
   $("#rvF").addEventListener("submit", async ev => {
@@ -1192,13 +1216,13 @@ function reviewSheet(id, opts = {}){
     const ds=window.dataService;
     ev.submitter && (ev.submitter.disabled=true);
     const visited_at = new Date(`${date}T${time}:00+09:00`).toISOString();
-    const fields = {visited_at, companions:[...withSet], highlights:[...goodSet]};
+    const fields = {visited_at, companions:[...withSet], highlights:[...goodSet, ...(mood ? [mood] : [])]};
     const result = ed ? await ds.updateReview(ed.id, {...fields, rating, text:$("#rvT").value, photo})
                       : await ds.addReview(id,$("#rvT").value,reviewType(it),rating,{...fields, photo: photo || ""});
     if(!result.ok){ $("#rvErr").textContent=(result.error && result.error.message) || "저장에 실패했어요. 다시 시도해 주세요."; ev.submitter && (ev.submitter.disabled=false); return; }
-    // 상황 필터 투표로도 반영 (같은 장소에 다시 남기면 덮어씀)
-    const sits = [...new Set([...[...withSet].map(k => WITH_TO_SIT[k]), ...[...goodSet].map(k => GOOD_TO_SIT[k])].filter(Boolean))];
-    if ((sits.length || ed) && ds.addSituationVotes) { await ds.addSituationVotes(id, sits); sitIdxLen = -1; }
+    // 상황 필터는 리뷰 내용을 직접 집계한다(revStats). 예전 방문 인증 투표가 있으면 리뷰로 대체되도록 지운다
+    if (ds.addSituationVotes && (ds.getSituationVotes() || []).some(v => v.event_id === id && v.user_id === ds.userId())) await ds.addSituationVotes(id, []);
+    revIdx = null;
     if (ed) unlogReceipt(id, kstDate(ed.visited_at || ed.created_at));
     logReceipt(id, "리뷰", date);
     // 사진은 기록 탭 달력에도 (나만 보기, 이미 남긴 사진이 없을 때만)
@@ -1244,7 +1268,6 @@ function detail(id,level){
     ${rep?`<div class="sec"><h3>이 제보, 맞나요? <span>정보 확인</span></h3>
       <div class="votes">${STATUS_ORDER.map(k=>`<button data-vote="${k}" ${!S.demoMode&&S.judged.has("j"+id)?"disabled":""}><b>${e.votes[k]}</b>${STATUS_L[k]}</button>`).join("")}</div>
       <div class="status">상태: ${esc(e.status)} · 기간이 지나면 자동으로 숨겨져요</div></div>`:liveLine(e)}
-    ${sitVoteLine(e)}
     ${reviewSection(e)}
     <div class="acts">
       <div class="acts-row">
@@ -1339,14 +1362,9 @@ async function completeVisit(id, it, distance, simulated){
   if(!already){ S.verified.push({id,name:it.name,price:it.price_min ?? it.price,ref:it.ref}); }
   logReceipt(id, "방문 인증");
   sheet(`<div class="verify"><div class="big">${already?"✅":"🎉"}</div><p>${already?"오늘 이미 방문 인증했어요.":"방문 인증 완료"}</p><span class="note">${esc(it.name)} · ${simulated?"시연 모드 위치 가정":`${Math.round(distance)}m 거리`}</span>${!already?`<span class="note">정가 대비 ${Math.max(0,(it.ref||it.price||0)-((it.price_min ?? it.price) || 0)).toLocaleString()}원 아꼈어요.</span>`:""}</div>
-    ${(window.dataService.getSituationVotes?.() || []).some(v => v.event_id===id && v.user_id===window.dataService.userId()) ? "" : `<div class="sec" id="vSit"><h3>이곳, 어땠나요? <span>여러 개 골라도 돼요</span></h3><div class="sit-vote">${SIT_VOTE.map(x => `<button type="button" aria-pressed="false" data-sv="${x.k}">${x.e} ${x.l}</button>`).join("")}</div><button class="out sm" id="vSitSave" style="margin-top:8px;width:100%" disabled>선택한 항목 남기기</button><div id="vSitMsg"></div></div>`}
     <div class="sec" id="vSt"><h3>지금 현장은 어때요? <span>눌러서 현재 상태 남기기</span></h3><div class="votes">${STATUS_ORDER.map(k=>`<button data-st="${k}"><b>${STATUS_ICON[k]}</b>${STATUS_L[k]}</button>`).join("")}</div><div id="vStMsg"></div></div>
     <div class="acts"><button class="blk w" id="vDone">닫기</button></div>`);
   $("#vDone").onclick = () => { closeSheet(); backToDetail(id); };
-  const svPick = new Set();
-  document.querySelectorAll("[data-sv]").forEach(b => b.onclick = () => { const k = b.dataset.sv; svPick.has(k) ? svPick.delete(k) : svPick.add(k); b.setAttribute("aria-pressed", svPick.has(k)); $("#vSitSave").disabled = !svPick.size; });
-  $("#vSitSave") && ($("#vSitSave").onclick = async () => { $("#vSitSave").disabled = true; await window.dataService.addSituationVotes(id, [...svPick]); sitIdxLen = -1;
-    $("#vSit").innerHTML = `<div class="status">고마워요! 다음 사람들이 상황 필터로 이곳을 더 정확하게 찾을 수 있어요.</div>`; });
   document.querySelectorAll("[data-st]").forEach(b => b.onclick = () => { const k=b.dataset.st, prev=S.myStatus[id]; if(prev===k) return; it.votes=it.votes||{went:0,ended:0,wrong:0}; if(prev) it.votes[prev]--; it.votes[k]++; S.myStatus[id]=k; $("#vStMsg").innerHTML=`<div class="status">현장 상태를 ${STATUS_L[k]}로 표시했어요.</div>`; renderMap(); });
 }
 function verify(id){
@@ -1978,7 +1996,8 @@ function deleteReviewSheet(r){
     const res = await ds.deleteReview(r.id);
     if (!res.ok) { $("#dvErr").textContent = (res.error && res.error.message) || "삭제에 실패했어요. 다시 시도해 주세요."; $("#dvOk").disabled = false; return; }
     // 같은 장소에 남은 내 리뷰가 없으면 상황 투표도 지운다
-    if (!ds.getMyReviews().some(x => x.target_id === r.target_id) && ds.addSituationVotes) { await ds.addSituationVotes(r.target_id, []); sitIdxLen = -1; }
+    if (!ds.getMyReviews().some(x => x.target_id === r.target_id) && ds.addSituationVotes && (ds.getSituationVotes() || []).some(v => v.event_id === r.target_id && v.user_id === ds.userId())) await ds.addSituationVotes(r.target_id, []);
+    revIdx = null;
     unlogReceipt(r.target_id, kstDate(r.visited_at || r.created_at));
     renderMap(); myReviewsSheet(); toast("리뷰를 삭제했어요.");
   };
