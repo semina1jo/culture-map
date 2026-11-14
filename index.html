@@ -616,7 +616,7 @@ judgeList.forEach(j => {
 
 /* ===== 상태 ===== */
 const S = {tab:"map",layer:"culture",date:null,dateEnd:null,dateMode:"all",dateLabel:null,calYM:FILTER_TODAY.slice(0,7),maxPrice:10000,genres:new Set(["전시","공연","체험","축제"]),reserve:"all",
-  hideSamples:false,demoMode:true,sel:null,
+  hideSamples:false,showDemo:Boolean(window.dataService && window.dataService.read().app_state?.showDemo),demoMode:true,sel:null,
   bells:new Set(["e5"]),saved:new Set(["e1"]),
   verified:[],judged:new Set(),bookings:[],
   prefs:{open:true,end:true,free:true,judge:true,regions:new Set(),genres:new Set(["전시","공연","체험","축제"])},
@@ -782,6 +782,9 @@ const effP = e => eff(e).price;
 // 공공데이터 행사도 혜택 규칙이 있으면 내 혜택가로 거른다 (혜택가로 만 원 이하가 되는 공연은 혜택을 켰을 때만 보임)
 const cultureFilterPrice = e => e.is_public_culture && !(e.ben && e.ben.length) ? e.price : effP(e);
 function isDemoCulture(e){ return !!e && !e.is_public_culture && e.src!=="사용자 제보" && !e.report_id && (e.is_sample===true || e.src==="예시 데이터"); }
+/* 관리자 기능 '더미(예시) 데이터 보기'가 꺼져 있으면 예시 행사·할인·알림·찜·예시 기록을 숨긴다 */
+const hideDemo = e => !S.showDemo && isDemoCulture(e);
+const hideDemoNoti = n => !S.showDemo && isDemoCulture(findAny(n.target_id || n.id));
 /* ===== 상황 필터: 지금 내 상황에 맞는 조건 묶음 (다른 필터와 함께 적용) ===== */
 const SITUATIONS = [
   {k:"quick", e:"⏱️", l:"잠깐 짬 날 때", d:"1km 안 · 예약 없이 바로 · 오늘 아직 열려 있는 곳"},
@@ -866,7 +869,7 @@ const sitHTML = () => `<p class="note" style="margin:0 0 6px">하나를 고르�
   <div class="sit-g">이런 곳을 찾아요</div><div class="sit-list">${SITUATIONS.filter(x => x.group === "tag").map(sitBtn).join("")}</div>`;
 function cultureList(){
   return events.filter(e => {
-    if (e.hidden || !isAlwaysOpen(e) && e.end < FILTER_TODAY) return false;
+    if (e.hidden || hideDemo(e) || !isAlwaysOpen(e) && e.end < FILTER_TODAY) return false;
     if (S.date && !activeDuring(e, S.date, S.dateEnd || S.date)) return false;
     const price = cultureFilterPrice(e);
     if (price == null || price > S.maxPrice) return false;
@@ -1003,7 +1006,7 @@ function renderMap(){
 function render(){
   refreshNotifications();
   $("#demoModeBadge").hidden = !S.demoMode;
-  $("#notiDot").hidden = !S.notis.some(n => !n.read);
+  $("#notiDot").hidden = !S.notis.some(n => !n.read && !hideDemoNoti(n));
   document.querySelectorAll(".nav button").forEach(b => b.dataset.tab===S.tab ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
   const onMap = S.tab === "map";
   $("#head").hidden = !onMap; $("#mapUi").hidden = !onMap; $("#page").hidden = onMap; $("#map").hidden = !onMap;
@@ -1372,7 +1375,7 @@ function listSheet(clusterIds){
   const b = viewBounds();
   const wanted = clusterIds ? new Set(clusterIds) : null;
   const items = cultureList().filter(it => inView(it, b) && (!wanted || wanted.has(it.id))).map(it => ({it, dist:distM(it, b)})).sort((x,y) => x.dist - y.dist);
-  const dcs = discounts.filter(d => { const it = findAny(d.ref); return it && inView(it, b) && !it.hidden; })
+  const dcs = discounts.filter(d => { const it = findAny(d.ref); return it && inView(it, b) && !it.hidden && !hideDemo(it); })
     .sort((x,y) => ((y.left>0) - (x.left>0)) || ((x.price/x.orig) - (y.price/y.orig)));
   sheet(`<div class="sh-h"><h2>이 지역 문화생활 ${items.length}곳</h2><button class="x" id="lX" aria-label="닫기">${ico.x}</button></div>
     <p class="note">지금 보고 있는 지도 화면 기준 · 가까운 순 · 지도를 움직이면 바뀌어요</p>
@@ -1391,8 +1394,8 @@ const inRegion = e => !S.prefs.regions.size || S.prefs.regions.has(eventGu(e));
 function refreshNotifications(){
   if(window.dataService.mode==="connecting" || window.dataService.mode==="remote-error") return;
   const now = [];
-  if(S.prefs.end){ events.filter(e=>S.saved.has(e.id)&&soon(e)).forEach(e=>now.push({id:`end-${e.id}`,kind:"곧 종료",text:`찜한 ${e.name}이 곧 종료돼요`,time:"지금",read:false,target_id:e.id})); }
-  if(S.prefs.free){ events.filter(e=>(e.price_min===0||e.price===0)&&S.prefs.genres.has(e.genre4||e.genre)&&inRegion(e)).slice(0,5).forEach(e=>now.push({id:`free-${e.id}`,kind:"새 무료 행사",text:`${eventGu(e)?eventGu(e)+" · ":""}관심 분야 무료 행사 ${e.name}`,time:"지금",read:false,target_id:e.id})); }
+  if(S.prefs.end){ events.filter(e=>S.saved.has(e.id)&&!hideDemo(e)&&soon(e)).forEach(e=>now.push({id:`end-${e.id}`,kind:"곧 종료",text:`찜한 ${e.name}이 곧 종료돼요`,time:"지금",read:false,target_id:e.id})); }
+  if(S.prefs.free){ events.filter(e=>!hideDemo(e)&&(e.price_min===0||e.price===0)&&S.prefs.genres.has(e.genre4||e.genre)&&inRegion(e)).slice(0,5).forEach(e=>now.push({id:`free-${e.id}`,kind:"새 무료 행사",text:`${eventGu(e)?eventGu(e)+" · ":""}관심 분야 무료 행사 ${e.name}`,time:"지금",read:false,target_id:e.id})); }
   if(S.prefs.judge){ judgeList.filter(j=>j.status==="승격"&&j.ref&&(!j.user_id||j.user_id===window.dataService.userId())).forEach(j=>now.push({id:`judge-${j.id}`,kind:"제보 승격",text:`내 제보 ${j.name}이 확인을 받아 지도에 정식으로 올라갔어요`,time:"지금",read:false,target_id:j.ref})); }
   const tmr = addFilterDays(REC_TODAY, 1);
   Object.entries(diary().plans).forEach(([pid, date]) => { const it = findAny(pid); if (!it) return;
@@ -1403,12 +1406,12 @@ function refreshNotifications(){
 }
 
 function notiSheet(){
-  const up = [...S.bells].map(id => events.find(e => e.id===id)).filter(e=>e&&!isAlwaysOpen(e)&&e.end).map(e => {
+  const up = [...S.bells].map(id => events.find(e => e.id===id)).filter(e=>e&&!hideDemo(e)&&!isAlwaysOpen(e)&&e.end).map(e => {
     const [y,m,d] = ymd(e.end), dd = new Date(y,m-1,d-3), ds = `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,"0")}-${String(dd.getDate()).padStart(2,"0")}`;
     return `<button class="noti" data-open="${e.id}"><i class="read"></i><span><b>예정 · ${e.reserve?"예약 오픈 + ":""}종료 3일 전</b><p>${esc(e.name)}</p><time>${ds<TODAY?"오늘 알림":md(ds)+" 오전 9시"}</time></span></button>`; }).join("");
   const chipsOf = (arr, set, key) => `<div class="opt" style="margin:6px 0 4px">${arr.map(v=>`<button aria-pressed="${set.has(v)}" data-${key}="${v}">${v}</button>`).join("")}</div>`;
   sheet(`<div class="sh-h"><h2>문화 알림</h2><button class="x" id="nX" aria-label="닫기">${ico.x}</button></div>
-    <div class="sec"><h3>받은 알림</h3>${S.notis.map((n,i)=>`<button class="noti" data-noti="${i}"><i class="${n.read?"read":""}"></i><span><b>${esc(n.kind)}</b><p>${esc(n.text)}</p><time>${esc(n.time)}</time></span></button>`).join("")}</div>
+    <div class="sec"><h3>받은 알림</h3>${S.notis.map((n,i)=>hideDemoNoti(n)?"":`<button class="noti" data-noti="${i}"><i class="${n.read?"read":""}"></i><span><b>${esc(n.kind)}</b><p>${esc(n.text)}</p><time>${esc(n.time)}</time></span></button>`).join("")}</div>
     <div class="sec"><h3>예정된 알림 <span>알림 켠 행사</span></h3>${up || '<p class="note">상세 화면에서 "알림 받기"를 누르면 여기에 쌓여요.</p>'}</div>
     <div class="sec"><h3>알림 설정</h3>
       <div class="flab">관심 지역 <span class="note">아무 구도 고르지 않으면 서울 전체</span></div><div class="gu-chips">${chipsOf(SEOUL_GU,S.prefs.regions,"pr")}</div>
@@ -1425,7 +1428,7 @@ function notiSheet(){
 }
 
 function savedSheet(){
-  const items = [...S.saved].map(findAny).filter(Boolean);
+  const items = [...S.saved].map(findAny).filter(it => it && !hideDemo(it));
   sheet(`<div class="sh-h"><h2>찜 목록</h2><button class="x" id="sX" aria-label="닫기">${ico.x}</button></div>
     ${items.map(it => `<button class="listitem ${tier(it.price)}" data-open="${it.id}"><span class="ph">${EMOJI[it.genre]}</span><span><b>${esc(it.name)}</b><small>문화 · ${period(it)}</small></span><span class="pr">${priceText(it)}</span></button>`).join("") || '<p class="note" style="padding:20px 0">찜한 곳이 없어요.</p>'}`);
   $("#sX").onclick = closeSheet;
@@ -1507,7 +1510,7 @@ function renderPage(){
       ${supportProgramsCard()}
       ${S.bookings.length?`<div class="card"><h3>오늘 예약 <span class="note">${S.bookings.length}건</span></h3>${S.bookings.map(k=>`<div class="task"><div><b>${esc(k.title)}</b><small>${esc(k.name)} · ${k.time} · ${k.q}개 · ${won(k.sum)}</small></div><b style="letter-spacing:.06em">${k.code}</b></div>`).join("")}</div>`:""}
       <div class="card"><h3>알림</h3><button class="out" id="goNoti" style="width:100%">문화 알림 설정 열기</button></div>
-      <div class="card"><h3>관리자 기능 <span class="tag">데모</span></h3><label class="sw" for="hideSamples"><span>실제 입력이 있으면 예시 데이터 숨기기</span><input type="checkbox" id="hideSamples" ${S.hideSamples?"checked":""}></label><label class="sw" for="demoMode"><span>시연 모드 (위치·반복 투표 허용)</span><input type="checkbox" id="demoMode" ${S.demoMode?"checked":""}></label><div class="acts"><button class="out" id="refreshDataBtn">데이터 새로고침</button><button class="out" id="resetDataBtn">데이터 초기화</button></div></div>`;
+      <div class="card"><h3>관리자 기능 <span class="tag">데모</span></h3><label class="sw" for="showDemo"><span>더미(예시) 데이터 보기<small style="display:block;color:var(--muted);font-size:11.5px;font-weight:500">예시 행사·오늘 할인·예시 알림·기록 탭 예시 기록</small></span><input type="checkbox" id="showDemo" ${S.showDemo?"checked":""}></label><label class="sw" for="demoMode"><span>시연 모드 (위치·반복 투표 허용)</span><input type="checkbox" id="demoMode" ${S.demoMode?"checked":""}></label><div class="acts"><button class="out" id="refreshDataBtn">데이터 새로고침</button><button class="out" id="resetDataBtn">데이터 초기화</button></div></div>`;
   }
 }
 
@@ -1567,7 +1570,7 @@ function saveRecentSearch(q){
 }
 const searchNorm = v => String(v || "").toLowerCase().replace(/\s+/g, "");
 function searchPool(){
-  const culture = events.filter(e => !e.hidden && (isAlwaysOpen(e) || !e.end || e.end >= FILTER_TODAY) && hasCultureCoordinates(e)).filter(e => { const p = cultureFilterPrice(e); return p != null && p <= 10000; })
+  const culture = events.filter(e => !e.hidden && !hideDemo(e) && (isAlwaysOpen(e) || !e.end || e.end >= FILTER_TODAY) && hasCultureCoordinates(e)).filter(e => { const p = cultureFilterPrice(e); return p != null && p <= 10000; })
     .map(e => ({ it: e, kind: "문화", emoji: EMOJI[e.genre] || "🎫", sub: [e.genre, e.place].filter(Boolean).join(" · "), price: priceText(e), price0: cultureFilterPrice(e), hay: [e.name, e.place, e.genre, e.raw_category, e.source, e.fee_text, e.place_addr].join(" ") }));
   return culture;
 }
@@ -1726,14 +1729,14 @@ function dayRecords(month){
   ds.getVisits().forEach(v => add(v.event_id, v.visit_date, "방문 인증"));
   ds.getMyReviews().forEach(r => add(r.target_id, r.created_at, "리뷰"));
   Object.values(receiptLog()).forEach(r => add(r.id, r.date, r.kind, r));
-  const demo = diary().demo; if (demo) add(demo.id, demo.date, "예시 기록", demo);
+  const demo = diary().demo; if (demo && S.showDemo) add(demo.id, demo.date, "예시 기록", demo);
   return out;
 }
 /* 날짜별 계획: 내가 정한 갈 날짜 + 찜한 행사 마감일 */
 function dayPlans(month){
   const out = {}, push = (date, x) => { if (date && date.startsWith(month)) (out[date] = out[date] || []).push(x); };
   Object.entries(diary().plans).forEach(([id, date]) => { const it = findAny(id); if (it) push(date, {type:"plan", id, name:it.name, genre:it.genre}); });
-  events.filter(e => S.saved.has(e.id) && e.end && !isAlwaysOpen(e) && e.end >= REC_TODAY).forEach(e => push(e.end, {type:"end", id:e.id, name:e.name, genre:e.genre}));
+  events.filter(e => S.saved.has(e.id) && !hideDemo(e) && e.end && !isAlwaysOpen(e) && e.end >= REC_TODAY).forEach(e => push(e.end, {type:"end", id:e.id, name:e.name, genre:e.genre}));
   return out;
 }
 /* 사진 기록이 어떻게 보이는지 보여주는 예시 1건(처음 한 번만, 메모·사진에서 지우면 사라짐) */
@@ -1756,7 +1759,7 @@ function seedDemoRecord(){
   if (saveDiary(d)) { try { localStorage.setItem(DEMO_SEEDED, "1"); } catch(_) {} }
 }
 function recordPage(pg){
-  seedDemoRecord();
+  if (S.showDemo) seedDemoRecord();
   const month = S.recMonth || REC_TODAY.slice(0,7);
   S.recMonth = month;
   if (!S.recDay || ymOf(S.recDay) !== month) S.recDay = ymOf(REC_TODAY) === month ? REC_TODAY : `${month}-01`;
@@ -2036,14 +2039,14 @@ document.addEventListener("click", async ev => {
 });
 $("#scrim").addEventListener("click", ev => { if (ev.target.id==="scrim") closeSheet(); });
 document.addEventListener("change", ev => {
-  if (ev.target.id === "hideSamples"){ S.hideSamples=ev.target.checked; persistPreferences(); render(); toast(S.hideSamples?"실제 입력 장소만 보여줘요.":"예시 데이터도 함께 보여줘요."); }
+  if (ev.target.id === "showDemo"){ S.showDemo=ev.target.checked; persistPreferences(); render(); toast(S.showDemo?"더미(예시) 데이터를 함께 보여줘요.":"더미(예시) 데이터를 숨겼어요."); }
   if (ev.target.id === "demoMode"){ S.demoMode=ev.target.checked; persistPreferences(); if(window.dataService.mode==="remote") applyDataState(); $("#demoModeBadge").hidden=!S.demoMode; toast(S.demoMode?"시연 모드를 켰어요.":"일반 모드로 전환했어요."); }
   if (ev.target.id === "benSw"){ S.benefit=ev.target.checked; if(window.dataService) window.dataService.update("benefit_enabled",S.benefit); render(); }
 });
 
 document.addEventListener("keydown", ev => { if (ev.key==="Escape"){ if (!$("#scrim").hidden) closeSheet(); else if (!$("#peek").hidden) closePeek(); } });
 function persistPreferences(){
-  window.dataService.update("app_state",{hideSamples:S.hideSamples,demoMode:S.demoMode,bells:[...S.bells],prefs:{...S.prefs,regions:[...S.prefs.regions],genres:[...S.prefs.genres]}});
+  window.dataService.update("app_state",{hideSamples:S.hideSamples,showDemo:S.showDemo,demoMode:S.demoMode,bells:[...S.bells],prefs:{...S.prefs,regions:[...S.prefs.regions],genres:[...S.prefs.genres]}});
 }
 function applyDataState(){
   const ds=window.dataService;
@@ -2068,7 +2071,7 @@ function applyDataState(){
   S.profile=ds.getProfile(); S.benefit=Boolean(ds.read().benefit_enabled);
   S.saved=new Set(ds.getSaved().map(r=>r.target_id)); S.notis=ds.getNotifications();
   const preferences=ds.read().app_state;
-  if(preferences){ S.hideSamples=Boolean(preferences.hideSamples); S.demoMode=preferences.demoMode??true; S.bells=new Set(preferences.bells||[]); if(preferences.prefs){ S.prefs={...S.prefs,...preferences.prefs,regions:new Set((preferences.prefs.regions||[]).map(r=>OLD_REGION[r]||r).filter(r=>SEOUL_GU.includes(r))),genres:new Set(preferences.prefs.genres||[])}; } }
+  if(preferences){ S.hideSamples=Boolean(preferences.hideSamples); S.showDemo=Boolean(preferences.showDemo); S.demoMode=preferences.demoMode??true; S.bells=new Set(preferences.bells||[]); if(preferences.prefs){ S.prefs={...S.prefs,...preferences.prefs,regions:new Set((preferences.prefs.regions||[]).map(r=>OLD_REGION[r]||r).filter(r=>SEOUL_GU.includes(r))),genres:new Set(preferences.prefs.genres||[])}; } }
   const baseJudges=judgeList.filter(j=>/^j[123]$/.test(j.id));
   const reports=ds.getReports().map(r=>{
     const demoVotes=S.demoMode?(ds.read().demo_votes||[]).filter(v=>v.report_id===r.id):[];
