@@ -76,8 +76,15 @@ async function get(op: string, params: Record<string, string>): Promise<string> 
 Deno.serve(async (req) => {
   try {
     if (!KEY) throw new Error("CULTURE_PORTAL_KEY Secret이 없습니다");
-    let options: { dry?: boolean } = {};
+    let options: { dry?: boolean; probe?: boolean } = {};
     try { options = await req.json(); } catch (_) { options = {}; }
+    // 확인용: {"probe": true} → 상세 응답의 항목 이름과 값 예시(3건)
+    if (options.probe) {
+      const xml = await get("period2", { PageNo: "1", numOfrows: "3", from: new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10).split("-").join(""), to: "20271231", ...BOX });
+      const out = [];
+      for (const x of items(xml)) { const d = items(await get("detail2", { seq: tag(x, "seq") }))[0] ?? ""; out.push(Object.fromEntries([...d.matchAll(/<([a-zA-Z0-9]+)>([\s\S]*?)<\/\1>/g)].map(m => [m[1], unesc(m[2]).slice(0, 160)]))); }
+      return Response.json({ ok: true, probe: out });
+    }
     const runStart = new Date().toISOString();
     const todayIso = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
     const today = todayIso.split("-").join("");

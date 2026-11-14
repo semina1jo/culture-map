@@ -26,6 +26,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 button:disabled{opacity:.45;cursor:default}
 :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .sheet:focus,.sheet:focus-visible{outline:none}
+.hrs{font-weight:700}.hrs.grn{color:var(--accent)}.hrs.red{color:var(--red)}.rowi b.hrs{display:block}.hrs-raw{display:block;color:var(--ink2);font-size:13px}
 .gu-chips .opt{gap:6px}.gu-chips .opt button{padding:6px 11px;font-size:12.5px}
 .flab .note{font-weight:500;margin-left:6px;font-size:11.5px}
 .task>.out,.task>.blk,.task>a.out{flex:none;white-space:nowrap}
@@ -495,6 +496,7 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 <script src="/src/data/cultureEvents.js"></script>
 <script src="/src/services/dataService.js"></script>
 <script src="/src/services/price.js"></script>
+<script src="/src/services/hours.js"></script>
 <script src="/src/services/maps.js"></script>
 <script src="/src/ui/placeSheet.js"></script>
 <script>
@@ -782,7 +784,8 @@ const cultureFilterPrice = e => e.is_public_culture && !(e.ben && e.ben.length) 
 function isDemoCulture(e){ return !!e && !e.is_public_culture && e.src!=="사용자 제보" && !e.report_id && (e.is_sample===true || e.src==="예시 데이터"); }
 /* ===== 상황 필터: 지금 내 상황에 맞는 조건 묶음 (다른 필터와 함께 적용) ===== */
 const SITUATIONS = [
-  {k:"quick", e:"⏱️", l:"잠깐 짬 날 때", d:"1km 안 · 예약 없이 바로 · 오늘 하는 곳"},
+  {k:"quick", e:"⏱️", l:"잠깐 짬 날 때", d:"1km 안 · 예약 없이 바로 · 오늘 아직 열려 있는 곳"},
+  {k:"evening", e:"🌙", l:"퇴근 후", d:"오늘 저녁 7시 이후에 열린 곳 · 시간 확인된 곳만"},
   {k:"free",  e:"💸", l:"무료로만", d:"돈 안 드는 곳만 (혜택가 무료 포함)"},
   {k:"weekend", e:"☀️", l:"주말 반나절", d:"이번 주말에 하는 곳 · 3km 안"},
   {k:"rain",  e:"☔", l:"비 오는 날", d:"실내로 보이는 곳 (전시·공연·박물관 등)"},
@@ -828,12 +831,29 @@ const isIndoor = e => { const hay = [e.place, e.name].filter(Boolean).join(" ");
   return INDOOR_RE.test(hay) || ["전시","공연"].includes(e.genre4 || e.genre); };
 function nextWeekend(){ const t = new Date(`${REC_TODAY}T00:00:00`), dow = t.getDay();
   const sat = dow === 0 ? addFilterDays(REC_TODAY, -1) : addFilterDays(REC_TODAY, 6 - dow); return [dow === 0 ? REC_TODAY : sat, addFilterDays(sat, 1)]; }
+/* 운영시간: 문구를 읽어 오늘 운영 여부·시간을 판정 (src/services/hours.js) */
+const _hoursCache = new Map();
+function hoursOf(e){ const t = e.hours || e.event_time || ""; if (!_hoursCache.has(t)) _hoursCache.set(t, window.hoursService ? window.hoursService.parse(t) : {ok:false, closed:[], rules:[]}); return _hoursCache.get(t); }
+const hoursOn = (e, date) => window.hoursService ? window.hoursService.onDate(hoursOf(e), date) : {state:"unknown"};
+const nowMinKST = () => { const d = new Date(Date.now() + 9*3600e3); return d.getUTCHours()*60 + d.getUTCMinutes(); };
+const notOpen = info => info.state === "closed" || info.state === "off";
+function hoursBadge(e){
+  if (!window.hoursService || !activeOn(e, REC_TODAY)) return null;
+  const info = hoursOn(e, REC_TODAY);
+  if (info.state === "closed") return {t:"오늘 휴관", c:"red"};
+  if (info.state === "off") return {t:"오늘은 운영 안 함", c:"red"};
+  if (info.state === "allday") return {t:"종일 운영", c:"grn"};
+  if (info.state !== "open") return null;
+  const n = window.hoursService.nowState(info, nowMinKST());
+  return {t:n, c:n === "운영 중" ? "grn" : n === "오늘 운영 끝" ? "red" : ""};
+}
 function sitOk(e){
   const base = e.price_min ?? e.price;
   switch (S.sit){
-    case "quick": { if (!activeDuring(e, REC_TODAY, REC_TODAY) || sitDistance(e) > 1000) return false; const c = crowdSit(e, "quick"); return c ?? !e.reserve; }
+    case "evening": return activeOn(e, REC_TODAY) && window.hoursService.evening(hoursOn(e, REC_TODAY));
+    case "quick": { if (!activeDuring(e, REC_TODAY, REC_TODAY) || sitDistance(e) > 1000) return false; const hb = hoursBadge(e); if (hb && hb.c === "red") return false; const c = crowdSit(e, "quick"); return c ?? !e.reserve; }
     case "free": return base === 0 || (S.profile && paidPrice(e) === 0);
-    case "weekend": { const [a, b] = nextWeekend(); if (!activeDuring(e, a, b) || sitDistance(e) > 3000) return false; const c = crowdSit(e, "weekend"); return c ?? true; }
+    case "weekend": { const [a, b] = nextWeekend(); if (!activeDuring(e, a, b) || sitDistance(e) > 3000) return false; if (notOpen(hoursOn(e, a)) && notOpen(hoursOn(e, b))) return false; const c = crowdSit(e, "weekend"); return c ?? true; }
     case "rain": { const c = crowdSit(e, "rain"); return c ?? isIndoor(e); }
     case "soon": { if (isAlwaysOpen(e) || !e.end) return false; const d = days(REC_TODAY, e.end); return d >= 0 && d <= 3; }
     /* 태그: 투표 3명 이상이면 투표, 아니면 분야 기반 추정 */
@@ -1152,7 +1172,7 @@ function detail(id,level){
     <div class="adds"><button id="aPhoto">＋ 현장 사진 추가</button><button id="aPrice">＋ 가격 수정</button><button id="aHours">＋ 운영시간 수정</button></div>
     <div class="rows">
       <div class="rowi">${ico.cal}<div>${period(e)} ${soon(e)?'<span class="tag red">곧 종료</span>':""}<small>기간</small></div></div>
-      <div class="rowi">${ico.clock}<div>${esc(e.hours)}<small>운영 시간</small></div></div>
+      <div class="rowi">${ico.clock}<div>${(() => { const lab = window.hoursService && activeOn(e, REC_TODAY) ? window.hoursService.label(hoursOn(e, REC_TODAY)) : ""; const hb = hoursBadge(e); return lab ? `<b class="hrs ${hb?.c||""}">${esc(lab)}${hb && hb.t !== lab && !/휴관|운영 안 함/.test(lab) ? " · " + esc(hb.t) : ""}</b>` : ""; })()}<span class="hrs-raw">${esc(e.hours || "운영시간 정보 없음")}</span><small>운영 시간${hoursOf(e).ok || hoursOf(e).closed.length ? " · 문구에서 자동으로 읽은 오늘 기준" : ""}</small></div></div>
       <div class="rowi">${ico.tk}<div>${esc(e.entry)}<small>입장 방법</small></div></div>
       <div class="rowi">${ico.won}<div>${esc(e.is_public_culture ? (e.fee_text || "요금 안내 없음") : e.USE_FEE || e.price_label || won(e.price))}<small>원문 이용 요금</small></div></div>
       <div class="rowi">${ico.user}<div>${esc(e.USE_TRGT || "누구나")}<small>이용 대상</small></div></div>
@@ -1362,7 +1382,7 @@ function listSheet(clusterIds){
     <p class="note">지금 보고 있는 지도 화면 기준 · 가까운 순 · 지도를 움직이면 바뀌어요</p>
     ${dcs.length?`<div class="secline"><b>오늘 예약 가능한 할인</b><span>${dcs.filter(d=>d.left).length}건</span></div>${dcs.map(d => dcCard(d, distM(findAny(d.ref), b))).join("")}`:""}
     <div class="secline"><b>주변 문화생활</b><span>${items.length}곳</span></div>
-    ${items.map(({it,dist}) => `<button class="listitem ${tier(effP(it))} ${isDemoCulture(it)?"demo":""}" data-open="${it.id}"><span class="ph">${EMOJI[it.genre]}</span><span style="min-width:0"><b>${esc(it.name)}</b><small>${it.genre} · ${period(it)} · ${fmtDist(dist)}</small><br>${eff(it).rule?'<span class="tag grn">🎟️ 내 혜택가</span>':""}${it.is_public_culture?`<span class="tag">${esc(it.source)}</span>`:it.reserve?'<span class="tag">예약</span>':'<span class="tag">바로 입장</span>'}${soon(it)?'<span class="tag red">곧 종료</span>':""}${it.src==="사용자 제보"?'<span class="tag grn">제보</span>':""}${isDemoCulture(it)?'<span class="tag">예시 데이터</span>':""}</span><span class="pr">${eff(it).rule?`<s class="note">${won(it.price)}</s><br>`:""}${priceText(it,eff(it))}</span></button>`).join("")
+    ${items.map(({it,dist}) => `<button class="listitem ${tier(effP(it))} ${isDemoCulture(it)?"demo":""}" data-open="${it.id}"><span class="ph">${EMOJI[it.genre]}</span><span style="min-width:0"><b>${esc(it.name)}</b><small>${it.genre} · ${period(it)} · ${fmtDist(dist)}${(() => { const hb = hoursBadge(it); return hb ? ` · <span class="hrs ${hb.c}">${hb.t}</span>` : ""; })()}</small><br>${eff(it).rule?'<span class="tag grn">🎟️ 내 혜택가</span>':""}${it.is_public_culture?`<span class="tag">${esc(it.source)}</span>`:it.reserve?'<span class="tag">예약</span>':'<span class="tag">바로 입장</span>'}${soon(it)?'<span class="tag red">곧 종료</span>':""}${it.src==="사용자 제보"?'<span class="tag grn">제보</span>':""}${isDemoCulture(it)?'<span class="tag">예시 데이터</span>':""}</span><span class="pr">${eff(it).rule?`<s class="note">${won(it.price)}</s><br>`:""}${priceText(it,eff(it))}</span></button>`).join("")
       || '<p class="note" style="padding:12px 0">이 화면엔 조건에 맞는 곳이 없어요. 지도를 축소하거나 필터를 풀어보세요.</p>'}`);
   $("#lX").onclick = closeSheet;
 }
