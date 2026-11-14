@@ -809,7 +809,7 @@ const SITUATIONS = [
   {k:"quiet",       e:"🤫", l:"조용한", d:"리뷰 분위기 '조용해요' · 리뷰 전엔 실내 전시·상설", group:"tag"},
   {k:"lively",      e:"🎉", l:"활기찬", d:"리뷰 분위기 '활기차요' · 리뷰 전엔 공연·축제", group:"tag"},
   {k:"photo",       e:"📸", l:"사진이 잘 나오는", d:"리뷰 '사진이 잘 나와요' · 리뷰 전엔 전시·축제", group:"tag"},
-  {k:"concept",     e:"✨", l:"컨셉이 독특한", d:"리뷰에서 '컨셉이 독특해요'를 고른 곳만", group:"tag"},
+  {k:"vibe",        e:"🎶", l:"분위기 있는", d:"리뷰에서 '분위기가 감성적이에요(음악·조명)'를 고른 곳만", group:"tag"},
   {k:"interactive", e:"🙌", l:"체험할 수 있는", d:"리뷰 '체험·참여 요소가 재밌어요' · 리뷰 전엔 체험", group:"tag"},
   {k:"rest",        e:"🛋️", l:"쉬어 가기 좋은", d:"리뷰에서 '휴식 공간이 잘 되어 있어요'를 고른 곳만", group:"tag"}
 ];
@@ -897,7 +897,7 @@ function sitOk(e){
     case "quiet": return vote("quiet", isIndoor(e) && (g === "전시" || isAlwaysOpen(e)));
     case "lively": return vote("lively", ["공연","축제"].includes(g));
     case "photo": return vote("photo", ["전시","축제"].includes(g));
-    case "concept": return vote("concept", false);
+    case "vibe": return vote("vibe", false);
     case "interactive": return vote("interactive", g === "체험");
     case "rest": return vote("rest", false);
     default: return true;
