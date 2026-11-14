@@ -25,6 +25,12 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 button:disabled{opacity:.45;cursor:default}
 :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.sheet:focus,.sheet:focus-visible{outline:none}
+.task>.out,.task>.blk,.task>a.out{flex:none;white-space:nowrap}
+.go small,.dc small{white-space:normal}.nowrap{white-space:nowrap}
+.verify .note{display:block}
+.back-link{display:block;margin:14px auto 0;text-align:center}
+form select{height:42px}
 
 .app{position:relative;height:100%;max-height:880px;max-width:420px;margin:0 auto;overflow:hidden;border-radius:24px;background:var(--map-land);box-shadow:0 10px 40px rgba(0,0,0,.18)}
 /* 휴대폰에서는 가상 폰 테두리 없이 화면 전체를 쓴다 */
@@ -56,7 +62,7 @@ button:disabled{opacity:.45;cursor:default}
 .head{position:absolute;top:0;left:0;right:0;z-index:5;padding:14px 16px 10px;background:linear-gradient(#fff 72%,rgba(255,255,255,0))}
 .title{display:flex;align-items:center;justify-content:space-between}
 .title h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.03em}
-.demo{font-size:10.5px;color:var(--muted);margin-left:8px;font-weight:500;vertical-align:middle;border:1px solid var(--line);border-radius:6px;padding:1px 5px;letter-spacing:0}
+span.demo{font-size:10.5px;color:var(--muted);margin-left:8px;font-weight:500;vertical-align:middle;border:1px solid var(--line);border-radius:6px;padding:1px 5px;letter-spacing:0}
 .round{width:44px;height:44px;border-radius:50%;border:0;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.12);display:grid;place-items:center;position:relative}
 .round svg{width:22px;height:22px;stroke:var(--ink);fill:none;stroke-width:2}
 .layers{display:flex;gap:16px;margin:10px 2px 8px}
@@ -379,7 +385,7 @@ svg{stroke-linecap:round;stroke-linejoin:round}
 body{background:radial-gradient(circle at 20% 10%,#F2F0DC,transparent 50%),radial-gradient(circle at 85% 90%,#E8F0D2,transparent 45%),var(--outer)}
 .head{background:linear-gradient(var(--paper) 72%,rgba(255,250,243,0))}
 .title h1{color:var(--ink);letter-spacing:-.04em}
-.demo{border-color:#DDE3D3;background:#fff;color:var(--ink2);border-radius:999px;padding:1px 7px}
+span.demo{border-color:#DDE3D3;background:#fff;color:var(--ink2);border-radius:999px;padding:1px 7px}
 .round{box-shadow:0 3px 10px rgba(31,43,34,.12),0 0 0 1px rgba(31,43,34,.04)}
 .round svg{stroke:var(--ink);stroke-width:2.1}
 .chip{border-radius:999px;box-shadow:0 2px 8px rgba(31,43,34,.10),0 0 0 1px rgba(31,43,34,.05);color:var(--ink)}
@@ -670,6 +676,9 @@ const ico = {
   pin:'<svg viewBox="0 0 24 24"><path d="M12 21s-6-5.3-6-10a6 6 0 1 1 12 0c0 4.7-6 10-6 10Z"/><circle cx="12" cy="11" r="2"/></svg>',
   tk:'<svg viewBox="0 0 24 24"><path d="M3 8V6h18v2a2 2 0 0 0 0 4v6H3v-6a2 2 0 0 0 0-4Z"/></svg>',
   menu:'<svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-2 6 0 8v10"/></svg>',
+  won:'<svg viewBox="0 0 24 24"><path d="M4 7l3 10 3-8 2 0 3 8 3-10M3 11h18M3 14h18"/></svg>',
+  user:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>',
+  doc:'<svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6Z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></svg>',
   sl:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
   cp:'<svg viewBox="0 0 24 24"><path d="M3 8V6h18v2a2 2 0 0 0 0 4v6H3v-6a2 2 0 0 0 0-4Z"/><path d="M14 6v12"/></svg>'
 };
@@ -1143,10 +1152,10 @@ function detail(id,level){
       <div class="rowi">${ico.cal}<div>${period(e)} ${soon(e)?'<span class="tag red">곧 종료</span>':""}<small>기간</small></div></div>
       <div class="rowi">${ico.clock}<div>${esc(e.hours)}<small>운영 시간</small></div></div>
       <div class="rowi">${ico.tk}<div>${esc(e.entry)}<small>입장 방법</small></div></div>
-      <div class="rowi">${ico.menu}<div>${esc(e.is_public_culture ? (e.fee_text || "요금 안내 없음") : e.USE_FEE || e.price_label || won(e.price))}<small>원문 이용 요금</small></div></div>
-      <div class="rowi">${ico.menu}<div>${esc(e.USE_TRGT || "누구나")}<small>이용 대상</small></div></div>
+      <div class="rowi">${ico.won}<div>${esc(e.is_public_culture ? (e.fee_text || "요금 안내 없음") : e.USE_FEE || e.price_label || won(e.price))}<small>원문 이용 요금</small></div></div>
+      <div class="rowi">${ico.user}<div>${esc(e.USE_TRGT || "누구나")}<small>이용 대상</small></div></div>
       <div class="rowi">${ico.pin}<div>${esc(e.place)}<small>위치</small></div></div>
-      ${e.is_public_culture?`<div class="rowi">${ico.menu}<div>${esc(e.source)}<small>출처</small></div></div>`:""}
+      ${e.is_public_culture?`<div class="rowi">${ico.doc}<div>${esc(e.source)}<small>출처</small></div></div>`:""}
     </div>
     ${benefitBlock(e)}
     ${discountBlock(id)}
@@ -1212,7 +1221,7 @@ function dcCard(d, dist){
   return `<div class="dc ${tier(it.price)}"><span class="ph">${EMOJI[it.genre]}</span>
     <span style="min-width:0"><b>${esc(d.title)}</b><small>${esc(it.name)}${dist!=null?` · ${fmtDist(dist)}`:""}</small></span>
     <span class="pr"><s>${d.orig.toLocaleString()}원</s><br><span class="pct">${pct}%</span><b>${won(d.price)}</b></span>
-    <span class="go"><small>${esc(d.time)} · ${d.left?`남은 ${d.left}개`:"마감"}</small><button class="blk sm" data-book="${d.id}" ${d.left?"":"disabled"}>${d.left?"예약하기":"마감"}</button></span></div>`;
+    <span class="go"><small>${esc(d.time)} · <span class="nowrap">${d.left?`남은 ${d.left}개`:"마감"}</span></small><button class="blk sm" data-book="${d.id}" ${d.left?"":"disabled"}>${d.left?"예약하기":"마감"}</button></span></div>`;
 }
 function bookSheet(did){
   const d = discounts.find(x => x.id===did), it = findAny(d.ref);
@@ -1420,7 +1429,7 @@ function reportSheet(){
       <label for="rL">장소</label><input id="rL" maxlength="40" placeholder="예: 홍대입구역 ○○빌딩 1층">
       <label for="rU">출처 링크 (필수)</label><input id="rU" type="url" placeholder="https://">
       <label for="rPh">사진 (필수)</label><input id="rPh" type="file" accept="image/*"><img id="rPrev" class="prev" alt="" hidden>
-      <div class="err" id="rErr"></div><div class="acts"><button class="out" type="button" id="rBack">종류 다시 선택</button><button class="out" type="button" id="rC">취소</button><button class="blk w report-submit" type="submit">제보 등록</button></div>
+      <div class="err" id="rErr"></div><div class="acts"><button class="out" type="button" id="rC">취소</button><button class="blk report-submit" type="submit">제보 등록</button></div><button class="linkbtn back-link" type="button" id="rBack">← 종류 다시 선택</button>
     </form>`);
   let photo = null;
   $("#rX").onclick = $("#rC").onclick = closeSheet;
@@ -1785,7 +1794,7 @@ function memoSheet(date, id){
       <label for="mmT">한 줄 메모</label><input id="mmT" maxlength="60" placeholder="예: 생각보다 사람 적고 조용했음" value="${esc(cur.memo || "")}">
       <label for="mmP">사진 (선택)</label><input id="mmP" type="file" accept="image/*"><img id="mmPrev" class="prev" alt="" ${photo?`src="${photo}"`:"hidden"}>
       ${photo?'<button type="button" class="linkbtn" id="mmDelP">사진 지우기</button>':""}
-      <div class="acts"><button class="out" type="button" id="mmC">취소</button>${cur.memo||cur.photo?'<button class="out" type="button" id="mmDel">전부 지우기</button>':""}<button class="blk w" type="submit">저장</button></div>
+      <div class="acts"><button class="out" type="button" id="mmC">취소</button><button class="blk" type="submit">저장</button></div>${cur.memo||cur.photo?'<button class="linkbtn back-link" type="button" id="mmDel">전부 지우기</button>':""}
     </form>`);
   const back = () => { closeSheet(); renderPage(); };
   $("#mmX").onclick = $("#mmC").onclick = closeSheet;
@@ -1803,7 +1812,7 @@ function planSheet(id){
     <p class="note">${esc(it.name)}${max?` · ${max.slice(5).replace("-","월 ")}일까지`:""}</p>
     <form id="plF" novalidate><label for="plD">날짜</label><input id="plD" type="date" min="${min}" ${max?`max="${max}"`:""} value="${cur || min}">
       <p class="note">전날과 당일에 앱 알림으로 알려 드려요. 기록 탭 달력에도 표시돼요.</p><div class="err" id="plErr"></div>
-      <div class="acts"><button class="out" type="button" id="plC">취소</button>${cur?'<button class="out" type="button" id="plDel">날짜 지우기</button>':""}<button class="blk w" type="submit">저장</button></div></form>`);
+      <div class="acts"><button class="out" type="button" id="plC">취소</button><button class="blk" type="submit">저장</button></div>${cur?'<button class="linkbtn back-link" type="button" id="plDel">날짜 지우기</button>':""}</form>`);
   const back = () => detail(id);
   $("#plX").onclick = $("#plC").onclick = back;
   $("#plDel") && ($("#plDel").onclick = () => { const x = diary(); delete x.plans[id]; saveDiary(x); toast("갈 날짜를 지웠어요."); back(); });
@@ -1922,7 +1931,7 @@ function benefitInputSheet(fromReport = false){
       <label for="biType">혜택 유형</label><select id="biType"><option value="ageMax">나이 이하</option><option value="ageMin">나이 이상</option><option value="student">학생</option><option value="gu">거주구</option><option value="soldier">장병</option></select>
       <div class="two"><div><label for="biValue">조건 값</label><input id="biValue" placeholder="예: 24 또는 대학생"></div><div><label for="biPrice">적용 후 가격</label><input id="biPrice" type="number" min="0" step="500" placeholder="0"></div></div>
       <label for="biLabel">혜택 문구</label><input id="biLabel" maxlength="60" placeholder="예: 대학생 30% 할인"><div class="err" id="biErr"></div>
-      <div class="acts">${fromReport?`<button class="out" type="button" id="biBack">종류 다시 선택</button>`:""}<button class="out" type="button" id="biC">취소</button><button class="blk" type="submit">혜택 저장</button></div></form>`);
+      <div class="acts"><button class="out" type="button" id="biC">취소</button><button class="blk" type="submit">혜택 저장</button></div>${fromReport?`<button class="linkbtn back-link" type="button" id="biBack">← 종류 다시 선택</button>`:""}</form>`);
   $("#biX").onclick = $("#biC").onclick = closeSheet;
   if(fromReport) $("#biBack").onclick = reportTypeSheet;
   $("#biF").addEventListener("submit", async ev => { ev.preventDefault(); const e=events.find(x=>x.id===$("#biEvent").value), value=$("#biValue").value.trim(), price=Number($("#biPrice").value); if(!e || !value || !Number.isFinite(price)){ $("#biErr").textContent="행사·조건·적용 후 가격을 입력해 주세요."; return; }
