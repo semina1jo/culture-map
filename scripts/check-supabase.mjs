@@ -45,12 +45,10 @@ check('일반 모드 실제 투표',(await first.addVote({report_id:item.id,vote
 const duplicate=await first.addVote({report_id:item.id,vote:'right',demo_mode:false});
 check('중복 투표 DB 차단',!duplicate.ok&&duplicate.error.code==='23505');
 check('시연 반복 투표 분리',(await first.addVote({report_id:item.id,vote:'right',demo_mode:true})).ok);
-const ledger=await first.addLedger({kind:'connection_check',amount:20,reason:`연결 검증 예시 ${runId}`});
-check('티끌 원장 실제 저장',ledger.ok);
 const visit=await first.recordVisit(`visit_${runId}`,true,0);
-check('방문 인증과 티끌 원자적 저장',visit.ok&&visit.value.reward===100);
+check('방문 인증 저장',visit.ok&&visit.value.already===false);
 const again=await first.recordVisit(`visit_${runId}`,true,0);
-check('같은 날 방문 중복 보상 방지',again.ok&&again.value.already&&again.value.reward===0);
+check('같은 날 방문 중복 방지',again.ok&&again.value.already);
 const notification={id:runId,kind:'연결 검증 예시',text:'읽음 저장 확인',time:'지금',target_id:'e1',read:false};
 check('알림 실제 저장',(await first.saveNotifications([notification])).ok);
 check('알림 읽음 업데이트',(await first.saveNotifications([{...notification,read:true}])).ok);

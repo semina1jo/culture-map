@@ -18,12 +18,11 @@
     culture_events: "id,title,category,raw_category,place,place_addr,start_date,end_date,event_time,price,fee_text,lat,lng,image_url,homepage_url,source,benefit_rules",
     event_benefits: "id,rule_key,event_id,type,value,price_after,label,auto_extracted,user_id",
     places: "id,category,subcategory,name,price,ref_price,address,lat,lng,hours,note,source,is_sample,user_id,meta,updated_at",
-    user_profiles: "user_id,nickname,birth,student_type,gu,soldier,interest_genres,tikkle,demo_mode,noti_settings,extra_fields,updated_at",
+    user_profiles: "user_id,nickname,birth,student_type,gu,soldier,interest_genres,demo_mode,noti_settings,extra_fields,updated_at",
     reviews: "id,target_type,target_id,user_id,nickname,rating,text,created_at",
     reports: "id,tab,name,genre,subcategory,price,ref_price,start_date,end_date,address,lat,lng,photo_url,source_url,status,yes,ended,wrong,user_id,meta,created_at",
     report_votes: "id,report_id,user_id,vote,created_at",
     visits: "id,user_id,event_id,visit_date,verified_at,demo_mode,distance_m",
-    tikkle_ledger: "id,user_id,amount,reason,kind,target_id,date,metadata,created_at",
     saved: "id,user_id,target_type,target_id,created_at",
     notifications: "id,user_id,dedupe_key,type,text,target_id,read,created_at",
     review_likes: "id,review_id,user_id,created_at",
@@ -33,7 +32,7 @@
   };
   // 새로 추가된 테이블: 아직 DB에 없더라도 앱 전체가 멈추지 않게 실패를 무시한다
   const optionalTables = new Set(["review_likes", "review_flags", "venue_benefits", "situation_votes"]);
-  const ownTables = new Set(["user_profiles", "visits", "tikkle_ledger", "saved", "notifications", "review_flags"]);
+  const ownTables = new Set(["user_profiles", "visits", "saved", "notifications", "review_flags"]);
   const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const uuid = () => global.crypto.randomUUID();
   const now = () => new Date().toISOString();
@@ -166,7 +165,7 @@
   }
   const savedProfile = row => row?.extra_fields?.has_profile === false || !row?.birth ? null : { birth: row.birth, student: row.student_type || "none", gu: row.gu || "", soldier: row.soldier, ...(row.extra_fields?.profile || {}) };
   // ---- 계정·닉네임 ----
-  const NICK_A = ["알뜰한", "부지런한", "티끌모은", "산책하는", "호기심많은", "느긋한", "반짝이는", "꼼꼼한", "씩씩한", "조용한"];
+  const NICK_A = ["알뜰한", "부지런한", "알찬", "산책하는", "호기심많은", "느긋한", "반짝이는", "꼼꼼한", "씩씩한", "조용한"];
   const NICK_B = ["다람쥐", "참새", "고양이", "너구리", "펭귄", "수달", "판다", "고슴도치", "부엉이", "햄스터"];
   function randomNickname() {
     const pick = arr => arr[Math.floor(Math.random() * arr.length)];
@@ -248,7 +247,6 @@
       }
       else if (table === "places") state.places = rows.map(toPlace);
       else if (table === "notifications") state.notifications = rows.map(toNotification);
-      else if (table === "tikkle_ledger") state.tikkle_ledger = rows.map(r => ({ ...r.metadata, ...r, reward: r.amount }));
       else if (table === "report_votes") state.report_votes = rows.map(r => ({ ...r, vote: r.vote === "yes" ? "right" : r.vote }));
       else state[table] = rows;
     }
@@ -422,20 +420,12 @@
     }),
     recordVisit: (eventId, simulated, distance) => run(async () => {
       let result;
-      if (configured) result = await request("/rest/v1/rpc/record_visit", { method: "POST", body: JSON.stringify({ p_event_id: eventId, p_demo_mode: Boolean(simulated), p_distance_m: Number(distance) }) });
-      else if (list("visits").some(v => v.event_id === eventId && v.visit_date === today())) result = { already: true, reward: 0 };
-      else result = { already: false, reward: 100, visit: { id: uuid(), user_id: userId(), event_id: eventId, visit_date: today(), demo_mode: Boolean(simulated), verified_at: now() }, ledger: { id: uuid(), user_id: userId(), amount: 100, reward: 100, reason: "문화 방문 인증", kind: "culture_visit", target_id: eventId, date: today(), created_at: now() } };
+      if (configured) result = await request("/rest/v1/rpc/culture_record_visit", { method: "POST", body: JSON.stringify({ p_event_id: eventId, p_demo_mode: Boolean(simulated), p_distance_m: Number(distance) }) });
+      else if (list("visits").some(v => v.event_id === eventId && v.visit_date === today())) result = { already: true };
+      else result = { already: false, visit: { id: uuid(), user_id: userId(), event_id: eventId, visit_date: today(), demo_mode: Boolean(simulated), verified_at: now() } };
       if (result.visit) cache("visits", [...list("visits"), result.visit]);
-      if (result.ledger) cache("tikkle_ledger", [...list("tikkle_ledger"), { ...result.ledger.metadata, ...result.ledger, reward: result.ledger.amount }]);
       return result;
     }),
-    getLedger: () => list("tikkle_ledger"),
-    addLedger: entry => run(async () => {
-      const row = { id: uuid(), user_id: userId(), amount: Number(entry.amount ?? entry.reward ?? 0), reason: entry.reason || "데모 활동", kind: entry.kind || "activity", target_id: entry.target_id || null, date: today(), metadata: { distance_m: entry.distance_m, simulated: Boolean(entry.simulated) }, created_at: now() };
-      if (configured && !entry.local_demo) await insert("tikkle_ledger", row);
-      cache(entry.local_demo ? "demo_ledger" : "tikkle_ledger", [...list(entry.local_demo ? "demo_ledger" : "tikkle_ledger"), { ...row, reward: row.amount }]); return row;
-    }),
-    getBalance: () => 1240 + [...list("tikkle_ledger"), ...list("demo_ledger")].reduce((sum,r) => sum + Number(r.amount ?? r.reward ?? 0), 0),
     getSaved: () => list("saved"),
     saveTarget: target => run(async () => {
       const row = { user_id: userId(), target_type: target.target_type, target_id: target.target_id };

@@ -494,8 +494,6 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 const TODAY = "2026-11-02";
 const FILTER_TODAY = window.dataService.today();
 const CAL_MIN = "2026-11", CAL_MAX = "2026-12";
-/* 티끌 단위 (티끌 상자 100티끌, 광고 시청 10~150티끌 랜덤) */
-const T = {visit:100, adMin:10, adMax:150, box:100, report:100, review:30, judge:20};
 const EMOJI = {전시:"🖼️",공연:"🎤",체험:"🧴",축제:"🎪"};
 const W = 1000, H = 1400, M_PER_UNIT = 2.6;   /* 지도 1단위 ≈ 2.6m, 가로 약 2.6km */
 
@@ -606,16 +604,10 @@ judgeList.forEach(j => {
   j.status = j.status || "확인 중"; j.voters = j.voters || {};
 });
 
-const store = [
-  {id:"s1",name:"편의점 1,000원 금액권",cost:1500,e:"🏪"},
-  {id:"s2",name:"아메리카노 쿠폰",cost:4500,e:"☕"},
-  {id:"s3",name:"치킨 1마리 쿠폰",cost:25000,e:"🍗"},
-];
-
 /* ===== 상태 ===== */
 const S = {tab:"map",layer:"culture",date:null,dateEnd:null,dateMode:"all",dateLabel:null,calYM:FILTER_TODAY.slice(0,7),maxPrice:10000,genres:new Set(["전시","공연","체험","축제"]),reserve:"all",
   hideSamples:false,demoMode:true,sel:null,
-  bells:new Set(["e5"]),saved:new Set(["e1"]),tikkle:1240,tickets:2,attended:false,boxAt:Date.now()-1000,ads:0,steps:4320,stepClaimed:0,
+  bells:new Set(["e5"]),saved:new Set(["e1"]),
   verified:[],judged:new Set(),bookings:[],
   prefs:{open:true,end:true,free:true,judge:true,regions:new Set(["홍대입구","연남동"]),genres:new Set(["전시","공연","체험","축제"])},
   notis:[
@@ -688,7 +680,7 @@ const josa = (word, withBatchim, without) => { const c = word.charCodeAt(word.le
 function loginPrompt(feature, back){
   sheet(`<div class="sh-h"><h2>로그인이 필요합니다</h2><button class="x" id="lpX" aria-label="닫기">${ico.x}</button></div>
     <p style="font-size:15px;line-height:1.55;margin:6px 0 0"><b>${esc(feature)}</b>${josa(feature,"은","는")} 로그인 후 사용할 수 있습니다.<br>로그인 화면으로 이동할까요?</p>
-    <p class="note" style="margin:8px 0 0">로그인하지 않아도 지도와 정보는 모두 볼 수 있어요. 리뷰·평점·티끌 적립은 회원만 가능해요.</p>
+    <p class="note" style="margin:8px 0 0">로그인하지 않아도 지도와 정보는 모두 볼 수 있어요. 리뷰·평점은 회원만 남길 수 있어요.</p>
     <div class="acts"><button class="out" id="lpC">취소</button><button class="blk" id="lpGo">로그인하기</button></div>`);
   const cancel = () => back ? back() : closeSheet();
   $("#lpX").onclick = cancel; $("#lpC").onclick = cancel;
@@ -701,13 +693,12 @@ function reportEntry(){
   const nick = window.dataService.getNickname() || "임시 닉네임";
   sheet(`<div class="sh-h"><h2>로그인하지 않았어요</h2><button class="x" id="reX" aria-label="닫기">${ico.x}</button></div>
     <p style="font-size:15px;line-height:1.55;margin:6px 0 0">제보는 로그인 없이도 할 수 있어요.<br>임시 닉네임 <b>${esc(nick)}</b>(으)로 제보할까요?</p>
-    <p class="note" style="margin:8px 0 0">임시 닉네임으로 제보하면 티끌은 적립되지 않아요. 나중에 이메일로 가입하면 이 제보도 내 계정에 그대로 남아요.</p>
+    <p class="note" style="margin:8px 0 0">임시 닉네임으로 제보해도 돼요. 나중에 이메일로 가입하면 이 제보도 내 계정에 그대로 남아요.</p>
     <div class="acts"><button class="out" id="reLogin">로그인하고 제보</button><button class="blk" id="reGuest">임시 닉네임으로 제보</button></div>`);
   $("#reX").onclick = closeSheet;
   $("#reGuest").onclick = reportTypeSheet;
   $("#reLogin").onclick = () => accountSheet("login", reportTypeSheet);
 }
-function addTikkle(n, why){ if(isGuest()) return; S.tikkle += n; if(window.dataService) window.dataService.addLedger({kind:"activity",amount:n,reward:n,reason:why,date:TODAY,user_id:window.dataService.userId(),created_at:new Date().toISOString()}); toast(`+${n.toLocaleString()}티끌 · ${why}`); }
 
 /* ===== 필터 ===== */
 const activeOn = (e, d) => isAlwaysOpen(e) || e.start <= d && e.end >= d;
@@ -1059,7 +1050,7 @@ function openNaverMap(name){window.open(`https://map.naver.com/p/search/${encode
 const discountBlock = id => { const d = discounts.find(x => x.ref===id); return d ? `<div class="sec"><h3>오늘 예약 가능한 할인 <span>${d.left?`남은 ${d.left}개`:"마감"}</span></h3>${dcCard(d)}</div>` : ""; };
 
 /* ===== 별점 리뷰 (모든 탭 공통) ===== */
-const SAMPLE_NICKS=["홍대 알뜰러","티끌 수집가","망원 산책러","연남 탐험가","합정 짠돌이","신촌 대학생","가성비 헌터","무료 전시 덕후"];
+const SAMPLE_NICKS=["홍대 알뜰러","전시 수집가","망원 산책러","연남 탐험가","합정 짠돌이","신촌 대학생","가성비 헌터","무료 전시 덕후"];
 const hashNum = str => [...String(str)].reduce((a,ch)=>(a*31+ch.charCodeAt(0))>>>0,7);
 const starStr = n => "★".repeat(n)+"☆".repeat(5-n);
 const dotDate = iso => { if(!iso) return ""; const d=new Date(iso); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`; };
@@ -1122,7 +1113,7 @@ function reviewSheet(id){
     if(!result.ok){ $("#rvErr").textContent="저장에 실패했어요. 다시 시도해 주세요."; ev.submitter && (ev.submitter.disabled=false); return; }
     logReceipt(id, "리뷰");
     back(); renderMap();
-    if(first) addTikkle(T.review,"리뷰 남기기"); else toast("리뷰를 남겼어요.");
+    toast("리뷰를 남겼어요.");
   });
 }
 function flagSheet(reviewId, target){
@@ -1172,7 +1163,7 @@ function detail(id,level){
       </div>
       <button class="blk w" id="dNaver">네이버 지도에서 보기</button>
       ${e.is_public_culture&&e.homepage_url?`<button class="out w" id="dHomepage">홈페이지에서 보기</button>`:""}
-      <button class="out w" id="dVer" ${done?"disabled":""}>${done?"방문 인증 완료":`📍 방문 인증하고 ${T.visit}티끌 받기`}</button>
+      <button class="out w" id="dVer" ${done?"disabled":""}>${done?"방문 인증 완료":"📍 방문 인증하기"}</button>
     </div>
     <button class="linkbtn" id="dReport">광고·허위 정보 신고</button></div>`,{placeId:id,level});
   $("#dX").onclick = closeSheet;
@@ -1243,7 +1234,7 @@ function bookSheet(did){
   });
 }
 
-/* ⑤ 위치 방문 인증 → 티끌 + 광고 보너스 */
+/* ⑤ 위치 방문 인증 */
 function haversineM(aLat,aLng,bLat,bLng){
   const R=6371000, r=Math.PI/180, dLat=(bLat-aLat)*r, dLng=(bLng-aLng)*r;
   const q=Math.sin(dLat/2)**2+Math.cos(aLat*r)*Math.cos(bLat*r)*Math.sin(dLng/2)**2; return 2*R*Math.asin(Math.sqrt(q));
@@ -1254,20 +1245,18 @@ function backToDetail(id){ return detail(id); }
 async function completeVisit(id, it, distance, simulated){
   const result=await window.dataService.recordVisit(id,simulated,distance); if(!result.ok) return;
   const already=result.value.already;
-  if(!already){ S.tikkle=window.dataService.getBalance(); S.verified.push({id,name:it.name,price:it.price_min ?? it.price,ref:it.ref}); }
+  if(!already){ S.verified.push({id,name:it.name,price:it.price_min ?? it.price,ref:it.ref}); }
   logReceipt(id, "방문 인증");
-  sheet(`<div class="verify"><div class="big">${already?"✅":"🎉"}</div><p>${already?"오늘 이미 방문 인증했어요.":`방문 인증 완료 · +${T.visit}티끌`}</p><span class="note">${esc(it.name)} · ${simulated?"시연 모드 위치 가정":`${Math.round(distance)}m 거리`}</span>${!already?`<span class="note">정가 대비 ${Math.max(0,(it.ref||it.price||0)-((it.price_min ?? it.price) || 0)).toLocaleString()}원 아꼈어요.</span>`:""}</div>
+  sheet(`<div class="verify"><div class="big">${already?"✅":"🎉"}</div><p>${already?"오늘 이미 방문 인증했어요.":"방문 인증 완료"}</p><span class="note">${esc(it.name)} · ${simulated?"시연 모드 위치 가정":`${Math.round(distance)}m 거리`}</span>${!already?`<span class="note">정가 대비 ${Math.max(0,(it.ref||it.price||0)-((it.price_min ?? it.price) || 0)).toLocaleString()}원 아꼈어요.</span>`:""}</div>
     ${(window.dataService.getSituationVotes?.() || []).some(v => v.event_id===id && v.user_id===window.dataService.userId()) ? "" : `<div class="sec" id="vSit"><h3>이곳, 어땠나요? <span>여러 개 골라도 돼요</span></h3><div class="sit-vote">${SIT_VOTE.map(x => `<button type="button" aria-pressed="false" data-sv="${x.k}">${x.e} ${x.l}</button>`).join("")}</div><button class="out sm" id="vSitSave" style="margin-top:8px;width:100%" disabled>선택한 항목 남기기</button><div id="vSitMsg"></div></div>`}
     <div class="sec" id="vSt"><h3>지금 현장은 어때요? <span>눌러서 현재 상태 남기기</span></h3><div class="votes">${STATUS_ORDER.map(k=>`<button data-st="${k}"><b>${STATUS_ICON[k]}</b>${STATUS_L[k]}</button>`).join("")}</div><div id="vStMsg"></div></div>
-    <div class="adbox"><b>광고 보고 보너스 티끌 받기</b><p class="note" style="margin:4px 0 0">${T.adMin}~${T.adMax}티끌 랜덤</p><div class="bar"><i id="adBar"></i></div></div>
-    <div class="acts"><button class="out" id="vDone">그냥 닫기</button><button class="blk" id="vAd">광고 보기</button></div>`);
+    <div class="acts"><button class="blk w" id="vDone">닫기</button></div>`);
   $("#vDone").onclick = () => { closeSheet(); backToDetail(id); };
   const svPick = new Set();
   document.querySelectorAll("[data-sv]").forEach(b => b.onclick = () => { const k = b.dataset.sv; svPick.has(k) ? svPick.delete(k) : svPick.add(k); b.setAttribute("aria-pressed", svPick.has(k)); $("#vSitSave").disabled = !svPick.size; });
   $("#vSitSave") && ($("#vSitSave").onclick = async () => { $("#vSitSave").disabled = true; await window.dataService.addSituationVotes(id, [...svPick]); sitIdxLen = -1;
     $("#vSit").innerHTML = `<div class="status">고마워요! 다음 사람들이 상황 필터로 이곳을 더 정확하게 찾을 수 있어요.</div>`; });
   document.querySelectorAll("[data-st]").forEach(b => b.onclick = () => { const k=b.dataset.st, prev=S.myStatus[id]; if(prev===k) return; it.votes=it.votes||{went:0,ended:0,wrong:0}; if(prev) it.votes[prev]--; it.votes[k]++; S.myStatus[id]=k; $("#vStMsg").innerHTML=`<div class="status">현장 상태를 ${STATUS_L[k]}로 표시했어요.</div>`; renderMap(); });
-  $("#vAd").onclick = () => { $("#vAd").disabled=true; $("#adBar").style.width="100%"; setTimeout(()=>{ const b=rnd(T.adMin,T.adMax); if(window.dataService) window.dataService.addLedger({kind:"ad_bonus",target_id:id,date:TODAY,reward:b,reason:"광고 시청 데모"}); S.tikkle+=b; closeSheet(); toast(`광고 보너스 +${b}티끌 · 지금 ${S.tikkle.toLocaleString()}티끌`); backToDetail(id); },1700); };
 }
 function verify(id){
   const it=findAny(id); if(!it) return;
@@ -1291,7 +1280,7 @@ function editField(id, field){
   $("#eF").addEventListener("submit", ev => { ev.preventDefault(); const v = $("#eV").value.trim(); if (!v){ $("#eErr").textContent="내용을 입력해 주세요."; return; }
     if (field==="price"){ const n=+v; if (n>10000){ $("#eErr").textContent="만 원 이하만 등록할 수 있어요."; return; } it.price=n; renderMap(); }
     if (field==="hours") it.hours=v;
-    back(); addTikkle(20,"정보 업데이트"); });
+    back(); toast("정보를 업데이트했어요."); });
 }
 function photoUpdate(id){
   const e = findAny(id);
@@ -1301,7 +1290,7 @@ function photoUpdate(id){
   let data = null;
   $("#pX").onclick = $("#pC").onclick = () => backToDetail(id);
   $("#pI").onchange = ev => { const f = ev.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { data = r.result; $("#pPrev").src = data; $("#pPrev").hidden = false; }; r.readAsDataURL(f); };
-  $("#pF").addEventListener("submit", ev => { ev.preventDefault(); if (!data){ $("#pErr").textContent="사진을 골라 주세요."; return; } e.photo = data; backToDetail(id); addTikkle(20,"현장 사진 등록"); });
+  $("#pF").addEventListener("submit", ev => { ev.preventDefault(); if (!data){ $("#pErr").textContent="사진을 골라 주세요."; return; } e.photo = data; backToDetail(id); toast("현장 사진을 등록했어요."); });
 }
 function reportAbuse(id){
   const it = findAny(id);
@@ -1462,7 +1451,7 @@ function reportSheet(){
     judgeList.unshift({id:"j"+id,report_id:id,kind:"문화",right:0,ended:0,wrong:0,name:n,price:p,area:"서울 마포구",nick:window.dataService.getNickname(),time:"방금",submittedAt:Date.now(),expiresAt,status:"확인 중",ref:id,voters:{}});
     S.date=null; S.dateEnd=null; S.dateMode="all"; S.dateLabel=null; S.maxPrice=10000; S.reserve="all"; S.genres=new Set(["전시","공연","체험","축제"]);
     closeSheet(); render(); peek(id);
-    if(isGuest()) toast(`${window.dataService.getNickname()}(으)로 제보했어요. 로그인하면 티끌이 적립돼요.`); else addTikkle(T.report, "제보 등록");
+    if(isGuest()) toast(`${window.dataService.getNickname()}(으)로 제보했어요.`); else toast("제보를 등록했어요.");
   });
 }
 
@@ -1471,42 +1460,24 @@ function renderPage(){
   const pg = $("#page");
   if (S.tab === "record"){ recordPage(pg); return; }
   if (S.tab === "me"){
-    const left = Math.max(0, S.boxAt - Date.now());
-    const stepAvail = Math.floor(S.steps/1000) - S.stepClaimed;
     const acc = window.dataService.account();
     pg.innerHTML = `<h1>설정 <span class="demo">${acc.isGuest?"게스트":"회원"}</span></h1>
       <div class="card"><h3>내 계정 <span class="tag">${acc.isGuest?"게스트":"회원"}</span></h3>
         <div class="task"><div><b>${esc(acc.nickname||"닉네임 준비 중")}</b><small>${acc.isGuest?"임시 닉네임 · 로그인 없이 제보할 때 쓰여요.":esc(acc.email)}</small></div><button class="out sm" id="acctNick" style="white-space:nowrap;flex:none">닉네임 변경</button></div>
         ${acc.isGuest
-          ?`<button class="out g-btn" id="acctGoogle" style="margin-top:10px"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Google로 계속하기</button><div class="acts" style="margin-top:8px"><button class="blk" id="acctSignup">이메일로 가입</button><button class="out" id="acctLogin">로그인</button></div><p class="note" style="margin:8px 0 0">리뷰·평점·티끌 적립은 로그인 후 이용할 수 있어요. 지금 가입하면 임시 닉네임으로 남긴 제보가 그대로 내 계정에 남아요.</p>`
+          ?`<button class="out g-btn" id="acctGoogle" style="margin-top:10px"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Google로 계속하기</button><div class="acts" style="margin-top:8px"><button class="blk" id="acctSignup">이메일로 가입</button><button class="out" id="acctLogin">로그인</button></div><p class="note" style="margin:8px 0 0">리뷰·평점은 로그인 후 남길 수 있어요. 지금 가입하면 임시 닉네임으로 남긴 제보가 그대로 내 계정에 남아요.</p>`
           :`<div class="acts" style="margin-top:10px"><button class="out w" id="acctLogout">로그아웃</button></div>`}
       </div>
       <div class="card"><h3>내 활동</h3><div class="acts" style="margin-top:4px"><button class="out" id="myReports">내 제보 ${window.dataService.getMyReports().length}</button><button class="out" id="myReviews">내 리뷰 ${window.dataService.getMyReviews().length}</button></div></div>
-      <div class="wallet${isGuest()?" guest":""}" style="margin-top:10px"><small>보유 티끌</small>${isGuest()?`<div class="big" style="font-size:20px;line-height:1.3">로그인하면 티끌을 모을 수 있어요</div>`:`<div class="big">${S.tikkle.toLocaleString()} 티끌</div>`}<div class="row"><small>응모권 ${S.tickets}장</small><small>기여 ${3+S.verified.length}회</small></div></div>
       <div class="card"><h3>내 혜택 정보 <button class="out sm" id="profBtn">${S.profile?"수정":"입력하기"}</button></h3>
         ${S.profile?profileSummary():'<p class="note" style="margin:0">나이·거주지 같은 정보를 넣으면 무료·할인 대상인 문화생활을 골라서 보여줘요.</p>'}
         <label class="sw" for="benSw" style="border-bottom:0;padding-bottom:0"><span>문화 탭에서 내 혜택 적용해서 보기</span><input type="checkbox" id="benSw" ${S.benefit?"checked":""}></label>
         <button class="linkbtn" id="benefitInputBtn" type="button">혜택 입력</button></div>
       ${supportProgramsCard()}
       ${S.bookings.length?`<div class="card"><h3>오늘 예약 <span class="note">${S.bookings.length}건</span></h3>${S.bookings.map(k=>`<div class="task"><div><b>${esc(k.title)}</b><small>${esc(k.name)} · ${k.time} · ${k.q}개 · ${won(k.sum)}</small></div><b style="letter-spacing:.06em">${k.code}</b></div>`).join("")}</div>`:""}
-      <div class="card"><h3>오늘의 티끌 모으기</h3>
-        <div class="task"><div><b>출석 체크</b><small>매일 응모권 1장</small></div><button class="blk sm" id="attBtn" ${S.attended?"disabled":""}>${S.attended?"완료":"출석하기"}</button></div>
-        <div class="task"><div><b>티끌 상자</b><small>${left?`${Math.ceil(left/60000)}분 뒤 다시 열 수 있어요`:`열면 ${T.box}티끌`}</small></div><button class="blk sm" id="boxBtn" ${left?"disabled":""}>상자 열기</button></div>
-        <div class="task"><div><b>만보기 · 오늘 ${S.steps.toLocaleString()}보</b><small>1,000보마다 적립 버튼이 열려요 (데모 예시)</small></div><button class="blk sm" id="stepBtn" ${stepAvail<1?"disabled":""}>${stepAvail} 구간 받기</button></div>
-        <div class="task"><div><b>광고 보고 티끌 받기</b><small>${T.adMin}~${T.adMax}티끌 랜덤 · 오늘 ${S.ads}회</small></div><button class="blk sm" id="adBtn">광고 보기</button></div>
-      </div>
-      <div class="card"><h3>티끌 쓰기 <span class="note">교환 가격은 데모용 예시</span></h3>
-        <div class="task"><div><b>🎁 티끌드로우</b><small>응모권 1장으로 응모 · 출석하면 응모권을 받아요</small></div><button class="blk sm" id="drawBtn" ${S.tickets<1?"disabled":""}>응모하기</button></div>
-        ${store.map(x=>`<div class="task"><div><b>${x.e} ${x.name}</b><small>${x.cost.toLocaleString()}티끌</small></div><button class="out sm" data-buy="${x.id}" ${isGuest()||S.tikkle<x.cost?"disabled":""}>교환</button></div>`).join("")}
-      </div>
       <div class="card"><h3>알림</h3><button class="out" id="goNoti" style="width:100%">문화 알림 설정 열기</button></div>
       <div class="card"><h3>관리자 기능 <span class="tag">데모</span></h3><label class="sw" for="hideSamples"><span>실제 입력이 있으면 예시 데이터 숨기기</span><input type="checkbox" id="hideSamples" ${S.hideSamples?"checked":""}></label><label class="sw" for="demoMode"><span>시연 모드 (위치·반복 투표 허용)</span><input type="checkbox" id="demoMode" ${S.demoMode?"checked":""}></label><div class="acts"><button class="out" id="refreshDataBtn">데이터 새로고침</button><button class="out" id="resetDataBtn">데이터 초기화</button></div></div>`;
   }
-}
-function adFlow(){
-  sheet(`<div class="adbox"><b>광고 시청 중</b><p class="note" style="margin:4px 0 0">끝까지 보면 ${T.adMin}~${T.adMax}티끌 랜덤</p><div class="bar"><i id="adBar2"></i></div></div>`);
-  requestAnimationFrame(()=>{ $("#adBar2").style.width="100%"; });
-  setTimeout(()=>{ const b=rnd(T.adMin,T.adMax); S.tikkle+=b; S.ads++; closeSheet(); renderPage(); toast(`광고 보상 +${b}티끌`); }, 1700);
 }
 
 /* 내 혜택 정보 입력 (보조금24 판정 기준 + 문화시설 관람료 감면 기준을 종합) */
@@ -2003,7 +1974,6 @@ document.addEventListener("click", async ev => {
   if (d.og){ if (S.genres.has(d.og)){ if (S.genres.size>1) S.genres.delete(d.og); } else S.genres.add(d.og); t.setAttribute("aria-pressed",S.genres.has(d.og)); refreshOpt(); return; }
   if (d.pr){ S.prefs.regions.has(d.pr)?S.prefs.regions.delete(d.pr):S.prefs.regions.add(d.pr); t.setAttribute("aria-pressed",S.prefs.regions.has(d.pr)); persistPreferences(); return; }
   if (d.pg){ S.prefs.genres.has(d.pg)?S.prefs.genres.delete(d.pg):S.prefs.genres.add(d.pg); t.setAttribute("aria-pressed",S.prefs.genres.has(d.pg)); persistPreferences(); return; }
-  if (d.buy){ if(needLogin("쿠폰 교환")) return; const s=store.find(x=>x.id===d.buy); if (S.tikkle<s.cost) return; S.tikkle-=s.cost; renderPage(); toast(`${s.name}으로 교환했어요 (데모) · 남은 티끌 ${S.tikkle.toLocaleString()}`); return; }
   switch (t.id){
     case "cFilter": optSheet("all"); break;
     case "cBen": if (!S.profile){ profileSheet(true); toast("먼저 내 혜택 정보를 입력해 주세요."); } else { S.benefit=!S.benefit; window.dataService.update("benefit_enabled",S.benefit); closePeek(); render(); toast(S.benefit?"내 혜택을 적용한 가격으로 보여줘요.":"원래 가격으로 보여줘요. 만 원이 넘는 곳은 숨겨져요."); } break;
@@ -2031,11 +2001,6 @@ document.addEventListener("click", async ev => {
     case "zOut": { const r=rectOf(); zoomAt(r.width/2, r.height*0.45, 1/1.3); break; }
     case "searchBtn": searchSheet(); break;
     case "locBtn": goMyLocation(); break;
-    case "attBtn": if(needLogin("출석 체크")) break; S.attended=true; S.tickets++; renderPage(); toast("출석 완료 · 응모권 +1장"); break;
-    case "boxBtn": if(needLogin("티끌 상자")) break; S.boxAt=Date.now()+60*60000; addTikkle(T.box,"티끌 상자"); renderPage(); break;
-    case "stepBtn": if(needLogin("만보기 적립")) break; { const n=Math.floor(S.steps/1000)-S.stepClaimed; S.stepClaimed+=n; addTikkle(n*10,`만보기 ${n}구간 (데모 예시)`); renderPage(); break; }
-    case "adBtn": if(!needLogin("광고 보고 티끌 받기")) adFlow(); break;
-    case "drawBtn": if(needLogin("티끌드로우 응모")) break; { S.tickets--; const win = Math.random()<0.15; renderPage(); toast(win?"🎉 당첨! 커피 쿠폰이 쿠폰함에 들어갔어요 (데모)":"아쉽게도 꽝이에요. 다음 기회에!"); break; }
   }
 });
 $("#scrim").addEventListener("click", ev => { if (ev.target.id==="scrim") closeSheet(); });
@@ -2070,7 +2035,7 @@ function applyDataState(){
     if(it.x==null||it.y==null){ if(!hasCultureCoordinates(it)) return; const point=({x:500+((it.lng||126.9245)-126.9245)/0.000018,y:660-((it.lat||37.5572)-37.5572)/0.000012}); it.x=point.x; it.y=point.y; }
   });
   S.profile=ds.getProfile(); S.benefit=Boolean(ds.read().benefit_enabled);
-  S.saved=new Set(ds.getSaved().map(r=>r.target_id)); S.notis=ds.getNotifications(); S.tikkle=ds.getBalance();
+  S.saved=new Set(ds.getSaved().map(r=>r.target_id)); S.notis=ds.getNotifications();
   const preferences=ds.read().app_state;
   if(preferences){ S.hideSamples=Boolean(preferences.hideSamples); S.demoMode=preferences.demoMode??true; S.bells=new Set(preferences.bells||[]); if(preferences.prefs){ S.prefs={...S.prefs,...preferences.prefs,regions:new Set(preferences.prefs.regions||[]),genres:new Set(preferences.prefs.genres||[])}; } }
   const baseJudges=judgeList.filter(j=>/^j[123]$/.test(j.id));
