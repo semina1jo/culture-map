@@ -313,7 +313,8 @@
     // rows: [{kind, key, date, memo, photo_url, data}] — data:URL 사진은 저장소에 올리고 주소로 바꿔 저장
     push: rows => run(async () => {
       const out = [];
-      for (const r of rows) out.push({ ...r, user_id: userId(), photo_url: r.photo_url ? await uploadPhoto(r.photo_url) : null, updated_at: now() });
+      // 여러 줄을 한 번에 넣으려면 모든 줄의 칸 구성이 같아야 한다
+      for (const r of rows) out.push({ user_id: userId(), kind: r.kind, key: r.key, date: r.date ?? null, memo: r.memo ?? null, photo_url: r.photo_url ? await uploadPhoto(r.photo_url) : null, data: r.data ?? null, updated_at: now() });
       if (out.length) await request(`/rest/v1/diary_entries?on_conflict=user_id,kind,key`, { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(out) });
       return out;
     }),
