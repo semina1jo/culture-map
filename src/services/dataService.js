@@ -304,7 +304,23 @@
     if (!response.ok) throw new Error("사진 업로드에 실패했어요.");
     return `${base}/storage/v1/object/public/report-photos/${path}`;
   }
+  // ---- 기록 탭 메모·사진·갈 날짜·영수증: 로그인한 계정에 저장 (2026-11-16, 전엔 기기 localStorage에만 있었음) ----
+  const diaryEnabled = () => configured && connection.mode === "remote" && !account().isGuest;
+  const quoteIn = keys => keys.map(k => `"${encodeURIComponent(String(k).replace(/"/g, '\\"'))}"`).join(",");
+  const diaryApi = {
+    enabled: diaryEnabled,
+    pull: () => run(() => request(`/rest/v1/diary_entries?select=kind,key,date,memo,photo_url,data&user_id=eq.${encodeURIComponent(userId())}&limit=5000`)),
+    // rows: [{kind, key, date, memo, photo_url, data}] — data:URL 사진은 저장소에 올리고 주소로 바꿔 저장
+    push: rows => run(async () => {
+      const out = [];
+      for (const r of rows) out.push({ ...r, user_id: userId(), photo_url: r.photo_url ? await uploadPhoto(r.photo_url) : null, updated_at: now() });
+      if (out.length) await request(`/rest/v1/diary_entries?on_conflict=user_id,kind,key`, { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(out) });
+      return out;
+    }),
+    remove: (kind, keys) => keys.length ? run(() => remove("diary_entries", `user_id=eq.${encodeURIComponent(userId())}&kind=eq.${kind}&key=in.(${quoteIn(keys)})`)) : Promise.resolve({ ok: true }),
+  };
   const service = {
+    diary: diaryApi,
     get mode() { return connection.mode; },
     get status() { return { ...connection }; },
     userId, today, read, write, update,

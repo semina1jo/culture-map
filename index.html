@@ -1805,7 +1805,7 @@ function paidPrice(e){
 }
 function unlogReceipt(id, date){
   if (!date) return; const log = receiptLog(), key = `${date.slice(0,7)}|${id}`;
-  if (log[key] && log[key].kind === "리뷰") { delete log[key]; try { localStorage.setItem(RECEIPT_KEY, JSON.stringify(log)); } catch(_) {} }
+  if (log[key] && log[key].kind === "리뷰") { delete log[key]; try { localStorage.setItem(RECEIPT_KEY, JSON.stringify(log)); } catch(_) {} diaryRemote("remove", "receipt", [key]); }
 }
 function logReceipt(id, kind, date){
   const it = findAny(id); if (!it) return; date = date || REC_TODAY;
@@ -1814,6 +1814,7 @@ function logReceipt(id, kind, date){
   const price = it.price_min ?? it.price ?? 0;
   log[key] = {id, name:it.name, genre:it.genre, date, kind, price, paid:Math.min(price, paidPrice(it))};
   try { localStorage.setItem(RECEIPT_KEY, JSON.stringify(log)); } catch(_) {}
+  diaryRemote("push", [{kind:"receipt", key, date, data:log[key]}]);
 }
 /* 한 달 기록: 저장된 영수증 + 서버의 방문 인증·내 리뷰(같은 달 같은 행사는 1회) */
 function receiptEntries(month){
@@ -1878,7 +1879,73 @@ function receiptHTML(month){
 /* ===== 기록 탭: 달력(지난 기록 + 앞으로의 계획) + 그 달 영수증 ===== */
 const DIARY_KEY = "culturemap-diary-v1";
 function diary(){ try { const d = JSON.parse(localStorage.getItem(DIARY_KEY)) || {}; return {notes:d.notes||{}, plans:d.plans||{}, demo:d.demo||null}; } catch(_) { return {notes:{}, plans:{}, demo:null}; } }
-function saveDiary(d){ try { localStorage.setItem(DIARY_KEY, JSON.stringify(d)); return true; } catch(_) { toast("저장 공간이 부족해요. 사진 크기를 줄이거나 지난 사진을 지워 주세요."); return false; } }
+function saveDiary(d){ const prev = diary(); try { localStorage.setItem(DIARY_KEY, JSON.stringify(d)); syncDiaryDiff(prev, d); return true; } catch(_) { toast("저장 공간이 부족해요. 사진 크기를 줄이거나 지난 사진을 지워 주세요."); return false; } }
+/* ===== 기록(메모·사진·갈 날짜·영수증)을 로그인한 계정에 저장 (2026-11-16)
+   - 기기(localStorage)는 화면용 사본, 원본은 Supabase diary_entries
+   - 로그인하면: 이 기기에 남아 있던 기록(게스트 때 쓴 것)을 계정으로 올리고, 계정의 기록을 내려받는다
+   - 다른 계정으로 바뀌거나 로그아웃하면 이 기기의 사본을 지운다(남의 기록이 섞이지 않게) */
+const DIARY_OWNER_KEY = "culturemap-diary-owner";
+const diaryOn = () => Boolean(window.dataService?.diary?.enabled());
+function diaryRemote(op, ...args){
+  if (!diaryOn()) return Promise.resolve(null);
+  const api = window.dataService.diary;
+  return (op === "push" ? api.push(args[0]) : api.remove(args[0], args[1])).then(res => {
+    if (res && res.ok === false) toast("기록을 계정에 저장하지 못했어요. 잠시 후 다시 시도해 주세요.");
+    return res;
+  });
+}
+const noteRow = (key, n) => ({kind:"note", key, date:key.split("|")[0], memo:n.memo || null, photo_url:n.photo || null});
+function syncDiaryDiff(prev, next){
+  if (!diaryOn()) return;
+  const changed = Object.entries(next.notes).filter(([k, n]) => JSON.stringify(prev.notes[k]) !== JSON.stringify(n));
+  const gone = Object.keys(prev.notes).filter(k => !(k in next.notes));
+  const plansChanged = Object.entries(next.plans).filter(([id, d]) => prev.plans[id] !== d);
+  const plansGone = Object.keys(prev.plans).filter(id => !(id in next.plans));
+  if (changed.length || plansChanged.length) diaryRemote("push", [...changed.map(([k, n]) => noteRow(k, n)), ...plansChanged.map(([id, d]) => ({kind:"plan", key:id, date:d}))]).then(res => {
+    // 올린 사진은 기기 사본도 주소로 바꿔 저장 공간을 아낀다
+    if (!res?.ok || !Array.isArray(res.value)) return;
+    const d = diary(); let touched = false;
+    res.value.filter(r => r.kind === "note" && r.photo_url && d.notes[r.key]?.photo?.startsWith("data:")).forEach(r => { d.notes[r.key].photo = r.photo_url; touched = true; });
+    if (touched) try { localStorage.setItem(DIARY_KEY, JSON.stringify(d)); } catch(_) {}
+  });
+  if (gone.length) diaryRemote("remove", "note", gone);
+  if (plansGone.length) diaryRemote("remove", "plan", plansGone);
+}
+let diarySyncing = false;
+async function syncDiaryFromServer(){
+  const ds = window.dataService; if (!ds?.diary || diarySyncing) return;
+  const owner = (() => { try { return localStorage.getItem(DIARY_OWNER_KEY); } catch(_) { return null; } })();
+  const wipe = () => { try { const d = diary(); localStorage.setItem(DIARY_KEY, JSON.stringify({notes:{}, plans:{}, demo:d.demo})); localStorage.removeItem(RECEIPT_KEY); localStorage.removeItem(DIARY_OWNER_KEY); } catch(_) {} };
+  if (!diaryOn()) { if (owner && ds.account().isGuest) { wipe(); if (S.tab === "record") renderPage(); } return; }
+  const uid = ds.userId();
+  diarySyncing = true;
+  try {
+    if (owner && owner !== uid) wipe();
+    const res = await ds.diary.pull(); if (!res?.ok) return;
+    const rows = res.value || [], local = diary(), receipts = receiptLog();
+    const remote = { note: new Map(), plan: new Map(), receipt: new Map() };
+    rows.forEach(r => remote[r.kind]?.set(r.key, r));
+    // 이 기기에만 있는 기록은 계정으로 올린다 (게스트 때 쓴 기록 이전)
+    const up = [];
+    if (!owner || owner === uid) {
+      Object.entries(local.notes).forEach(([k, n]) => { if (!remote.note.has(k) && !(local.demo && k === `${local.demo.date}|${local.demo.id}`)) up.push(noteRow(k, n)); });
+      Object.entries(local.plans).forEach(([id, d]) => { if (!remote.plan.has(id)) up.push({kind:"plan", key:id, date:d}); });
+      Object.entries(receipts).forEach(([k, r]) => { if (!remote.receipt.has(k)) up.push({kind:"receipt", key:k, date:r.date, data:r}); });
+    }
+    const pushed = up.length ? await ds.diary.push(up) : null;
+    const d = diary(), log = owner && owner !== uid ? {} : receiptLog();
+    remote.note.forEach((r, k) => { d.notes[k] = {...(r.memo ? {memo:r.memo} : {}), ...(r.photo_url ? {photo:r.photo_url} : {})}; });
+    remote.plan.forEach((r, k) => { d.plans[k] = r.date; });
+    remote.receipt.forEach((r, k) => { if (r.data) log[k] = r.data; });
+    (pushed?.value || []).filter(r => r.kind === "note" && r.photo_url && d.notes[r.key]).forEach(r => { d.notes[r.key].photo = r.photo_url; });
+    localStorage.setItem(DIARY_KEY, JSON.stringify(d));
+    localStorage.setItem(RECEIPT_KEY, JSON.stringify(log));
+    localStorage.setItem(DIARY_OWNER_KEY, uid);
+    if (S.tab === "record") renderPage();
+  } catch(_) { /* 다음 접속 때 다시 */ } finally { diarySyncing = false; }
+}
+window.addEventListener("geojimap:account-change", () => syncDiaryFromServer());
+window.addEventListener("geojimap:data-ready", () => syncDiaryFromServer());
 const ymOf = d => d.slice(0,7);
 const shiftYM = (ym, n) => { const [y,m] = ym.split("-").map(Number), t = new Date(y, m-1+n, 1); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}`; };
 /* 날짜별 다녀온 곳: 방문 인증 · 내 리뷰 · 영수증 기록 (같은 날 같은 행사는 한 번) */

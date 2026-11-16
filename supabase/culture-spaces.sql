@@ -23,3 +23,17 @@ create table if not exists public.kopis_skip (
 alter table public.kopis_facility enable row level security;
 alter table public.kopis_skip enable row level security;
 -- 매일 05:30(KST) 실행: cron 'sync-culture-kopis-daily' ('30 20 * * *'). Secret KOPIS_API_KEY 필요
+
+-- 2026-11-16: 기록 탭 메모·사진·갈 날짜·영수증을 계정에 저장 (전엔 기기 localStorage에만)
+create table if not exists public.diary_entries (
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  kind text not null check (kind in ('note','plan','receipt')),
+  key text not null, date text, memo text, photo_url text, data jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, kind, key)
+);
+alter table public.diary_entries enable row level security;
+create policy diary_own_select on public.diary_entries for select to authenticated using ((select auth.uid()) = user_id);
+create policy diary_own_insert on public.diary_entries for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy diary_own_update on public.diary_entries for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy diary_own_delete on public.diary_entries for delete to authenticated using ((select auth.uid()) = user_id);
