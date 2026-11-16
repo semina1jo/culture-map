@@ -101,6 +101,7 @@ span.demo{font-size:10.5px;color:var(--muted);margin-left:8px;font-weight:500;ve
 .pdot{position:absolute;width:12px;height:12px;padding:0;border-radius:50%;background:var(--bd,var(--green));border:2px solid #fff;box-shadow:0 1px 3px rgba(31,43,34,.3);transform:translate(-50%,-50%);z-index:1;pointer-events:auto;cursor:pointer}
 .pdot::before{content:"";position:absolute;inset:-9px}
 .pdot.demo{opacity:.6}
+.cal-g button.wed:not(.on){color:#9A6B00}
 .chip.wday{background:var(--gold-soft,#FFF1C9);color:var(--ink);border-color:transparent;font-weight:700;cursor:default;white-space:nowrap}
 /* 범례: '내 위치' 버튼 바로 밑, 작게 (2026-11-16) */
 /* 범례: '내 위치' 버튼 오른쪽 아래에 작게. 버튼 바로 밑은 구글 로고 자리라 가리면 안 됨 */
@@ -810,11 +811,14 @@ const WDAY_RULES = [
   { re: /^(창덕궁|창경궁|종묘)$/, from: "2026-10-01", l: "문화가 있는 날 무료" },
 ];
 const kstToday = () => new Date(Date.now() + 9 * 3600e3);
-const isCultureDay = () => S.wdayPreview || kstToday().getUTCDay() === 3;
+const isWedStr = ds => new Date(`${ds}T00:00:00Z`).getUTCDay() === 3;
+// 기준 날짜: 날짜 필터에서 하루를 고르면 그날, 아니면 오늘(한국 시간)
+const wdayBaseDate = () => S.date && (S.dateMode === "day" || S.dateEnd === S.date) ? S.date : kstToday().toISOString().slice(0, 10);
+const isCultureDay = () => S.wdayPreview || isWedStr(wdayBaseDate());
 const wdayRule = e => {
   if (!e || !isCultureDay()) return null;
-  const today = kstToday().toISOString().slice(0, 10), name = String(e.name || e.title || "").replace(/\s+/g, "");
-  const r = WDAY_RULES.find(x => today >= x.from && x.re.test(name));
+  const base = wdayBaseDate(), name = String(e.name || e.title || "").replace(/\s+/g, "");
+  const r = WDAY_RULES.find(x => base >= x.from && x.re.test(name));
   return r ? { t: "wday", p: 0, l: r.l } : null;
 };
 function eff(e){
@@ -967,7 +971,7 @@ function chips(){
   const c = $("#chips");
   const on = S.date;
   c.innerHTML = `<button class="chip icon ${on?"on":""}" id="cFilter" aria-label="상세 필터">${ico.sl}</button>
-    ${isCultureDay()?`<span class="chip wday" title="매주 수요일 문화가 있는 날 혜택이 자동으로 적용돼요">🎬 문화가 있는 날</span>`:""}<button class="chip ben ${S.benefit?"on":""}" id="cBen" role="switch" aria-checked="${S.benefit}">🎟️ 내 혜택 적용 <span class="mini ${S.benefit?"on":""}"></span></button>
+    ${isCultureDay()?`<span class="chip wday" title="매주 수요일 문화가 있는 날 혜택이 자동으로 적용돼요">🎬 ${wdayBaseDate()!==kstToday().toISOString().slice(0,10)&&!S.wdayPreview?`${md(wdayBaseDate())}(수) `:""}문화가 있는 날</span>`:""}<button class="chip ben ${S.benefit?"on":""}" id="cBen" role="switch" aria-checked="${S.benefit}">🎟️ 내 혜택 적용 <span class="mini ${S.benefit?"on":""}"></span></button>
     <button class="chip ${S.date?"on":""}" id="cDate">${ico.cal} ${S.date ? (S.dateLabel || dlabel(S.date)) : "날짜 선택"} ${ico.car}</button>
     <button class="chip ${S.maxPrice<10000?"on":""}" id="cPrice">${priceLabel(S.maxPrice)} ${ico.car}</button>
     <button class="chip ${S.genres.size<GENRES.length?"on":""}" id="cGenre">문화 종류 · ${S.genres.size}</button>
@@ -1500,11 +1504,11 @@ function calHTML(){
     const ds = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
     const has = events.some(e => !e.hidden && activeOn(e, ds) && cultureFilterPrice(e)!=null && cultureFilterPrice(e)<=S.maxPrice && S.genres.has(e.genre4||e.genre));
     const selected = S.date && ds>=S.date && ds<=(S.dateEnd||S.date);
-    cells += `<button data-day="${ds}" class="${ds===FILTER_TODAY?"today":""} ${selected?"on":""} ${has?"has":""}" ${ds<FILTER_TODAY?"disabled":""} aria-pressed="${Boolean(selected)}" aria-label="${m}월 ${d}일${has?", 행사 있음":""}${selected?", 선택됨":""}">${d}</button>`;
+    cells += `<button data-day="${ds}" class="${ds===FILTER_TODAY?"today":""} ${selected?"on":""} ${has?"has":""} ${isWedStr(ds)?"wed":""}" ${ds<FILTER_TODAY?"disabled":""} aria-pressed="${Boolean(selected)}" aria-label="${m}월 ${d}일${has?", 행사 있음":""}${selected?", 선택됨":""}">${d}</button>`;
   }
   const note = S.dateMode==="range" ? !S.date ? "시작일을 선택한 뒤 종료일을 선택해 주세요." : !S.dateEnd ? `${dlabel(S.date)} 시작 · 종료일을 선택해 주세요.` : `${dlabel(S.date)}부터 ${dlabel(S.dateEnd)}까지 하루라도 진행되는 곳을 보여줘요.` : S.dateMode==="next7" ? "오늘부터 7일 뒤까지 진행되는 곳을 보여줘요." : S.date ? `${dlabel(S.date)}에 열리는 곳만 보여줘요.` : "날짜를 고르면 그날 열리는 곳만 보여줘요. 초록 점은 행사가 있는 날이에요.";
   return `<div class="cal"><div class="cal-h"><button data-calnav="-1" ${S.calYM<=CAL_MIN?"disabled":""} aria-label="이전 달">‹</button><b>${y}년 ${m}월</b><button data-calnav="1" ${S.calYM>=CAL_MAX?"disabled":""} aria-label="다음 달">›</button></div>
-    <div class="cal-g">${cells}</div></div><p class="note">${note}</p>
+    <div class="cal-g">${cells}</div></div><p class="note">${note}</p><p class="note" style="margin-top:2px">🎬 수요일을 고르면 문화가 있는 날 혜택(고궁·종묘·왕릉 무료)이 적용돼요.</p>
     <div class="opt" style="margin-top:8px"><button data-od="clear" aria-pressed="${S.dateMode==="all"}">날짜 전체</button><button data-od="${FILTER_TODAY}" aria-pressed="${S.dateMode==="day"&&S.date===FILTER_TODAY}">오늘</button><button data-od="next7" aria-pressed="${S.dateMode==="next7"}">7일 이내</button><button data-od="range" aria-pressed="${S.dateMode==="range"}">기간 선택</button></div>`;
 }
 function priceHTML(){
