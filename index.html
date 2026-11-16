@@ -101,6 +101,8 @@ span.demo{font-size:10.5px;color:var(--muted);margin-left:8px;font-weight:500;ve
 .pdot{position:absolute;width:12px;height:12px;padding:0;border-radius:50%;background:var(--bd,var(--green));border:2px solid #fff;box-shadow:0 1px 3px rgba(31,43,34,.3);transform:translate(-50%,-50%);z-index:1;pointer-events:auto;cursor:pointer}
 .pdot::before{content:"";position:absolute;inset:-9px}
 .pdot.demo{opacity:.6}
+.mapLegend{position:absolute;left:12px;bottom:132px;z-index:3;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.94);border-radius:999px;padding:5px 10px;font-size:11.5px;font-weight:700;color:var(--ink2);box-shadow:0 2px 8px rgba(31,43,34,.12);pointer-events:none}
+.mapLegend .lg-dot{width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid #fff;box-shadow:0 0 0 1px rgba(31,43,34,.2)}
 .listitem.demo{opacity:.75}
 .t-free{--bd:var(--green);--bg2:var(--green-soft)}
 .t-low{--bd:var(--gold);--bg2:var(--gold-soft)}
@@ -481,6 +483,7 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
       <button class="round" id="notiBtn" aria-label="문화 알림"><svg viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.3 1.6a.6.6 0 0 1-.5 1H5.2a.6.6 0 0 1-.5-1L6 16.5Z"/><path d="M10 21.5h4"/></svg><span class="dot" id="notiDot"></span></button>
       <div class="zoom" role="group" aria-label="확대·축소"><button id="zIn" aria-label="확대">＋</button><button id="zOut" aria-label="축소">－</button></div>
     </div>
+    <div class="mapLegend" id="mapLegend" hidden></div>
     <div class="bottomctl" id="bottomctl">
       <button class="round" id="locBtn" aria-label="내 위치로 이동"><svg viewBox="0 0 24 24"><path d="M20.5 3.5 3.8 10.4a.5.5 0 0 0 .1.9l6.6 2.2 2.2 6.6a.5.5 0 0 0 .9.1L20.5 3.5Z"/></svg></button>
       <div class="plus-wrap"><button class="plus" id="plusBtn" aria-label="제보하기"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><span id="plusLabel">제보하기</span></div>
@@ -1042,19 +1045,21 @@ function goMyLocation(){
    - 화면 픽셀 기준으로 가까운 핀끼리 묶는다(확대 수준에 따라 묶음이 자동으로 커지고 작아짐)
    - 상설 시설·무료 공간은 동네 수준(줌 PLACE_PIN_ZOOM) 전까지 작은 점으로만 표시해 행사 핀이 묻히지 않게 한다
    - 핀마다 위·경도를 data-lat/lng로 들고 있어, 지도를 움직이는 동안엔 위치만 다시 계산한다(전체 데이터 재검색 없음) */
-const PLACE_PIN_ZOOM = 15, CLUSTER_PX = 54;
+// 줌 DOT_MIN_ZOOM 미만(서울 전체가 보일 정도)에서는 상설 점도 숨긴다
+const PLACE_PIN_ZOOM = 15, DOT_MIN_ZOOM = 13, CLUSTER_PX = 54;
 const isPlaceItem = e => Boolean(e.is_permanent_place || isAlwaysOpen(e));
 function renderMap(){
   const ms = window.mapsService, gmap = ms?.getMap();
   const zoom = gmap ? gmap.getZoom() : 99;
   const dotMode = Boolean(gmap) && zoom < PLACE_PIN_ZOOM;
+  const hidePlaces = Boolean(gmap) && zoom < DOT_MIN_ZOOM;
   const items = cultureList().filter(hasCultureCoordinates).filter(nearView);
   // 화면 좌표: 구글 지도면 화면 픽셀, 아니면 기존 가상 지도 좌표
   const posOf = e => { const loc = locationOf(e); if (!gmap) return { p: { x: e.x, y: e.y }, loc }; const pt = ms.project(loc); return pt ? { p: { x: pt.x, y: pt.y }, loc } : null; };
   const dots = [], clusters = [], cell = gmap ? CLUSTER_PX : 36;
   for (const e of items) {
     const at = posOf(e); if (!at) continue;
-    if (dotMode && isPlaceItem(e) && S.sel !== e.id) { dots.push({ e, ...at }); continue; }
+    if (dotMode && isPlaceItem(e) && S.sel !== e.id) { if (!hidePlaces) dots.push({ e, ...at }); continue; }
     // 선택된 핀은 묶지 않는다
     const c = S.sel === e.id ? null : clusters.find(c => !c.sel && Math.abs(c.p.x - at.p.x) < cell && Math.abs(c.p.y - at.p.y) < cell);
     if (c) { c.list.push(e); c.sx += at.p.x; c.sy += at.p.y; c.lat += at.loc.lat; c.lng += at.loc.lng; }
@@ -1075,6 +1080,13 @@ function renderMap(){
       <span class="s">${f.rule ? "🎟️ 내 혜택가" : e.src==="사용자 제보" ? "제보" : discounts.some(d=>d.ref===e.id&&d.left>0) ? "오늘 할인" : isDemoCulture(e) ? "예시" : soon(e) ? "곧 종료" : e.is_permanent_place ? "상설" : e.is_public_culture ? "문화행사" : e.reserve ? "예약" : "바로 입장"}</span></button>`;
   }).join("");
   $("#world").innerHTML = mapSVG() + pins + meDotHtml();
+  // 범례: 상설을 점으로 보이거나 숨길 때만 표시
+  const lg = $("#mapLegend");
+  if (lg) {
+    const anyPlace = dotMode && items.some(isPlaceItem);
+    lg.hidden = !anyPlace;
+    if (anyPlace) lg.innerHTML = hidePlaces ? "🔍 확대하면 상설 시설·무료 공간도 보여요" : '<span class="lg-dot"></span>상설 시설·무료 공간 · 확대하면 가격 표시';
+  }
   if (window.mapsService?.getMap()) applyView();
   $("#plusLabel").textContent = "제보하기";
 }
