@@ -97,6 +97,10 @@ span.demo{font-size:10.5px;color:var(--muted);margin-left:8px;font-weight:500;ve
 /* 문화 탭: 예시(데모) 데이터는 연하게, 공공 API 데이터가 위로 */
 .pin.demo{opacity:.75;z-index:1}
 .pin.demo.sel{opacity:1;z-index:4}
+/* 상설 시설·무료 공간: 축소 상태에서는 작은 점 (2026-11-16) */
+.pdot{position:absolute;width:12px;height:12px;padding:0;border-radius:50%;background:var(--bd,var(--green));border:2px solid #fff;box-shadow:0 1px 3px rgba(31,43,34,.3);transform:translate(-50%,-50%);z-index:1;pointer-events:auto;cursor:pointer}
+.pdot::before{content:"";position:absolute;inset:-9px}
+.pdot.demo{opacity:.6}
 .listitem.demo{opacity:.75}
 .t-free{--bd:var(--green);--bg2:var(--green-soft)}
 .t-low{--bd:var(--gold);--bg2:var(--gold-soft)}
@@ -941,12 +945,11 @@ function applyView(){
   if (window.mapsService?.getMap()) {
     const w = $("#world");
     w.style.transform = "none"; w.style.width = "100%"; w.style.height = "100%"; w.style.setProperty("--inv", "1");
-    w.querySelectorAll(".pin").forEach(pin => {
-      const ids = pin.dataset.cluster ? pin.dataset.cluster.split(",") : [pin.dataset.peek];
-      const locations = ids.map(findAny).filter(Boolean).map(locationOf);
-      if (!locations.length) return;
-      const location = {lat:locations.reduce((n,l)=>n+l.lat,0)/locations.length,lng:locations.reduce((n,l)=>n+l.lng,0)/locations.length};
-      const point = window.mapsService.project(location);
+    // 지도를 움직이는 동안엔 핀이 들고 있는 위·경도로 위치만 옮긴다 (묶음 다시 계산은 지도가 멈춘 뒤 renderMap에서)
+    w.querySelectorAll(".pin, .pdot").forEach(pin => {
+      const lat = Number(pin.dataset.lat), lng = Number(pin.dataset.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const point = window.mapsService.project({lat, lng});
       if (point) { pin.style.left = `${point.x}px`; pin.style.top = `${point.y}px`; }
     });
     placeMeDot();
@@ -991,7 +994,9 @@ function nearView(it){
   if (S.sel === it.id) return true;
   const ms = window.mapsService;
   if (ms?.getMap()) {
-    const vb = ms.visibleBounds(0.25); if (!vb) return true;
+    const now = performance.now();
+    if (!nearView._vb || now - nearView._t > 50) { nearView._vb = ms.visibleBounds(0.25); nearView._t = now; }
+    const vb = nearView._vb; if (!vb) return true;
     const loc = locationOf(it); if (!loc || !Number.isFinite(loc.lat)) return false;
     return loc.lat <= vb.n && loc.lat >= vb.s && loc.lng <= vb.e && loc.lng >= vb.w;
   }
@@ -1033,15 +1038,42 @@ function goMyLocation(){
     toast(err.code === 1 ? "위치 권한이 꺼져 있어요. 브라우저 설정에서 위치 접근을 허용해 주세요." : "위치를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.");
   }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
 }
+/* 지도 핀 (2026-11-16 개편)
+   - 화면 픽셀 기준으로 가까운 핀끼리 묶는다(확대 수준에 따라 묶음이 자동으로 커지고 작아짐)
+   - 상설 시설·무료 공간은 동네 수준(줌 PLACE_PIN_ZOOM) 전까지 작은 점으로만 표시해 행사 핀이 묻히지 않게 한다
+   - 핀마다 위·경도를 data-lat/lng로 들고 있어, 지도를 움직이는 동안엔 위치만 다시 계산한다(전체 데이터 재검색 없음) */
+const PLACE_PIN_ZOOM = 15, CLUSTER_PX = 54;
+const isPlaceItem = e => Boolean(e.is_permanent_place || isAlwaysOpen(e));
 function renderMap(){
-  let pins = "";
-  {
-    const groups = new Map();
-    cultureList().filter(hasCultureCoordinates).filter(nearView).forEach(e => { const key = `${Math.round(e.x/36)}:${Math.round(e.y/36)}`; if(!groups.has(key)) groups.set(key,[]); groups.get(key).push(e); });
-    pins = [...groups.values()].map(group => { if(group.length>1){ const x=group.reduce((a,e)=>a+e.x,0)/group.length, y=group.reduce((a,e)=>a+e.y,0)/group.length; return `<button class="pin t-mid cluster ${group.every(isDemoCulture)?"demo":""}" style="left:${x}px;top:${y}px" data-cluster="${group.map(e=>e.id).join(",")}" aria-label="${group.length}곳 겹침 핀"><span class="p"><span class="e">＋</span>${group.length}곳</span><span class="s">목록 보기</span></button>`; } const e=group[0], f=eff(e); return `<button class="pin ${tier(f.price)} ${S.sel===e.id?"sel":""} ${e.src==="사용자 제보"?"rep":""} ${isDemoCulture(e)?"demo":""}" style="left:${e.x}px;top:${e.y}px" data-peek="${e.id}" aria-label="${esc(e.name)} ${priceText(e,f)}${isDemoCulture(e)?" (예시)":""}">
-      <span class="p"><span class="e">${EMOJI[e.genre]}</span>${priceText(e,f)}</span>
-      <span class="s">${f.rule ? "🎟️ 내 혜택가" : e.src==="사용자 제보" ? "제보" : discounts.some(d=>d.ref===e.id&&d.left>0) ? "오늘 할인" : isDemoCulture(e) ? "예시" : soon(e) ? "곧 종료" : e.is_permanent_place ? "상설" : e.is_public_culture ? "문화행사" : e.reserve ? "예약" : "바로 입장"}</span></button>`; }).join("");
+  const ms = window.mapsService, gmap = ms?.getMap();
+  const zoom = gmap ? gmap.getZoom() : 99;
+  const dotMode = Boolean(gmap) && zoom < PLACE_PIN_ZOOM;
+  const items = cultureList().filter(hasCultureCoordinates).filter(nearView);
+  // 화면 좌표: 구글 지도면 화면 픽셀, 아니면 기존 가상 지도 좌표
+  const posOf = e => { const loc = locationOf(e); if (!gmap) return { p: { x: e.x, y: e.y }, loc }; const pt = ms.project(loc); return pt ? { p: { x: pt.x, y: pt.y }, loc } : null; };
+  const dots = [], clusters = [], cell = gmap ? CLUSTER_PX : 36;
+  for (const e of items) {
+    const at = posOf(e); if (!at) continue;
+    if (dotMode && isPlaceItem(e) && S.sel !== e.id) { dots.push({ e, ...at }); continue; }
+    // 선택된 핀은 묶지 않는다
+    const c = S.sel === e.id ? null : clusters.find(c => !c.sel && Math.abs(c.p.x - at.p.x) < cell && Math.abs(c.p.y - at.p.y) < cell);
+    if (c) { c.list.push(e); c.sx += at.p.x; c.sy += at.p.y; c.lat += at.loc.lat; c.lng += at.loc.lng; }
+    else clusters.push({ p: at.p, list: [e], sx: at.p.x, sy: at.p.y, lat: at.loc.lat, lng: at.loc.lng, sel: S.sel === e.id });
   }
+  const dotHtml = dots.map(({ e, p, loc }) => `<button class="pdot ${tier(eff(e).price)} ${isDemoCulture(e)?"demo":""}" style="left:${p.x}px;top:${p.y}px" data-lat="${loc.lat}" data-lng="${loc.lng}" data-peek="${e.id}" aria-label="${esc(e.name)} (상설) ${priceText(e, eff(e))}"></button>`).join("");
+  let pins = dotHtml + clusters.map(c => {
+    const n = c.list.length;
+    if (n > 1) {
+      const p = { x: c.sx / n, y: c.sy / n }, loc = { lat: c.lat / n, lng: c.lng / n };
+      const ev = c.list.filter(e => !isPlaceItem(e)).length;
+      const sub = ev && ev < n ? `행사 ${ev} · 상설 ${n - ev}` : ev ? "목록 보기" : "상설 · 목록 보기";
+      return `<button class="pin t-mid cluster ${c.list.every(isDemoCulture)?"demo":""}" style="left:${p.x}px;top:${p.y}px" data-lat="${loc.lat}" data-lng="${loc.lng}" data-cluster="${c.list.map(e=>e.id).join(",")}" aria-label="${n}곳 묶음 핀"><span class="p"><span class="e">＋</span>${n}곳</span><span class="s">${sub}</span></button>`;
+    }
+    const e = c.list[0], f = eff(e), p = c.p, loc = { lat: c.lat, lng: c.lng };
+    return `<button class="pin ${tier(f.price)} ${S.sel===e.id?"sel":""} ${e.src==="사용자 제보"?"rep":""} ${isDemoCulture(e)?"demo":""}" style="left:${p.x}px;top:${p.y}px" data-lat="${loc.lat}" data-lng="${loc.lng}" data-peek="${e.id}" aria-label="${esc(e.name)} ${priceText(e,f)}${isDemoCulture(e)?" (예시)":""}">
+      <span class="p"><span class="e">${EMOJI[e.genre]}</span>${priceText(e,f)}</span>
+      <span class="s">${f.rule ? "🎟️ 내 혜택가" : e.src==="사용자 제보" ? "제보" : discounts.some(d=>d.ref===e.id&&d.left>0) ? "오늘 할인" : isDemoCulture(e) ? "예시" : soon(e) ? "곧 종료" : e.is_permanent_place ? "상설" : e.is_public_culture ? "문화행사" : e.reserve ? "예약" : "바로 입장"}</span></button>`;
+  }).join("");
   $("#world").innerHTML = mapSVG() + pins + meDotHtml();
   if (window.mapsService?.getMap()) applyView();
   $("#plusLabel").textContent = "제보하기";
