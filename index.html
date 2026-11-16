@@ -101,7 +101,7 @@ span.demo{font-size:10.5px;color:var(--muted);margin-left:8px;font-weight:500;ve
 .pdot{position:absolute;width:12px;height:12px;padding:0;border-radius:50%;background:var(--bd,var(--green));border:2px solid #fff;box-shadow:0 1px 3px rgba(31,43,34,.3);transform:translate(-50%,-50%);z-index:1;pointer-events:auto;cursor:pointer}
 .pdot::before{content:"";position:absolute;inset:-9px}
 .pdot.demo{opacity:.6}
-.mapLegend{position:absolute;left:12px;bottom:132px;z-index:3;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.94);border-radius:999px;padding:5px 10px;font-size:11.5px;font-weight:700;color:var(--ink2);box-shadow:0 2px 8px rgba(31,43,34,.12);pointer-events:none}
+.mapLegend{position:absolute;left:12px;bottom:158px;z-index:3;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.94);border-radius:999px;padding:5px 10px;font-size:11.5px;font-weight:700;color:var(--ink2);box-shadow:0 2px 8px rgba(31,43,34,.12);pointer-events:none}
 .mapLegend .lg-dot{width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid #fff;box-shadow:0 0 0 1px rgba(31,43,34,.2)}
 .listitem.demo{opacity:.75}
 .t-free{--bd:var(--green);--bg2:var(--green-soft)}
@@ -1085,7 +1085,7 @@ function renderMap(){
   if (lg) {
     const anyPlace = dotMode && items.some(isPlaceItem);
     lg.hidden = !anyPlace;
-    if (anyPlace) lg.innerHTML = hidePlaces ? "🔍 확대하면 상설 시설·무료 공간도 보여요" : '<span class="lg-dot"></span>상설 시설·무료 공간 · 확대하면 가격 표시';
+    if (anyPlace) lg.innerHTML = hidePlaces ? "🔍 확대하면 상설·무료 공간도 보여요" : '<span class="lg-dot"></span>상설·무료 공간 · 확대하면 가격 표시';
   }
   if (window.mapsService?.getMap()) applyView();
   $("#plusLabel").textContent = "제보하기";
