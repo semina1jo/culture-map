@@ -89,7 +89,9 @@ span.demo{font-size:10.5px;color:var(--muted);margin-left:8px;font-weight:500;ve
 
 .pin{position:absolute;transform:translate(-50%,-50%) scale(var(--inv,1));border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;z-index:2}
 .pin .p{display:flex;align-items:center;gap:5px;background:#fff;border:2px solid var(--bd);border-radius:999px;padding:3px 11px 3px 5px;font-weight:800;font-size:14px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.12);font-variant-numeric:tabular-nums}
-.pin .e{width:22px;height:22px;border-radius:50%;background:var(--bg2);display:grid;place-items:center;font-size:12px}
+.pin .e{width:22px;height:22px;border-radius:50%;background:var(--bg2);display:grid;place-items:center;font-size:12px;overflow:hidden;flex:none}
+.pin .e img{width:100%;height:100%;object-fit:cover;display:block}
+.pin.sel .e{width:26px;height:26px}
 .pin .s{margin-top:-3px;background:var(--bg2);border:1px solid var(--bd);border-radius:999px;padding:0 7px;font-size:11px;font-weight:700;color:var(--ink2)}
 .pin.sel{z-index:4}
 .pin.sel .p{background:var(--ink);color:#fff;border-color:var(--ink)}
@@ -1083,6 +1085,10 @@ function goMyLocation(){
    - 상설 시설·무료 공간은 동네 수준(줌 PLACE_PIN_ZOOM) 전까지 작은 점으로만 표시해 행사 핀이 묻히지 않게 한다
    - 핀마다 위·경도를 data-lat/lng로 들고 있어, 지도를 움직이는 동안엔 위치만 다시 계산한다(전체 데이터 재검색 없음) */
 // 줌 DOT_MIN_ZOOM 미만(서울 전체가 보일 정도)에서는 상설 점도 숨긴다
+/* 핀 아이콘: 상세 화면의 사진이 있으면 작은 동그라미 사진, 없거나 못 불러오면 분야 이모지 (2026-11-16) */
+const pinThumb = e => e.photo && /^(https?:|data:image)/.test(e.photo)
+  ? `<img src="${esc(e.photo)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createTextNode('${EMOJI[e.genre] || "🎫"}'))">`
+  : (EMOJI[e.genre] || "🎫");
 const PLACE_PIN_ZOOM = 15, DOT_MIN_ZOOM = 13, CLUSTER_PX = 54;
 const isPlaceItem = e => Boolean(e.is_permanent_place || isAlwaysOpen(e));
 function renderMap(){
@@ -1113,7 +1119,7 @@ function renderMap(){
     }
     const e = c.list[0], f = eff(e), p = c.p, loc = { lat: c.lat, lng: c.lng };
     return `<button class="pin ${tier(f.price)} ${S.sel===e.id?"sel":""} ${e.src==="사용자 제보"?"rep":""} ${isDemoCulture(e)?"demo":""}" style="left:${p.x}px;top:${p.y}px" data-lat="${loc.lat}" data-lng="${loc.lng}" data-peek="${e.id}" aria-label="${esc(e.name)} ${priceText(e,f)}${isDemoCulture(e)?" (예시)":""}">
-      <span class="p"><span class="e">${EMOJI[e.genre]}</span>${priceText(e,f)}</span>
+      <span class="p"><span class="e">${pinThumb(e)}</span>${priceText(e,f)}</span>
       <span class="s">${f.rule?.t==="wday" ? "🎬 문화가 있는 날" : f.rule ? "🎟️ 내 혜택가" : e.src==="사용자 제보" ? "제보" : lowestSeat(e) ? "최저석" : discounts.some(d=>d.ref===e.id&&d.left>0) ? "오늘 할인" : isDemoCulture(e) ? "예시" : soon(e) ? "곧 종료" : e.is_permanent_place ? "상설" : e.is_public_culture ? "문화행사" : e.reserve ? "예약" : "바로 입장"}</span></button>`;
   }).join("");
   $("#world").innerHTML = mapSVG() + pins + meDotHtml();
