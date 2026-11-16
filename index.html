@@ -231,7 +231,10 @@ span.demo{font-size:10.5px;color:var(--muted);margin-left:8px;font-weight:500;ve
 .acts .share-icon{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;vertical-align:-3px;margin-right:5px}
 .linkbtn{border:0;background:none;color:var(--muted);font-size:12.5px;text-decoration:underline;padding:6px 0;margin-top:6px}
 .listitem{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:12px 0}
-.listitem .ph{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-size:22px;background:var(--bg2)}
+.listitem .ph{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-size:22px;background:var(--bg2);position:relative;flex:none}
+.listitem .ph img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
+.listitem .ph .gb{position:absolute;right:-4px;bottom:-4px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px rgba(31,43,34,.15);font-size:11px;line-height:20px;text-align:center}
+.listitem .ph.noimg .gb{position:static;box-shadow:none;background:none;width:auto;height:auto;font-size:22px}
 [data-report-kind] .ph svg{width:22px;height:22px;stroke:var(--ink);fill:none;stroke-width:2}
 .listitem b{display:block;font-size:15px;min-width:0}
 .listitem small{color:var(--muted);font-size:12px}
@@ -1092,11 +1095,6 @@ function goMyLocation(){
 const pinThumb = (e, badge = EMOJI[e.genre] || "🎫") => e.photo && /^(https?:|data:image)/.test(e.photo)
   ? `<img src="${esc(e.photo)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()"><span class="gb">${badge}</span>`
   : (EMOJI[e.genre] || "🎫");
-// 묶음 핀: 행사를 먼저, 사진 있는 곳의 사진 + 개수 배지
-const clusterThumb = list => {
-  const pick = list.find(e => !isPlaceItem(e) && e.photo) || list.find(e => e.photo);
-  return pick ? pinThumb(pick, `${list.length}`) : "＋";
-};
 const PLACE_PIN_ZOOM = 15, DOT_MIN_ZOOM = 13, CLUSTER_PX = 62;
 const isPlaceItem = e => Boolean(e.is_permanent_place || isAlwaysOpen(e));
 function renderMap(){
@@ -1123,7 +1121,7 @@ function renderMap(){
       const p = { x: c.sx / n, y: c.sy / n }, loc = { lat: c.lat / n, lng: c.lng / n };
       const ev = c.list.filter(e => !isPlaceItem(e)).length;
       const sub = ev && ev < n ? `행사 ${ev} · 상설 ${n - ev}` : ev ? "목록 보기" : "상설 · 목록 보기";
-      return `<button class="pin t-mid cluster ${c.list.every(isDemoCulture)?"demo":""}" style="left:${p.x}px;top:${p.y}px" data-lat="${loc.lat}" data-lng="${loc.lng}" data-cluster="${c.list.map(e=>e.id).join(",")}" aria-label="${n}곳 묶음 핀"><span class="p"><span class="e cl">${clusterThumb(c.list)}</span>${n}곳</span><span class="s">${sub}</span></button>`;
+      return `<button class="pin t-mid cluster ${c.list.every(isDemoCulture)?"demo":""}" style="left:${p.x}px;top:${p.y}px" data-lat="${loc.lat}" data-lng="${loc.lng}" data-cluster="${c.list.map(e=>e.id).join(",")}" aria-label="${n}곳 묶음 핀"><span class="p"><span class="e">＋</span>${n}곳</span><span class="s">${sub}</span></button>`;
     }
     const e = c.list[0], f = eff(e), p = c.p, loc = { lat: c.lat, lng: c.lng };
     return `<button class="pin ${tier(f.price)} ${S.sel===e.id?"sel":""} ${e.src==="사용자 제보"?"rep":""} ${isDemoCulture(e)?"demo":""}" style="left:${p.x}px;top:${p.y}px" data-lat="${loc.lat}" data-lng="${loc.lng}" data-peek="${e.id}" aria-label="${esc(e.name)} ${priceText(e,f)}${isDemoCulture(e)?" (예시)":""}">
@@ -1557,7 +1555,7 @@ function listSheet(clusterIds){
     <p class="note">지금 보고 있는 지도 화면 기준 · 가까운 순 · 지도를 움직이면 바뀌어요</p>
     ${dcs.length?`<div class="secline"><b>오늘 예약 가능한 할인</b><span>${dcs.filter(d=>d.left).length}건</span></div>${dcs.map(d => dcCard(d, distM(findAny(d.ref), b))).join("")}`:""}
     <div class="secline"><b>주변 문화생활</b><span>${items.length}곳</span></div>
-    ${items.map(({it,dist}) => `<button class="listitem ${tier(effP(it))} ${isDemoCulture(it)?"demo":""}" data-open="${it.id}"><span class="ph">${EMOJI[it.genre]}</span><span style="min-width:0"><b>${esc(it.name)}</b><small>${it.genre} · ${period(it)} · ${fmtDist(dist)}${(() => { if (S.sit === "evening") { const et = window.hoursService.eveningText(hoursOn(it, REC_TODAY)); if (et) return ` · <span class="hrs grn">${et}</span>`; } const hb = hoursBadge(it); return hb ? ` · <span class="hrs ${hb.c}">${hb.t}</span>` : ""; })()}</small><br>${eff(it).rule?.t==="wday"?'<span class="tag grn">🎬 문화가 있는 날</span>':eff(it).rule?'<span class="tag grn">🎟️ 내 혜택가</span>':lowestSeat(it)?'<span class="tag">최저석</span>':""}${it.is_public_culture?`<span class="tag">${esc(it.source)}</span>`:it.reserve?'<span class="tag">예약</span>':'<span class="tag">바로 입장</span>'}${soon(it)?'<span class="tag red">곧 종료</span>':""}${it.src==="사용자 제보"?'<span class="tag grn">제보</span>':""}${isDemoCulture(it)?'<span class="tag">예시 데이터</span>':""}</span><span class="pr">${eff(it).rule?`<s class="note">${won(it.price)}</s><br>`:""}${priceText(it,eff(it))}</span></button>`).join("")
+    ${items.map(({it,dist}) => `<button class="listitem ${tier(effP(it))} ${isDemoCulture(it)?"demo":""}" data-open="${it.id}"><span class="ph">${pinThumb(it)}</span><span style="min-width:0"><b>${esc(it.name)}</b><small>${it.genre} · ${period(it)} · ${fmtDist(dist)}${(() => { if (S.sit === "evening") { const et = window.hoursService.eveningText(hoursOn(it, REC_TODAY)); if (et) return ` · <span class="hrs grn">${et}</span>`; } const hb = hoursBadge(it); return hb ? ` · <span class="hrs ${hb.c}">${hb.t}</span>` : ""; })()}</small><br>${eff(it).rule?.t==="wday"?'<span class="tag grn">🎬 문화가 있는 날</span>':eff(it).rule?'<span class="tag grn">🎟️ 내 혜택가</span>':lowestSeat(it)?'<span class="tag">최저석</span>':""}${it.is_public_culture?`<span class="tag">${esc(it.source)}</span>`:it.reserve?'<span class="tag">예약</span>':'<span class="tag">바로 입장</span>'}${soon(it)?'<span class="tag red">곧 종료</span>':""}${it.src==="사용자 제보"?'<span class="tag grn">제보</span>':""}${isDemoCulture(it)?'<span class="tag">예시 데이터</span>':""}</span><span class="pr">${eff(it).rule?`<s class="note">${won(it.price)}</s><br>`:""}${priceText(it,eff(it))}</span></button>`).join("")
       || '<p class="note" style="padding:12px 0">이 화면엔 조건에 맞는 곳이 없어요. 지도를 축소하거나 필터를 풀어보세요.</p>'}`);
   $("#lX").onclick = closeSheet;
 }
