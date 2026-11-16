@@ -509,7 +509,9 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 const TODAY = "2026-11-02";
 const FILTER_TODAY = window.dataService.today();
 const CAL_MIN = "2026-11", CAL_MAX = "2026-12";
-const EMOJI = {전시:"🖼️",공연:"🎤",체험:"🧴",축제:"🎪"};
+/* 문화 종류. '무료 공간'(도서관 등)은 2026-11-16 서울시 문화공간 정보 연동 때 추가 */
+const GENRES = ["전시","공연","체험","축제","무료 공간"];
+const EMOJI = {전시:"🖼️",공연:"🎤",체험:"🧴",축제:"🎪","무료 공간":"📚"};
 const W = 1000, H = 1400, M_PER_UNIT = 2.6;   /* 지도 1단위 ≈ 2.6m, 가로 약 2.6km */
 
 /* ===== 샘플 데이터 (가상, 성수동 일대) ===== */
@@ -567,7 +569,7 @@ const events = [
 ];
 
 /* 서울시 culturalEventInfo 원본 필드와 화면 계산 필드를 함께 유지한다. */
-const GENRE4_MAP = {"전시":"전시","미술":"전시","공연":"공연","음악":"공연","체험":"체험","교육":"체험","축제":"축제","행사":"축제"};
+const GENRE4_MAP = {"무료 공간":"무료 공간","도서관":"무료 공간","전시":"전시","미술":"전시","공연":"공연","음악":"공연","체험":"체험","교육":"체험","축제":"축제","행사":"축제"};
 const HONGDAE_PLACES = ["서교동 예시 갤러리","연남동 예시 문화공간","동교동 예시 야외무대","대현동 예시 커뮤니티홀"];
 function normalizeCultureEvent(e, i){
   const price = Number.isFinite(e.price) ? e.price : 0;
@@ -620,11 +622,11 @@ judgeList.forEach(j => {
 });
 
 /* ===== 상태 ===== */
-const S = {tab:"map",layer:"culture",date:null,dateEnd:null,dateMode:"all",dateLabel:null,calYM:FILTER_TODAY.slice(0,7),maxPrice:10000,genres:new Set(["전시","공연","체험","축제"]),reserve:"all",
+const S = {tab:"map",layer:"culture",date:null,dateEnd:null,dateMode:"all",dateLabel:null,calYM:FILTER_TODAY.slice(0,7),maxPrice:10000,genres:new Set(GENRES),reserve:"all",
   hideSamples:false,showDemo:Boolean(window.dataService && window.dataService.read().app_state?.showDemo),demoMode:true,sel:null,
   bells:new Set(["e5"]),saved:new Set(["e1"]),
   verified:[],judged:new Set(),bookings:[],
-  prefs:{open:true,end:true,free:true,judge:true,regions:new Set(),genres:new Set(["전시","공연","체험","축제"])},
+  prefs:{open:true,end:true,free:true,judge:true,regions:new Set(),genres:new Set(GENRES)},
   notis:[
     {kind:"신청 오픈",text:"향 만들기 체험 팝업, 오늘 현장 대기 명단이 열렸어요",time:"오늘 11:02",read:false,id:"e3"},
     {kind:"곧 종료",text:"알림 켠 '신진 작가 판화전'이 11월 4일(수)에 끝나요",time:"오늘 09:00",read:false,id:"e5"},
@@ -811,7 +813,7 @@ const SITUATIONS = [
   {k:"photo",       e:"📸", l:"사진이 잘 나오는", d:"리뷰 '사진이 잘 나와요' · 리뷰 전엔 전시·축제", group:"tag"},
   {k:"vibe",        e:"🎶", l:"분위기 있는", d:"리뷰에서 '분위기가 감성적이에요(음악·조명)'를 고른 곳만", group:"tag"},
   {k:"interactive", e:"🙌", l:"체험할 수 있는", d:"리뷰 '체험·참여 요소가 재밌어요' · 리뷰 전엔 체험", group:"tag"},
-  {k:"rest",        e:"🛋️", l:"쉬어 가기 좋은", d:"리뷰에서 '휴식 공간이 잘 되어 있어요'를 고른 곳만", group:"tag"}
+  {k:"rest",        e:"🛋️", l:"쉬어 가기 좋은", d:"리뷰 '휴식 공간이 잘 되어 있어요' · 리뷰 전엔 도서관 등 무료 공간", group:"tag"}
 ];
 /* 리뷰 항목: 누구와 함께(복수) · 좋았던 점(복수, 3묶음) · 분위기(하나). 값은 키로 저장 */
 const REV_WITH = [{k:"solo",e:"🙋",l:"혼자"},{k:"partner",e:"💑",l:"연인·배우자"},{k:"friend",e:"👯",l:"친구"},{k:"coworker",e:"🤝",l:"지인·동료"},{k:"kid",e:"🧒",l:"아이"},{k:"parent",e:"👵",l:"부모님"},{k:"pet",e:"🐶",l:"반려동물"}];
@@ -857,7 +859,7 @@ const INDOOR_RE = /미술관|박물관|갤러리|극장|아트홀|홀|센터|도
 const OUTDOOR_RE = /공원|광장|거리|야외|마당|한강|숲|운동장|정원|둘레길|산|천변|시장/;
 const isIndoor = e => { const hay = [e.place, e.name].filter(Boolean).join(" ");
   if (OUTDOOR_RE.test(hay) || (e.genre4 || e.genre) === "축제") return false;
-  return INDOOR_RE.test(hay) || ["전시","공연"].includes(e.genre4 || e.genre); };
+  return INDOOR_RE.test(hay) || ["전시","공연","무료 공간"].includes(e.genre4 || e.genre); };
 function nextWeekend(){ const t = new Date(`${REC_TODAY}T00:00:00`), dow = t.getDay();
   const sat = dow === 0 ? addFilterDays(REC_TODAY, -1) : addFilterDays(REC_TODAY, 6 - dow); return [dow === 0 ? REC_TODAY : sat, addFilterDays(sat, 1)]; }
 /* 운영시간: 문구를 읽어 오늘 운영 여부·시간을 판정 (src/services/hours.js) */
@@ -899,7 +901,7 @@ function sitOk(e){
     case "photo": return vote("photo", ["전시","축제"].includes(g));
     case "vibe": return vote("vibe", false);
     case "interactive": return vote("interactive", g === "체험");
-    case "rest": return vote("rest", false);
+    case "rest": return vote("rest", g === "무료 공간");
     default: return true;
   }
 }
@@ -928,7 +930,7 @@ function chips(){
     <button class="chip ben ${S.benefit?"on":""}" id="cBen" role="switch" aria-checked="${S.benefit}">🎟️ 내 혜택 적용 <span class="mini ${S.benefit?"on":""}"></span></button>
     <button class="chip ${S.date?"on":""}" id="cDate">${ico.cal} ${S.date ? (S.dateLabel || dlabel(S.date)) : "날짜 선택"} ${ico.car}</button>
     <button class="chip ${S.maxPrice<10000?"on":""}" id="cPrice">${priceLabel(S.maxPrice)} ${ico.car}</button>
-    <button class="chip ${S.genres.size<4?"on":""}" id="cGenre">문화 종류 · ${S.genres.size}</button>
+    <button class="chip ${S.genres.size<GENRES.length?"on":""}" id="cGenre">문화 종류 · ${S.genres.size}</button>
     <button class="chip ${S.sit?"on":""}" id="cSit">${S.sit ? `${SIT_L[S.sit].e} ${SIT_L[S.sit].l}` : "상황"} ${ico.car}</button>`;
 }
 
@@ -1436,14 +1438,14 @@ function priceHTML(){
 }
 function optSheet(kind){
   S.optKind = kind;
-  const G = `<div class="opt">${["전시","공연","체험","축제"].map(g => `<button aria-pressed="${S.genres.has(g)}" data-og="${g}">${EMOJI[g]} ${g}</button>`).join("")}</div>`;
+  const G = `<div class="opt">${GENRES.map(g => `<button aria-pressed="${S.genres.has(g)}" data-og="${g}">${EMOJI[g]} ${g}</button>`).join("")}</div>`;
   const map = {date:["날짜",calHTML()],price:["가격",`<p class="note">만 원 이하만 보여줘요.</p>`+priceHTML()],genre:["문화 종류",G],sit:["상황",sitHTML()],
     all:["필터",`<div class="lab">날짜</div>${calHTML()}<div class="lab">가격</div>${priceHTML()}<div class="lab">문화 종류</div>${G}<div class="lab">상황</div>${sitHTML()}`]};
   const sc = $(".sheet") ? $(".sheet").scrollTop : 0;
   sheet(`<div class="sh-h"><h2>${map[kind][0]}</h2></div>${map[kind][1]}<div class="acts"><button class="out" id="oReset">초기화</button><button class="blk" id="oDone">${cultureList().length}곳 보기</button></div>`);
   $(".sheet").scrollTop = sc;
   $("#oDone").onclick = closeSheet;
-  $("#oReset").onclick = () => { S.date=null; S.dateEnd=null; S.dateMode="all"; S.dateLabel=null; S.maxPrice=10000; S.reserve="all"; S.genres=new Set(["전시","공연","체험","축제"]); S.sit=null; S.calYM=FILTER_TODAY.slice(0,7); render(); optSheet(kind); };
+  $("#oReset").onclick = () => { S.date=null; S.dateEnd=null; S.dateMode="all"; S.dateLabel=null; S.maxPrice=10000; S.reserve="all"; S.genres=new Set(GENRES); S.sit=null; S.calYM=FILTER_TODAY.slice(0,7); render(); optSheet(kind); };
   const rg = $("#pRange");
   if (rg) rg.oninput = () => { S.maxPrice = +rg.value; $("#pVal").textContent = priceLabel(S.maxPrice);
     document.querySelectorAll("[data-op]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.op===S.maxPrice));
@@ -1494,7 +1496,7 @@ function notiSheet(){
     <div class="sec"><h3>예정된 알림 <span>알림 켠 행사</span></h3>${up || '<p class="note">상세 화면에서 "알림 받기"를 누르면 여기에 쌓여요.</p>'}</div>
     <div class="sec"><h3>알림 설정</h3>
       <div class="flab">관심 지역 <span class="note">아무 구도 고르지 않으면 서울 전체</span></div><div class="gu-chips">${chipsOf(SEOUL_GU,S.prefs.regions,"pr")}</div>
-      <div class="flab">관심 장르</div>${chipsOf(["전시","공연","체험","축제"],S.prefs.genres,"pg")}
+      <div class="flab">관심 장르</div>${chipsOf(GENRES,S.prefs.genres,"pg")}
       <label class="sw" for="pO"><span>관심 지역·장르의 선착순·사전예약이 열리면 알림</span><input type="checkbox" id="pO" ${S.prefs.open?"checked":""}></label>
       <label class="sw" for="pE"><span>찜한 행사 종료 3일 전 알림</span><input type="checkbox" id="pE" ${S.prefs.end?"checked":""}></label>
       <label class="sw" for="pFree"><span>관심 지역·장르의 새 무료 행사 알림</span><input type="checkbox" id="pFree" ${S.prefs.free?"checked":""}></label>
@@ -1522,7 +1524,7 @@ function reportTypeSheet(){
   $("#rtX").onclick = closeSheet;
 }
 function reportSheet(){
-  const kinds = ["체험","전시","공연","축제"];
+  const kinds = ["체험","전시","공연","축제","무료 공간"];
   sheet(`<div class="sh-h"><h2>무료·만 원 이하 문화 제보</h2><button class="x" id="rX" aria-label="닫기">${ico.x}</button></div>
     <p class="note" style="margin-top:4px">항목·가격·기간 또는 상시 운영·장소·사진·출처 링크를 확인한 뒤 지도에 올려요. 다른 사람들이 '정보와 맞아요'를 눌러 주면 확인된 정보가 돼요. 위치는 지금 보고 있는 지도 가운데로 등록돼요.</p>
     <form id="rF" novalidate>
@@ -1562,7 +1564,7 @@ function reportSheet(){
     S.tab="map";
     item.src="사용자 제보"; item.reports=0; events.push(item);
     judgeList.unshift({id:"j"+id,report_id:id,kind:"문화",right:0,ended:0,wrong:0,name:n,price:p,area:"서울 마포구",nick:window.dataService.getNickname(),time:"방금",submittedAt:Date.now(),expiresAt,status:"확인 중",ref:id,voters:{}});
-    S.date=null; S.dateEnd=null; S.dateMode="all"; S.dateLabel=null; S.maxPrice=10000; S.reserve="all"; S.genres=new Set(["전시","공연","체험","축제"]);
+    S.date=null; S.dateEnd=null; S.dateMode="all"; S.dateLabel=null; S.maxPrice=10000; S.reserve="all"; S.genres=new Set(GENRES);
     closeSheet(); render(); peek(id);
     if(isGuest()) toast(`${window.dataService.getNickname()}(으)로 제보했어요.`); else toast("제보를 등록했어요.");
   });
@@ -2180,7 +2182,7 @@ function applyDataState(){
   S.profile=ds.getProfile(); S.benefit=Boolean(ds.read().benefit_enabled);
   S.saved=new Set(ds.getSaved().map(r=>r.target_id)); S.notis=ds.getNotifications();
   const preferences=ds.read().app_state;
-  if(preferences){ S.hideSamples=Boolean(preferences.hideSamples); S.showDemo=Boolean(preferences.showDemo); S.demoMode=preferences.demoMode??true; S.bells=new Set(preferences.bells||[]); if(preferences.prefs){ S.prefs={...S.prefs,...preferences.prefs,regions:new Set((preferences.prefs.regions||[]).map(r=>OLD_REGION[r]||r).filter(r=>SEOUL_GU.includes(r))),genres:new Set(preferences.prefs.genres||[])}; } }
+  if(preferences){ S.hideSamples=Boolean(preferences.hideSamples); S.showDemo=Boolean(preferences.showDemo); S.demoMode=preferences.demoMode??true; S.bells=new Set(preferences.bells||[]); if(preferences.prefs){ S.prefs={...S.prefs,...preferences.prefs,regions:new Set((preferences.prefs.regions||[]).map(r=>OLD_REGION[r]||r).filter(r=>SEOUL_GU.includes(r))),genres:new Set(preferences.prefs.genres||[])}; if(["전시","공연","체험","축제"].every(g=>S.prefs.genres.has(g))) S.prefs.genres.add("무료 공간"); } }
   const baseJudges=judgeList.filter(j=>/^j[123]$/.test(j.id));
   const reports=ds.getReports().map(r=>{
     const demoVotes=S.demoMode?(ds.read().demo_votes||[]).filter(v=>v.report_id===r.id):[];
