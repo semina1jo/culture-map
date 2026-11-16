@@ -101,6 +101,7 @@ span.demo{font-size:10.5px;color:var(--muted);margin-left:8px;font-weight:500;ve
 .pdot{position:absolute;width:12px;height:12px;padding:0;border-radius:50%;background:var(--bd,var(--green));border:2px solid #fff;box-shadow:0 1px 3px rgba(31,43,34,.3);transform:translate(-50%,-50%);z-index:1;pointer-events:auto;cursor:pointer}
 .pdot::before{content:"";position:absolute;inset:-9px}
 .pdot.demo{opacity:.6}
+.chip.wday{background:var(--gold-soft,#FFF1C9);color:var(--ink);border-color:transparent;font-weight:700;cursor:default;white-space:nowrap}
 /* 범례: '내 위치' 버튼 바로 밑, 작게 (2026-11-16) */
 /* 범례: '내 위치' 버튼 오른쪽 아래에 작게. 버튼 바로 밑은 구글 로고 자리라 가리면 안 됨 */
 .loc-wrap{position:relative}
@@ -633,7 +634,7 @@ judgeList.forEach(j => {
 
 /* ===== 상태 ===== */
 const S = {tab:"map",layer:"culture",date:null,dateEnd:null,dateMode:"all",dateLabel:null,calYM:FILTER_TODAY.slice(0,7),maxPrice:10000,genres:new Set(GENRES),reserve:"all",
-  hideSamples:false,showDemo:Boolean(window.dataService && window.dataService.read().app_state?.showDemo),demoMode:true,sel:null,
+  hideSamples:false,showDemo:Boolean(window.dataService && window.dataService.read().app_state?.showDemo),wdayPreview:Boolean(window.dataService && window.dataService.read().app_state?.wdayPreview),demoMode:true,sel:null,
   bells:new Set(["e5"]),saved:new Set(["e1"]),
   verified:[],judged:new Set(),bookings:[],
   prefs:{open:true,end:true,free:true,judge:true,regions:new Set(),genres:new Set(GENRES)},
@@ -800,16 +801,33 @@ function venueRules(e){
     return {...VENUE_TARGET[v.target], p, l:`${v.target} ${/무료/.test(d) ? "무료" : d.includes("%") ? d + " 할인" : won(p)}`, venue:v.venue_name || v.venue_keyword};
   }).filter(r => Number.isFinite(r.p) && r.p < base);
 }
+/* ===== 문화가 있는 날(매주 수요일) — 켜고 끄는 스위치 없이, 수요일(한국 시간)에 앱을 보면 자동 적용 (2026-11-16)
+   출처: 국가유산청 궁능유적본부 2026-05-26 발표 — 조선왕릉 5/27~, 덕수궁 8월~, 창덕궁·창경궁·종묘 10월~ 매주 수요일 무료.
+   경복궁은 적용 시기 미정이라 넣지 않음. 관리자 기능의 '문화가 있는 날 미리 보기'로 수요일이 아니어도 시연 가능 */
+const WDAY_RULES = [
+  { re: /^(선정릉|선릉|정릉|태릉|강릉|태릉·강릉|의릉|헌릉|인릉|헌인릉|헌릉·인릉)$/, from: "2026-05-27", l: "문화가 있는 날 무료" },
+  { re: /^덕수궁$/, from: "2026-08-01", l: "문화가 있는 날 무료" },
+  { re: /^(창덕궁|창경궁|종묘)$/, from: "2026-10-01", l: "문화가 있는 날 무료" },
+];
+const kstToday = () => new Date(Date.now() + 9 * 3600e3);
+const isCultureDay = () => S.wdayPreview || kstToday().getUTCDay() === 3;
+const wdayRule = e => {
+  if (!e || !isCultureDay()) return null;
+  const today = kstToday().toISOString().slice(0, 10), name = String(e.name || e.title || "").replace(/\s+/g, "");
+  const r = WDAY_RULES.find(x => today >= x.from && x.re.test(name));
+  return r ? { t: "wday", p: 0, l: r.l } : null;
+};
 function eff(e){
   const base = e.price_min == null ? null : e.price_min;
-  if (!S.benefit || !S.profile || !e.ben || base == null) return {price:base, rule:null};
-  let best = {price:base, rule:null};
+  const w = base != null && base > 0 ? wdayRule(e) : null;
+  if (!S.benefit || !S.profile || !e.ben || base == null) return w ? {price:0, rule:w} : {price:base, rule:null};
+  let best = w ? {price:0, rule:w} : {price:base, rule:null};
   e.ben.forEach(r => { if (ruleOk(r) && r.p < best.price) best = {price:r.p, rule:r}; });
   return best;
 }
 const effP = e => eff(e).price;
 // 공공데이터 행사도 혜택 규칙이 있으면 내 혜택가로 거른다 (혜택가로 만 원 이하가 되는 공연은 혜택을 켰을 때만 보임)
-const cultureFilterPrice = e => e.is_public_culture && !(e.ben && e.ben.length) ? e.price : effP(e);
+const cultureFilterPrice = e => e.is_public_culture && !(e.ben && e.ben.length) && !wdayRule(e) ? e.price : effP(e);
 function isDemoCulture(e){ return !!e && !e.is_public_culture && e.src!=="사용자 제보" && !e.report_id && (e.is_sample===true || e.src==="예시 데이터"); }
 /* 관리자 기능 '더미(예시) 데이터 보기'가 꺼져 있으면 예시 행사·할인·알림·찜·예시 기록을 숨긴다 */
 const hideDemo = e => !S.showDemo && isDemoCulture(e);
@@ -949,7 +967,7 @@ function chips(){
   const c = $("#chips");
   const on = S.date;
   c.innerHTML = `<button class="chip icon ${on?"on":""}" id="cFilter" aria-label="상세 필터">${ico.sl}</button>
-    <button class="chip ben ${S.benefit?"on":""}" id="cBen" role="switch" aria-checked="${S.benefit}">🎟️ 내 혜택 적용 <span class="mini ${S.benefit?"on":""}"></span></button>
+    ${isCultureDay()?`<span class="chip wday" title="매주 수요일 문화가 있는 날 혜택이 자동으로 적용돼요">🎬 문화가 있는 날</span>`:""}<button class="chip ben ${S.benefit?"on":""}" id="cBen" role="switch" aria-checked="${S.benefit}">🎟️ 내 혜택 적용 <span class="mini ${S.benefit?"on":""}"></span></button>
     <button class="chip ${S.date?"on":""}" id="cDate">${ico.cal} ${S.date ? (S.dateLabel || dlabel(S.date)) : "날짜 선택"} ${ico.car}</button>
     <button class="chip ${S.maxPrice<10000?"on":""}" id="cPrice">${priceLabel(S.maxPrice)} ${ico.car}</button>
     <button class="chip ${S.genres.size<GENRES.length?"on":""}" id="cGenre">문화 종류 · ${S.genres.size}</button>
@@ -1092,7 +1110,7 @@ function renderMap(){
     const e = c.list[0], f = eff(e), p = c.p, loc = { lat: c.lat, lng: c.lng };
     return `<button class="pin ${tier(f.price)} ${S.sel===e.id?"sel":""} ${e.src==="사용자 제보"?"rep":""} ${isDemoCulture(e)?"demo":""}" style="left:${p.x}px;top:${p.y}px" data-lat="${loc.lat}" data-lng="${loc.lng}" data-peek="${e.id}" aria-label="${esc(e.name)} ${priceText(e,f)}${isDemoCulture(e)?" (예시)":""}">
       <span class="p"><span class="e">${EMOJI[e.genre]}</span>${priceText(e,f)}</span>
-      <span class="s">${f.rule ? "🎟️ 내 혜택가" : e.src==="사용자 제보" ? "제보" : lowestSeat(e) ? "최저석" : discounts.some(d=>d.ref===e.id&&d.left>0) ? "오늘 할인" : isDemoCulture(e) ? "예시" : soon(e) ? "곧 종료" : e.is_permanent_place ? "상설" : e.is_public_culture ? "문화행사" : e.reserve ? "예약" : "바로 입장"}</span></button>`;
+      <span class="s">${f.rule?.t==="wday" ? "🎬 문화가 있는 날" : f.rule ? "🎟️ 내 혜택가" : e.src==="사용자 제보" ? "제보" : lowestSeat(e) ? "최저석" : discounts.some(d=>d.ref===e.id&&d.left>0) ? "오늘 할인" : isDemoCulture(e) ? "예시" : soon(e) ? "곧 종료" : e.is_permanent_place ? "상설" : e.is_public_culture ? "문화행사" : e.reserve ? "예약" : "바로 입장"}</span></button>`;
   }).join("");
   $("#world").innerHTML = mapSVG() + pins + meDotHtml();
   // 범례: 상설을 점으로 보이거나 숨길 때만 표시
@@ -1521,7 +1539,7 @@ function listSheet(clusterIds){
     <p class="note">지금 보고 있는 지도 화면 기준 · 가까운 순 · 지도를 움직이면 바뀌어요</p>
     ${dcs.length?`<div class="secline"><b>오늘 예약 가능한 할인</b><span>${dcs.filter(d=>d.left).length}건</span></div>${dcs.map(d => dcCard(d, distM(findAny(d.ref), b))).join("")}`:""}
     <div class="secline"><b>주변 문화생활</b><span>${items.length}곳</span></div>
-    ${items.map(({it,dist}) => `<button class="listitem ${tier(effP(it))} ${isDemoCulture(it)?"demo":""}" data-open="${it.id}"><span class="ph">${EMOJI[it.genre]}</span><span style="min-width:0"><b>${esc(it.name)}</b><small>${it.genre} · ${period(it)} · ${fmtDist(dist)}${(() => { if (S.sit === "evening") { const et = window.hoursService.eveningText(hoursOn(it, REC_TODAY)); if (et) return ` · <span class="hrs grn">${et}</span>`; } const hb = hoursBadge(it); return hb ? ` · <span class="hrs ${hb.c}">${hb.t}</span>` : ""; })()}</small><br>${eff(it).rule?'<span class="tag grn">🎟️ 내 혜택가</span>':lowestSeat(it)?'<span class="tag">최저석</span>':""}${it.is_public_culture?`<span class="tag">${esc(it.source)}</span>`:it.reserve?'<span class="tag">예약</span>':'<span class="tag">바로 입장</span>'}${soon(it)?'<span class="tag red">곧 종료</span>':""}${it.src==="사용자 제보"?'<span class="tag grn">제보</span>':""}${isDemoCulture(it)?'<span class="tag">예시 데이터</span>':""}</span><span class="pr">${eff(it).rule?`<s class="note">${won(it.price)}</s><br>`:""}${priceText(it,eff(it))}</span></button>`).join("")
+    ${items.map(({it,dist}) => `<button class="listitem ${tier(effP(it))} ${isDemoCulture(it)?"demo":""}" data-open="${it.id}"><span class="ph">${EMOJI[it.genre]}</span><span style="min-width:0"><b>${esc(it.name)}</b><small>${it.genre} · ${period(it)} · ${fmtDist(dist)}${(() => { if (S.sit === "evening") { const et = window.hoursService.eveningText(hoursOn(it, REC_TODAY)); if (et) return ` · <span class="hrs grn">${et}</span>`; } const hb = hoursBadge(it); return hb ? ` · <span class="hrs ${hb.c}">${hb.t}</span>` : ""; })()}</small><br>${eff(it).rule?.t==="wday"?'<span class="tag grn">🎬 문화가 있는 날</span>':eff(it).rule?'<span class="tag grn">🎟️ 내 혜택가</span>':lowestSeat(it)?'<span class="tag">최저석</span>':""}${it.is_public_culture?`<span class="tag">${esc(it.source)}</span>`:it.reserve?'<span class="tag">예약</span>':'<span class="tag">바로 입장</span>'}${soon(it)?'<span class="tag red">곧 종료</span>':""}${it.src==="사용자 제보"?'<span class="tag grn">제보</span>':""}${isDemoCulture(it)?'<span class="tag">예시 데이터</span>':""}</span><span class="pr">${eff(it).rule?`<s class="note">${won(it.price)}</s><br>`:""}${priceText(it,eff(it))}</span></button>`).join("")
       || '<p class="note" style="padding:12px 0">이 화면엔 조건에 맞는 곳이 없어요. 지도를 축소하거나 필터를 풀어보세요.</p>'}`);
   $("#lX").onclick = closeSheet;
 }
@@ -1650,7 +1668,7 @@ function renderPage(){
       ${supportProgramsCard()}
       ${S.bookings.length?`<div class="card"><h3>오늘 예약 <span class="note">${S.bookings.length}건</span></h3>${S.bookings.map(k=>`<div class="task"><div><b>${esc(k.title)}</b><small>${esc(k.name)} · ${k.time} · ${k.q}개 · ${won(k.sum)}</small></div><b style="letter-spacing:.06em">${k.code}</b></div>`).join("")}</div>`:""}
       <div class="card"><h3>알림</h3><button class="out" id="goNoti" style="width:100%">문화 알림 설정 열기</button></div>
-      <div class="card"><h3>관리자 기능 <span class="tag">데모</span></h3><label class="sw" for="showDemo"><span>더미(예시) 데이터 보기<small style="display:block;color:var(--muted);font-size:11.5px;font-weight:500">예시 행사·오늘 할인·예시 알림·기록 탭 예시 기록</small></span><input type="checkbox" id="showDemo" ${S.showDemo?"checked":""}></label><label class="sw" for="demoMode"><span>시연 모드 (위치·반복 투표 허용)</span><input type="checkbox" id="demoMode" ${S.demoMode?"checked":""}></label><div class="acts"><button class="out" id="refreshDataBtn">데이터 새로고침</button><button class="out" id="resetDataBtn">데이터 초기화</button></div></div>`;
+      <div class="card"><h3>관리자 기능 <span class="tag">데모</span></h3><label class="sw" for="showDemo"><span>더미(예시) 데이터 보기<small style="display:block;color:var(--muted);font-size:11.5px;font-weight:500">예시 행사·오늘 할인·예시 알림·기록 탭 예시 기록</small></span><input type="checkbox" id="showDemo" ${S.showDemo?"checked":""}></label><label class="sw" for="wdayPreview"><span>문화가 있는 날 미리 보기<small style="display:block;color:var(--muted);font-size:11.5px;font-weight:500">수요일이 아니어도 수요일 혜택을 적용해서 보기 (발표·시연용)</small></span><input type="checkbox" id="wdayPreview" ${S.wdayPreview?"checked":""}></label><label class="sw" for="demoMode"><span>시연 모드 (위치·반복 투표 허용)</span><input type="checkbox" id="demoMode" ${S.demoMode?"checked":""}></label><div class="acts"><button class="out" id="refreshDataBtn">데이터 새로고침</button><button class="out" id="resetDataBtn">데이터 초기화</button></div></div>`;
   }
 }
 
@@ -2211,12 +2229,13 @@ $("#scrim").addEventListener("click", ev => { if (ev.target.id==="scrim") closeS
 document.addEventListener("change", ev => {
   if (ev.target.id === "showDemo"){ S.showDemo=ev.target.checked; persistPreferences(); render(); toast(S.showDemo?"더미(예시) 데이터를 함께 보여줘요.":"더미(예시) 데이터를 숨겼어요."); }
   if (ev.target.id === "demoMode"){ S.demoMode=ev.target.checked; persistPreferences(); if(window.dataService.mode==="remote") applyDataState(); $("#demoModeBadge").hidden=!S.demoMode; toast(S.demoMode?"시연 모드를 켰어요.":"일반 모드로 전환했어요."); }
+  if (ev.target.id === "wdayPreview"){ S.wdayPreview=ev.target.checked; persistPreferences(); render(); toast(S.wdayPreview?"수요일 혜택을 적용해서 보여줘요.":"오늘 날짜 기준으로 돌아왔어요."); }
   if (ev.target.id === "benSw"){ S.benefit=ev.target.checked; if(window.dataService) window.dataService.update("benefit_enabled",S.benefit); render(); }
 });
 
 document.addEventListener("keydown", ev => { if (ev.key==="Escape"){ if (!$("#scrim").hidden) closeSheet(); else if (!$("#peek").hidden) closePeek(); } });
 function persistPreferences(){
-  window.dataService.update("app_state",{hideSamples:S.hideSamples,showDemo:S.showDemo,demoMode:S.demoMode,bells:[...S.bells],prefs:{...S.prefs,regions:[...S.prefs.regions],genres:[...S.prefs.genres]}});
+  window.dataService.update("app_state",{hideSamples:S.hideSamples,showDemo:S.showDemo,demoMode:S.demoMode,wdayPreview:S.wdayPreview,bells:[...S.bells],prefs:{...S.prefs,regions:[...S.prefs.regions],genres:[...S.prefs.genres]}});
 }
 function applyDataState(){
   const ds=window.dataService;
