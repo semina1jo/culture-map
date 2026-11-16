@@ -670,6 +670,18 @@ const won = n => {
   const value=Number(n);return !Number.isFinite(value)?"가격 확인":value===0?"무료":value.toLocaleString("ko-KR")+"원";
 };
 const tier = p => p === null || p === undefined ? "t-unknown" : p === 0 ? "t-free" : p <= 5000 ? "t-low" : "t-mid";
+/* 좌석 등급별 요금(R석 5만·S석 3만·A석 1만 등)에서 가장 싼 좌석 값을 대표 가격으로 쓴 경우 → '최저석' 표시 (2026-11-16) */
+const _lowSeatCache = new Map();
+const lowestSeat = e => {
+  const t = String(e.fee_text || e.USE_FEE || "");
+  if (!t || !(Number(e.price) > 0)) return false;
+  if (!_lowSeatCache.has(t)) {
+    const seats = (t.match(/[A-Za-z가-힣]+석/g) || []).filter(x => x !== "좌석");
+    const nums = [...t.matchAll(/(\d{1,3}(?:,\d{3})+|\d{4,6})\s*원/g)].map(m => Number(m[1].split(",").join("")));
+    _lowSeatCache.set(t, seats.length >= 2 && nums.length >= 2 ? Math.max(...nums) : 0);
+  }
+  return Number(e.price) < _lowSeatCache.get(t);
+};
 const priceText = (e,value=eff(e)) => {
   if(value.price==null)return e.price_label||won(value.price);
   if(Number(value.price)===0)return "무료";
@@ -1080,7 +1092,7 @@ function renderMap(){
     const e = c.list[0], f = eff(e), p = c.p, loc = { lat: c.lat, lng: c.lng };
     return `<button class="pin ${tier(f.price)} ${S.sel===e.id?"sel":""} ${e.src==="사용자 제보"?"rep":""} ${isDemoCulture(e)?"demo":""}" style="left:${p.x}px;top:${p.y}px" data-lat="${loc.lat}" data-lng="${loc.lng}" data-peek="${e.id}" aria-label="${esc(e.name)} ${priceText(e,f)}${isDemoCulture(e)?" (예시)":""}">
       <span class="p"><span class="e">${EMOJI[e.genre]}</span>${priceText(e,f)}</span>
-      <span class="s">${f.rule ? "🎟️ 내 혜택가" : e.src==="사용자 제보" ? "제보" : discounts.some(d=>d.ref===e.id&&d.left>0) ? "오늘 할인" : isDemoCulture(e) ? "예시" : soon(e) ? "곧 종료" : e.is_permanent_place ? "상설" : e.is_public_culture ? "문화행사" : e.reserve ? "예약" : "바로 입장"}</span></button>`;
+      <span class="s">${f.rule ? "🎟️ 내 혜택가" : e.src==="사용자 제보" ? "제보" : lowestSeat(e) ? "최저석" : discounts.some(d=>d.ref===e.id&&d.left>0) ? "오늘 할인" : isDemoCulture(e) ? "예시" : soon(e) ? "곧 종료" : e.is_permanent_place ? "상설" : e.is_public_culture ? "문화행사" : e.reserve ? "예약" : "바로 입장"}</span></button>`;
   }).join("");
   $("#world").innerHTML = mapSVG() + pins + meDotHtml();
   // 범례: 상설을 점으로 보이거나 숨길 때만 표시
@@ -1300,7 +1312,7 @@ function detail(id,level){
   sheet(`<div class="${tier(f.price)}">
     <div class="sh-h"><h2>${esc(e.name)}</h2><button class="x" id="dX" aria-label="닫기">${ico.x}</button></div>
     <div class="addr">${esc(e.place)} ·${topStars(e)}</div>
-    <div class="hero">${e.photo?`<img src="${esc(e.photo)}" alt="${e.is_public_culture?"행사 이미지":"제보 사진"}">`:EMOJI[e.genre]}<span class="badge">${e.genre} · ${e.is_public_culture?esc(e.source):rep?e.src:"예시 데이터"}</span><span class="price">${f.rule?`<s style="font-size:13px;color:var(--muted);font-weight:500">${won(e.price)}</s> `:""}${priceText(e,f)}</span></div>
+    <div class="hero">${e.photo?`<img src="${esc(e.photo)}" alt="${e.is_public_culture?"행사 이미지":"제보 사진"}">`:EMOJI[e.genre]}<span class="badge">${e.genre} · ${e.is_public_culture?esc(e.source):rep?e.src:"예시 데이터"}</span><span class="price">${f.rule?`<s style="font-size:13px;color:var(--muted);font-weight:500">${won(e.price)}</s> `:lowestSeat(e)?`<small style="font-size:11px;font-weight:700;opacity:.75;margin-right:3px">최저석</small>`:""}${priceText(e,f)}</span></div>
     ${f.rule?`<div class="benok">🎟️ 내 혜택 적용: <b>${esc(f.rule.l)}</b> · 정가 ${won(e.price)} → ${won(f.price)}</div>`:""}
     <div class="adds"><button id="aPhoto">＋ 현장 사진 추가</button><button id="aPrice">＋ 가격 수정</button><button id="aHours">＋ 운영시간 수정</button></div>
     <div class="rows">
@@ -1509,7 +1521,7 @@ function listSheet(clusterIds){
     <p class="note">지금 보고 있는 지도 화면 기준 · 가까운 순 · 지도를 움직이면 바뀌어요</p>
     ${dcs.length?`<div class="secline"><b>오늘 예약 가능한 할인</b><span>${dcs.filter(d=>d.left).length}건</span></div>${dcs.map(d => dcCard(d, distM(findAny(d.ref), b))).join("")}`:""}
     <div class="secline"><b>주변 문화생활</b><span>${items.length}곳</span></div>
-    ${items.map(({it,dist}) => `<button class="listitem ${tier(effP(it))} ${isDemoCulture(it)?"demo":""}" data-open="${it.id}"><span class="ph">${EMOJI[it.genre]}</span><span style="min-width:0"><b>${esc(it.name)}</b><small>${it.genre} · ${period(it)} · ${fmtDist(dist)}${(() => { if (S.sit === "evening") { const et = window.hoursService.eveningText(hoursOn(it, REC_TODAY)); if (et) return ` · <span class="hrs grn">${et}</span>`; } const hb = hoursBadge(it); return hb ? ` · <span class="hrs ${hb.c}">${hb.t}</span>` : ""; })()}</small><br>${eff(it).rule?'<span class="tag grn">🎟️ 내 혜택가</span>':""}${it.is_public_culture?`<span class="tag">${esc(it.source)}</span>`:it.reserve?'<span class="tag">예약</span>':'<span class="tag">바로 입장</span>'}${soon(it)?'<span class="tag red">곧 종료</span>':""}${it.src==="사용자 제보"?'<span class="tag grn">제보</span>':""}${isDemoCulture(it)?'<span class="tag">예시 데이터</span>':""}</span><span class="pr">${eff(it).rule?`<s class="note">${won(it.price)}</s><br>`:""}${priceText(it,eff(it))}</span></button>`).join("")
+    ${items.map(({it,dist}) => `<button class="listitem ${tier(effP(it))} ${isDemoCulture(it)?"demo":""}" data-open="${it.id}"><span class="ph">${EMOJI[it.genre]}</span><span style="min-width:0"><b>${esc(it.name)}</b><small>${it.genre} · ${period(it)} · ${fmtDist(dist)}${(() => { if (S.sit === "evening") { const et = window.hoursService.eveningText(hoursOn(it, REC_TODAY)); if (et) return ` · <span class="hrs grn">${et}</span>`; } const hb = hoursBadge(it); return hb ? ` · <span class="hrs ${hb.c}">${hb.t}</span>` : ""; })()}</small><br>${eff(it).rule?'<span class="tag grn">🎟️ 내 혜택가</span>':lowestSeat(it)?'<span class="tag">최저석</span>':""}${it.is_public_culture?`<span class="tag">${esc(it.source)}</span>`:it.reserve?'<span class="tag">예약</span>':'<span class="tag">바로 입장</span>'}${soon(it)?'<span class="tag red">곧 종료</span>':""}${it.src==="사용자 제보"?'<span class="tag grn">제보</span>':""}${isDemoCulture(it)?'<span class="tag">예시 데이터</span>':""}</span><span class="pr">${eff(it).rule?`<s class="note">${won(it.price)}</s><br>`:""}${priceText(it,eff(it))}</span></button>`).join("")
       || '<p class="note" style="padding:12px 0">이 화면엔 조건에 맞는 곳이 없어요. 지도를 축소하거나 필터를 풀어보세요.</p>'}`);
   $("#lX").onclick = closeSheet;
 }
