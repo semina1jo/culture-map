@@ -102,7 +102,9 @@ span.demo{font-size:10.5px;color:var(--muted);margin-left:8px;font-weight:500;ve
 .pdot::before{content:"";position:absolute;inset:-9px}
 .pdot.demo{opacity:.6}
 /* 범례: '내 위치' 버튼 바로 밑, 작게 (2026-11-16) */
-.mapLegend{position:absolute;left:12px;bottom:62px;z-index:3;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.8);border-radius:999px;padding:1px 6px;font-size:9.5px;font-weight:600;line-height:12px;color:var(--muted);pointer-events:none;white-space:nowrap}
+.loc-wrap{display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+.mapLegend{display:flex;align-items:center;gap:3px;background:rgba(255,255,255,.85);border-radius:999px;padding:0 5px;font-size:9px;font-weight:600;line-height:12px;color:var(--muted);white-space:nowrap;pointer-events:none;min-height:12px}
+.mapLegend.off{visibility:hidden}
 .mapLegend .lg-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex:none}
 .listitem.demo{opacity:.75}
 .t-free{--bd:var(--green);--bg2:var(--green-soft)}
@@ -484,9 +486,8 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
       <button class="round" id="notiBtn" aria-label="문화 알림"><svg viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.3 1.6a.6.6 0 0 1-.5 1H5.2a.6.6 0 0 1-.5-1L6 16.5Z"/><path d="M10 21.5h4"/></svg><span class="dot" id="notiDot"></span></button>
       <div class="zoom" role="group" aria-label="확대·축소"><button id="zIn" aria-label="확대">＋</button><button id="zOut" aria-label="축소">－</button></div>
     </div>
-    <div class="mapLegend" id="mapLegend" hidden></div>
     <div class="bottomctl" id="bottomctl">
-      <button class="round" id="locBtn" aria-label="내 위치로 이동"><svg viewBox="0 0 24 24"><path d="M20.5 3.5 3.8 10.4a.5.5 0 0 0 .1.9l6.6 2.2 2.2 6.6a.5.5 0 0 0 .9.1L20.5 3.5Z"/></svg></button>
+      <div class="loc-wrap"><button class="round" id="locBtn" aria-label="내 위치로 이동"><svg viewBox="0 0 24 24"><path d="M20.5 3.5 3.8 10.4a.5.5 0 0 0 .1.9l6.6 2.2 2.2 6.6a.5.5 0 0 0 .9.1L20.5 3.5Z"/></svg></button><span class="mapLegend off" id="mapLegend"></span></div>
       <div class="plus-wrap"><button class="plus" id="plusBtn" aria-label="제보하기"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><span id="plusLabel">제보하기</span></div>
       <button class="round" id="listBtn" aria-label="목록"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="5" height="5" rx="1.6"/><rect x="3.5" y="14.5" width="5" height="5" rx="1.6"/><path d="M12 7h8.5M12 17h8.5"/></svg></button>
     </div>
@@ -1085,7 +1086,7 @@ function renderMap(){
   const lg = $("#mapLegend");
   if (lg) {
     const anyPlace = dotMode && items.some(isPlaceItem);
-    lg.hidden = !anyPlace;
+    lg.classList.toggle("off", !anyPlace);
     if (anyPlace) lg.innerHTML = hidePlaces ? "확대 시 상설·무료 공간" : '<span class="lg-dot"></span>상설·무료 공간';
   }
   if (window.mapsService?.getMap()) applyView();
