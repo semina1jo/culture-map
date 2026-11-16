@@ -1925,15 +1925,18 @@ async function syncDiaryFromServer(){
     const rows = res.value || [], local = diary(), receipts = receiptLog();
     const remote = { note: new Map(), plan: new Map(), receipt: new Map() };
     rows.forEach(r => remote[r.kind]?.set(r.key, r));
-    // 이 기기에만 있는 기록은 계정으로 올린다 (게스트 때 쓴 기록 이전)
+    // 이 기기에만 있는 기록은 계정으로 올린다 — 게스트 때 쓴 기록(아직 어느 계정에도 안 올라간 것)만.
+    // 이미 이 계정과 맞춘 기기라면 서버가 원본이라, 서버에 없는 기록은 다른 기기·관리자가 지운 것으로 본다
     const up = [];
-    if (!owner || owner === uid) {
+    if (!owner) {
       Object.entries(local.notes).forEach(([k, n]) => { if (!remote.note.has(k) && !(local.demo && k === `${local.demo.date}|${local.demo.id}`)) up.push(noteRow(k, n)); });
       Object.entries(local.plans).forEach(([id, d]) => { if (!remote.plan.has(id)) up.push({kind:"plan", key:id, date:d}); });
       Object.entries(receipts).forEach(([k, r]) => { if (!remote.receipt.has(k)) up.push({kind:"receipt", key:k, date:r.date, data:r}); });
     }
     const pushed = up.length ? await ds.diary.push(up) : null;
-    const d = diary(), log = owner && owner !== uid ? {} : receiptLog();
+    const fresh = Boolean(owner); // 이미 계정과 맞춘 적이 있으면 서버 기준으로 새로 채운다
+    const cur = diary(), demoKey = cur.demo ? `${cur.demo.date}|${cur.demo.id}` : null;
+    const d = fresh ? {notes: demoKey && cur.notes[demoKey] ? {[demoKey]: cur.notes[demoKey]} : {}, plans:{}, demo:cur.demo} : cur, log = fresh ? {} : receiptLog();
     remote.note.forEach((r, k) => { d.notes[k] = {...(r.memo ? {memo:r.memo} : {}), ...(r.photo_url ? {photo:r.photo_url} : {})}; });
     remote.plan.forEach((r, k) => { d.plans[k] = r.date; });
     remote.receipt.forEach((r, k) => { if (r.data) log[k] = r.data; });
