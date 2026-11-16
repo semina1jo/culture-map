@@ -11,3 +11,15 @@ alter table public.culture_events add constraint culture_events_category_check
 --     headers := jsonb_build_object('Content-Type','application/json','Authorization','Bearer <anon키>'),
 --     body := '{"libraries": true}'::jsonb, timeout_milliseconds := 120000);
 -- $$);
+
+-- 2026-11-16: KOPIS 공연예술통합전산망 (sync-culture-kopis) 캐시 테이블. 수집 함수(서버 키)만 사용
+create table if not exists public.kopis_facility (
+  mt10id text primary key, name text, lat double precision, lng double precision, addr text, gu text,
+  checked_at timestamptz not null default now()
+);
+create table if not exists public.kopis_skip (
+  mt20id text primary key, reason text, checked_at timestamptz not null default now()
+);
+alter table public.kopis_facility enable row level security;
+alter table public.kopis_skip enable row level security;
+-- 매일 05:30(KST) 실행: cron 'sync-culture-kopis-daily' ('30 20 * * *'). Secret KOPIS_API_KEY 필요
