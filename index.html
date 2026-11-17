@@ -230,6 +230,8 @@ span.demo{font-size:10.5px;color:var(--muted);margin-left:8px;font-weight:500;ve
 .acts-row{grid-column:1/-1;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px}.acts-row .out{padding:11px 6px;white-space:nowrap}
 .acts .share-icon{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;vertical-align:-3px;margin-right:5px}
 .linkbtn{border:0;background:none;color:var(--muted);font-size:12.5px;text-decoration:underline;padding:6px 0;margin-top:6px}
+.ac-help{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:10px}.ac-help .linkbtn{margin:0;padding:10px 6px;min-height:40px}.ac-help span{color:var(--line)}
+.ac-found{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:10px;background:var(--paper,#fff)}.ac-found b{display:block;font-size:15px;letter-spacing:.02em}.ac-found small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
 .listitem{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:12px 0}
 .listitem .ph{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-size:22px;background:var(--bg2);position:relative;flex:none}
 .listitem .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
@@ -1716,7 +1718,12 @@ function accountSheet(mode, after){
       <label for="acP">비밀번호${signup?" (6자 이상)":""}</label><input id="acP" type="password" autocomplete="${signup?"new-password":"current-password"}" minlength="6" required>
       <p class="note" id="acMsg" role="alert" style="color:#d33;min-height:16px;margin:8px 0 0"></p>
       <div class="acts" style="margin-top:8px"><button class="out" type="button" id="acSwitch">${signup?"로그인으로":"가입으로"}</button><button class="blk" type="submit">${signup?"가입하기":"로그인"}</button></div>
-    </form>`);
+    </form>
+    ${signup?"":`<div class="ac-help"><button class="linkbtn" type="button" id="acFindId">아이디(이메일) 찾기</button><span aria-hidden="true">|</span><button class="linkbtn" type="button" id="acFindPw">비밀번호 찾기</button></div>`}`);
+  if(!signup){
+    $("#acFindId").onclick = () => findAccountSheet(after);
+    $("#acFindPw").onclick = () => resetPasswordSheet(after, $("#acE").value.trim());
+  }
   $("#acX").onclick = closeSheet;
   $("#acSwitch").onclick = () => accountSheet(signup?"login":"signup", after);
   $("#acGoogle").onclick = () => window.dataService.signInGoogle();
@@ -1733,6 +1740,90 @@ function accountSheet(mode, after){
     if(after) after(); else closeSheet();
     renderPage();
     toast(signup?"가입 완료! 이제 회원으로 이용해요.":`${result.value.nickname||"회원"}님, 다시 오셨네요.`);
+  });
+}
+/* ===== 아이디(이메일) 찾기 · 비밀번호 재설정 ===== */
+const AC_METHOD = {
+  email: "이메일·비밀번호로 가입한 계정이에요.",
+  google: "구글로 가입한 계정이에요. 비밀번호 없이 'Google로 계속하기'로 로그인해 주세요.",
+  both: "이메일·비밀번호와 구글 로그인 둘 다 쓸 수 있는 계정이에요."
+};
+function findAccountSheet(after){
+  sheet(`<div class="sh-h"><h2>아이디(이메일) 찾기</h2><button class="x" id="fiX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">닉네임이나 가입했을 것 같은 이메일을 넣으면, 가입한 이메일(일부 가림)과 가입 방법을 알려드려요.</p>
+    <form id="fiF" novalidate>
+      <label for="fiQ" style="margin-top:12px">닉네임 또는 이메일</label><input id="fiQ" type="text" autocomplete="username" placeholder="예: 알뜰한 다람쥐123" required>
+      <p class="note" id="fiMsg" role="alert" style="color:#d33;min-height:16px;margin:8px 0 0"></p>
+      <div id="fiOut" aria-live="polite"></div>
+      <div class="acts" style="margin-top:8px"><button class="out" type="button" id="fiBack">로그인으로</button><button class="blk" type="submit">찾기</button></div>
+    </form>`);
+  $("#fiX").onclick = closeSheet;
+  $("#fiBack").onclick = () => accountSheet("login", after);
+  $("#fiF").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const q=$("#fiQ").value.trim(), msg=$("#fiMsg"), out=$("#fiOut");
+    msg.textContent=""; out.innerHTML="";
+    if(q.length<2){ msg.textContent="닉네임 또는 이메일을 2자 이상 넣어 주세요."; return; }
+    const btn=ev.submitter; btn && (btn.disabled=true);
+    const result = await window.dataService.findAccount(q);
+    btn && (btn.disabled=false);
+    if(!result.ok){ msg.textContent=result.error?.message||"다시 시도해 주세요."; return; }
+    if(!result.value.length){
+      out.innerHTML=`<div class="ac-found"><b>찾는 계정이 없어요</b><small>${q.includes("@")?"이 이메일로 가입한 회원이 없어요. 다른 이메일이나 구글 로그인을 확인해 주세요.":"닉네임은 띄어쓰기와 숫자까지 정확히 넣어야 해요. 기억나는 이메일로도 찾아볼 수 있어요."}</small></div>`;
+      return;
+    }
+    out.innerHTML = result.value.map(r=>`<div class="ac-found"><b>${esc(r.masked_email)}</b><small>${AC_METHOD[r.method]||""}</small></div>`).join("")
+      + `<div class="acts" style="margin-top:10px">${result.value.some(r=>r.method!=="email")?`<button class="out" type="button" id="fiGoogle">Google로 계속하기</button>`:""}${result.value.some(r=>r.method!=="google")?`<button class="out" type="button" id="fiPw">비밀번호 재설정</button>`:""}</div>`;
+    $("#fiGoogle") && ($("#fiGoogle").onclick = () => window.dataService.signInGoogle());
+    $("#fiPw") && ($("#fiPw").onclick = () => resetPasswordSheet(after, q.includes("@")?q:""));
+  });
+}
+function resetPasswordSheet(after, email=""){
+  sheet(`<div class="sh-h"><h2>비밀번호 찾기</h2><button class="x" id="rpX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">가입한 이메일로 비밀번호를 새로 정하는 링크를 보내드려요. 링크는 한 번만 쓸 수 있고, 1시간 뒤 만료돼요.</p>
+    <form id="rpF" novalidate>
+      <label for="rpE" style="margin-top:12px">가입한 이메일</label><input id="rpE" type="email" autocomplete="email" placeholder="example@email.com" value="${esc(email)}" required>
+      <p class="note" id="rpMsg" role="alert" style="color:#d33;min-height:16px;margin:8px 0 0"></p>
+      <div id="rpOut" aria-live="polite"></div>
+      <div class="acts" style="margin-top:8px"><button class="out" type="button" id="rpBack">로그인으로</button><button class="blk" type="submit">재설정 메일 받기</button></div>
+    </form>
+    <button class="linkbtn" type="button" id="rpFindId" style="display:block;margin:6px auto 0">이메일이 기억나지 않나요?</button>`);
+  $("#rpX").onclick = closeSheet;
+  $("#rpBack").onclick = () => accountSheet("login", after);
+  $("#rpFindId").onclick = () => findAccountSheet(after);
+  $("#rpF").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const mail=$("#rpE").value.trim(), msg=$("#rpMsg"), out=$("#rpOut");
+    msg.textContent=""; out.innerHTML="";
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)){ msg.textContent="이메일 형식을 확인해 주세요."; return; }
+    const btn=ev.submitter; btn && (btn.disabled=true);
+    const result = await window.dataService.requestPasswordReset(mail);
+    btn && (btn.disabled=false);
+    if(!result.ok){ msg.textContent=result.error?.message||"다시 시도해 주세요."; return; }
+    out.innerHTML=`<div class="ac-found"><b>메일을 확인해 주세요</b><small>${esc(mail)}(으)로 가입돼 있다면 재설정 링크가 도착해요. 몇 분 지나도 안 오면 스팸함을 확인하거나, 구글로 가입하지 않았는지 확인해 주세요.</small></div>`;
+  });
+}
+function newPasswordSheet(){
+  sheet(`<div class="sh-h"><h2>새 비밀번호 정하기</h2><button class="x" id="npX" aria-label="닫기">${ico.x}</button></div>
+    <p class="note">메일 링크로 로그인됐어요. 앞으로 쓸 비밀번호를 정해 주세요.</p>
+    <form id="npF" novalidate>
+      <label for="npP" style="margin-top:12px">새 비밀번호 (6자 이상)</label><input id="npP" type="password" autocomplete="new-password" minlength="6" required>
+      <label for="npP2">새 비밀번호 확인</label><input id="npP2" type="password" autocomplete="new-password" minlength="6" required>
+      <p class="note" id="npMsg" role="alert" style="color:#d33;min-height:16px;margin:8px 0 0"></p>
+      <div class="acts" style="margin-top:8px"><button class="blk" type="submit" style="width:100%">비밀번호 저장</button></div>
+    </form>`);
+  $("#npX").onclick = closeSheet;
+  $("#npF").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const pw=$("#npP").value, pw2=$("#npP2").value, msg=$("#npMsg");
+    if(pw.length<6){ msg.textContent="비밀번호는 6자 이상으로 정해 주세요."; return; }
+    if(pw!==pw2){ msg.textContent="두 비밀번호가 서로 달라요."; return; }
+    const btn=ev.submitter; btn && (btn.disabled=true); msg.textContent="";
+    const result = await window.dataService.updatePassword(pw);
+    btn && (btn.disabled=false);
+    if(!result.ok){ msg.textContent=result.error?.message||"다시 시도해 주세요."; return; }
+    closeSheet(); renderPage();
+    toast("비밀번호를 바꿨어요. 다음부터 새 비밀번호로 로그인해 주세요.");
   });
 }
 /* ===== 검색: 문화 행사·시설을 이름·장소·종류로 찾는다 ===== */
@@ -2367,7 +2458,7 @@ window.addEventListener("geojimap:data-error",ev=>{
 window.addEventListener("geojimap:account-change",()=>{ if(S.tab==="me") renderPage(); });
 window.addEventListener("geojimap:data-ready",applyDataState);
 render();
-window.dataService.ready.then(result=>{ if(result.ok){ applyDataState(); const notice=window.dataService.takeAuthNotice(); if(notice){ S.noticeShown=true; toast(notice); if(!isGuest()){ S.tab="me"; render(); } } else if(result.mode==="remote") toast("Supabase 연결 완료 · 데이터를 불러왔어요."); } else toast("Supabase 연결이 완료되지 않았어요. 익명 인증과 환경변수를 확인해 주세요."); });
+window.dataService.ready.then(result=>{ if(result.ok && window.dataService.takeRecovery()){ applyDataState(); S.noticeShown=true; S.tab="me"; render(); newPasswordSheet(); return; } if(result.ok){ applyDataState(); const notice=window.dataService.takeAuthNotice(); if(notice){ S.noticeShown=true; toast(notice); if(!isGuest()){ S.tab="me"; render(); } } else if(result.mode==="remote") toast("Supabase 연결 완료 · 데이터를 불러왔어요."); } else toast("Supabase 연결이 완료되지 않았어요. 익명 인증과 환경변수를 확인해 주세요."); });
 if (window.mapsService) {
   window.mapsService.onChange(applyView);
   // 지도를 움직이다 멈추면 화면 안의 핀만 다시 그린다

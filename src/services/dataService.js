@@ -8,6 +8,7 @@
   const SESSION_KEY = `geojimap-session:${base}`;
   const LINK_KEY = "geojimap-google-link";
   let authNotice = "";
+  let recoveryPending = false;
   let session = null;
   let queue = Promise.resolve();
   let initialization;
@@ -95,11 +96,12 @@
       cleanUrl();
       // 이미 다른 회원에 연결된 구글 계정이면, 그 회원으로 바로 로그인한다
       if (linking && /identity_already_exists|already/i.test(`${code} ${desc}`)) { global.location.href = googleSignInUrl(); return "redirect"; }
-      authNotice = /access_denied/.test(code) ? "구글 로그인을 취소했어요." : "구글 로그인에 실패했어요. 잠시 후 다시 시도해 주세요.";
+      if (/otp_expired|expired|invalid/i.test(`${code} ${desc}`) && !/access_denied/.test(code)) authNotice = "메일 속 링크가 만료됐거나 이미 사용됐어요. 비밀번호 재설정을 다시 요청해 주세요.";
+      else authNotice = /access_denied/.test(code) ? "구글 로그인을 취소했어요." : "구글 로그인에 실패했어요. 잠시 후 다시 시도해 주세요.";
       return null;
     }
     if (!hash.get("access_token")) return null;
-    const tokens = { access_token: hash.get("access_token"), refresh_token: hash.get("refresh_token"), expires_in: Number(hash.get("expires_in")) || 3600, expires_at: Number(hash.get("expires_at")) || undefined };
+    const tokens = { access_token: hash.get("access_token"), refresh_token: hash.get("refresh_token"), expires_in: Number(hash.get("expires_in")) || 3600, expires_at: Number(hash.get("expires_at")) || undefined, recovery: hash.get("type") === "recovery" };
     localStorage.removeItem(LINK_KEY);
     cleanUrl();
     return tokens;
@@ -119,6 +121,8 @@
       setSession({ ...returned, user });
       // 다른 회원으로 들어왔다면 이전 게스트의 화면 기록은 비운다 (게스트 연결이면 같은 id라 그대로)
       if (previousUser && previousUser !== user.id) write({ remote_imported: true });
+      // 비밀번호 재설정 메일의 링크로 들어온 경우: 로그인된 상태에서 새 비밀번호를 정하게 한다
+      if (returned.recovery) { recoveryPending = true; authNotice = ""; return; }
       authNotice = previousUser === user.id ? "구글 계정을 연결했어요. 이제 회원으로 이용해요." : "구글 계정으로 로그인했어요.";
       return;
     }
@@ -193,7 +197,9 @@
     const map = {
       email_exists: "이미 가입된 이메일이에요. 로그인해 주세요.",
       user_already_exists: "이미 가입된 이메일이에요. 로그인해 주세요.",
-      invalid_credentials: "이메일 또는 비밀번호가 맞지 않아요.",
+      invalid_credentials: "이메일 또는 비밀번호가 맞지 않아요. 구글로 가입했다면 위의 'Google로 계속하기'를 눌러 주세요.",
+      same_password: "지금 쓰는 비밀번호와 다른 비밀번호로 정해 주세요.",
+      over_email_send_rate_limit: "메일을 너무 자주 요청했어요. 잠시 후 다시 시도해 주세요.",
       weak_password: "비밀번호는 6자 이상으로 정해 주세요.",
       email_address_invalid: "이메일 형식을 확인해 주세요.",
       validation_failed: "이메일 형식을 확인해 주세요.",
@@ -563,6 +569,36 @@
       global.location.href = googleSignInUrl();
       return { ok: true };
     },
+    // 아이디 찾기: 닉네임 또는 이메일로 가입 정보(가린 이메일, 가입 방법)를 찾는다
+    findAccount: async query => {
+      if (!configured) return { ok: false, error: { message: "Supabase 연결 후 이용할 수 있어요." } };
+      await initialization;
+      try {
+        const rows = await request("/rest/v1/rpc/find_account", { method: "POST", body: JSON.stringify({ p_query: String(query || "").trim() }) });
+        return { ok: true, value: rows || [] };
+      } catch (error) {
+        return { ok: false, error: { message: error.code === "network_error" ? error.message : "지금은 계정을 찾을 수 없어요. 잠시 후 다시 시도해 주세요." } };
+      }
+    },
+    // 비밀번호 재설정 메일 보내기. 가입 여부와 상관없이 같은 결과를 돌려준다(가입 여부 노출 방지)
+    requestPasswordReset: async email => {
+      if (!configured) return { ok: false, error: { message: "Supabase 연결 후 이용할 수 있어요." } };
+      try {
+        await request(`/auth/v1/recover?redirect_to=${encodeURIComponent(oauthRedirect())}`, { method: "POST", body: JSON.stringify({ email: String(email).trim(), redirect_to: oauthRedirect() }) });
+        return { ok: true };
+      } catch (error) { return { ok: false, error: authError(error) }; }
+    },
+    takeRecovery: () => { const value = recoveryPending; recoveryPending = false; return value; },
+    // 재설정 링크로 들어온 뒤(또는 로그인 상태에서) 새 비밀번호를 저장한다
+    updatePassword: password => run(async () => {
+      if (!configured) throw Object.assign(new Error("Supabase 연결 후 이용할 수 있어요."), { code: "auth_not_configured" });
+      if (account().isGuest) throw Object.assign(new Error("재설정 링크가 만료됐어요. 다시 요청해 주세요."), { code: "auth_session_missing" });
+      try { await request("/auth/v1/user", { method: "PUT", body: JSON.stringify({ password }) }); }
+      catch (error) { throw authError(error); }
+      await ensureNickname();
+      announce("geojimap:account-change", account());
+      return account();
+    }),
     takeAuthNotice: () => { const value = authNotice; authNotice = ""; return value; },
     // 로그아웃하면 새 게스트 계정으로 다시 시작한다.
     signOut: async () => {
