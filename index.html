@@ -1390,7 +1390,6 @@ function detail(id,level){
     <div class="addr">${esc(e.place)} ·${topStars(e)}</div>
     <div class="hero">${e.photo?`<img src="${esc(e.photo)}" alt="${e.is_public_culture?"행사 이미지":"제보 사진"}">`:EMOJI[e.genre]}<span class="badge">${e.genre} · ${e.is_public_culture?esc(e.source):rep?e.src:"예시 데이터"}</span><span class="price">${f.rule?`<s style="font-size:13px;color:var(--muted);font-weight:500">${won(e.price)}</s> `:lowestSeat(e)?`<small style="font-size:11px;font-weight:700;opacity:.75;margin-right:3px">최저석</small>`:""}${priceText(e,f)}</span></div>
     ${f.rule?`<div class="benok">🎟️ 내 혜택 적용: <b>${esc(f.rule.l)}</b> · 정가 ${won(e.price)} → ${won(f.price)}</div>`:""}
-    <div class="adds"><button id="aPhoto">＋ 현장 사진 추가</button><button id="aPrice">＋ 가격 수정</button><button id="aHours">＋ 운영시간 수정</button></div>
     <div class="rows">
       <div class="rowi">${ico.cal}<div>${period(e)} ${soon(e)?'<span class="tag red">곧 종료</span>':""}<small>기간</small></div></div>
       <div class="rowi">${ico.clock}<div>${(() => { const lab = window.hoursService && activeOn(e, REC_TODAY) ? window.hoursService.label(hoursOn(e, REC_TODAY)) : ""; const hb = hoursBadge(e); return lab ? `<b class="hrs ${hb?.c||""}">${esc(lab)}${hb && hb.t !== lab && !/휴관|운영 안 함/.test(lab) ? " · " + esc(hb.t) : ""}</b>` : ""; })()}<span class="hrs-raw">${esc(e.hours || "운영시간 정보 없음")}</span><small>운영 시간${hoursOf(e).ok || hoursOf(e).closed.length ? " · 문구에서 자동으로 읽은 오늘 기준" : ""}</small></div></div>
@@ -1427,13 +1426,9 @@ function detail(id,level){
   $("#dPlan") && ($("#dPlan").onclick = () => planSheet(id));
   if($("#dHomepage")) $("#dHomepage").onclick=()=>{const url=e.homepage_url;if(/^https?:\/\//i.test(url))window.open(url,"_blank","noopener,noreferrer");else toast("홈페이지 주소를 확인해 주세요.");};
   $("#dShare").onclick = async () => { const url = `${location.href.split("#")[0]}#${id}`; try { await navigator.clipboard.writeText(url); toast("공유 링크를 복사했어요."); } catch (_) { toast("공유 링크는 데모에서만 안내해요."); } };
-  const backE = () => detail(id);
   $("#dVer").onclick = () => reviewSheet(id);
   $("#dReport").onclick = () => reportAbuse(id);
   if ($("#goProfile")) $("#goProfile").onclick = () => profileSheet(true);
-  $("#aPhoto").onclick = () => { if(!needLogin("현장 사진 추가", backE)) photoUpdate(id); };
-  $("#aPrice").onclick = () => { if(!needLogin("가격 수정", backE)) editField(id,"price"); };
-  $("#aHours").onclick = () => { if(!needLogin("운영시간 수정", backE)) editField(id,"hours"); };
 
   if ($("#dTicket")) $("#dTicket").onclick = () => { if (/^https?:\/\//i.test(e.ticket_url)) window.open(e.ticket_url, "_blank", "noopener,noreferrer"); };
 }
@@ -1512,30 +1507,7 @@ function verify(id){
   navigator.geolocation.getCurrentPosition(pos=>{ const lat=it.lat||37.5572,lng=it.lng||126.9245; finish(haversineM(pos.coords.latitude,pos.coords.longitude,lat,lng),false); }, ()=>{ sheet(`<div class="verify"><div class="big">⚠️</div><p>위치 권한을 확인할 수 없어요</p><span class="note">브라우저 위치 권한을 허용하거나 시연 모드를 켜서 다시 시도해 주세요.</span><div class="acts"><button class="blk w" id="vClose">확인</button></div></div>`); $("#vClose").onclick=closeSheet; }, {enableHighAccuracy:true,timeout:7000,maximumAge:60000});
 }
 
-function editField(id, field){
-  const it = findAny(id);
-  const label = {price:"가격(원)",hours:"운영 시간",memo:"메모"}[field];
-  sheet(`<div class="sh-h"><h2>${label} ${field==="memo"?"추가":"수정"}</h2><button class="x" id="eX" aria-label="닫기">${ico.x}</button></div>
-    <p class="note">누구나 정보를 추가하고 고칠 수 있어요. 다른 사용자 확인 후 반영돼요.</p>
-    <form id="eF"><label for="eV">${label}</label><input id="eV" ${field==="price"?'type="number" min="0" max="10000" step="100"':''} value="${field==="price"?it.price:field==="hours"?esc(it.hours):""}">
-    <div class="err" id="eErr"></div><div class="acts"><button class="out" type="button" id="eC">취소</button><button class="blk" type="submit">제출</button></div></form>`);
-  const back = () => detail(id);
-  $("#eX").onclick = $("#eC").onclick = back;
-  $("#eF").addEventListener("submit", ev => { ev.preventDefault(); const v = $("#eV").value.trim(); if (!v){ $("#eErr").textContent="내용을 입력해 주세요."; return; }
-    if (field==="price"){ const n=+v; if (n>10000){ $("#eErr").textContent="만 원 이하만 등록할 수 있어요."; return; } it.price=n; renderMap(); }
-    if (field==="hours") it.hours=v;
-    back(); toast("정보를 업데이트했어요."); });
-}
-function photoUpdate(id){
-  const e = findAny(id);
-  sheet(`<div class="sh-h"><h2>현장 사진 추가</h2><button class="x" id="pX" aria-label="닫기">${ico.x}</button></div>
-    <form id="pF"><label for="pI">사진 선택</label><input id="pI" type="file" accept="image/*"><img id="pPrev" class="prev" alt="" hidden>
-    <div class="err" id="pErr"></div><div class="acts"><button class="out" type="button" id="pC">취소</button><button class="blk" type="submit">올리기</button></div></form>`);
-  let data = null;
-  $("#pX").onclick = $("#pC").onclick = () => backToDetail(id);
-  $("#pI").onchange = ev => { const f = ev.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { data = r.result; $("#pPrev").src = data; $("#pPrev").hidden = false; }; r.readAsDataURL(f); };
-  $("#pF").addEventListener("submit", ev => { ev.preventDefault(); if (!data){ $("#pErr").textContent="사진을 골라 주세요."; return; } e.photo = data; backToDetail(id); toast("현장 사진을 등록했어요."); });
-}
+// 2026-11-19: 사용자가 가격·운영시간·현장 사진을 직접 고치는 기능은 없앴다. 정보는 관계자 등록 → 관리자 승인으로만 바뀐다.
 function reportAbuse(id){
   const it = findAny(id);
   sheet(`<div class="sh-h"><h2>신고하기</h2><button class="x" id="rX" aria-label="닫기">${ico.x}</button></div><p class="note">${esc(it.name)}</p>
