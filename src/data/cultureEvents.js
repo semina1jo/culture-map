@@ -31,6 +31,8 @@
       id: "culture_events_" + String(row.id),
       public_id: row.id,
       is_public_culture: true,
+      // 관계자가 신청하고 관리자가 승인한 정보
+      is_partner: /관계자 등록/.test(source),
       is_sample: false,
       name: row.title,
       TITLE: row.title,
@@ -70,10 +72,10 @@
 
   function isLegacyVisible(event) {
     if (!event) return false;
-    // 제보 또는 승격 제보는 기관명/출처보다 우선하여 보존한다.
-    if (event.report_id || event.meta?.report_id) return true;
+    // 2026-11-19: 관계자 등록 → 관리자 승인 체계로 바꾸면서, 심사를 거치지 않은 옛 사용자 제보는 지도에 올리지 않는다.
+    if (event.report_id || event.meta?.report_id) return false;
     const sources = [event.source, event.src, event.meta?.source].filter(value => typeof value === "string");
-    if (event.is_sample !== true && sources.some(source => reportSource.test(source))) return true;
+    if (sources.some(source => reportSource.test(source))) return false;
     if (sources.some(source => replacedSource.test(source))) return false;
     if (event.is_sample !== true) return true;
     if (hiddenSampleIds.has(String(event.id))) return false;

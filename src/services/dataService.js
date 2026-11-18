@@ -16,7 +16,7 @@
   const connection = { mode: configured ? "connecting" : "sample", error: null, pending: 0 };
   const columns = {
     cultural_events: "id,codename,guname,title,date,place,org_name,use_trgt,use_fee,is_free,main_img,strtdate,end_date,org_link,hmpg_addr,lat,lot,price_min,price_label,genre4,is_sample,source,user_id,meta,updated_at",
-    culture_events: "id,title,category,raw_category,place,place_addr,gu,start_date,end_date,event_time,price,fee_text,lat,lng,image_url,homepage_url,source,benefit_rules",
+    culture_events: "id,title,category,raw_category,place,place_addr,gu,org_name,start_date,end_date,event_time,price,fee_text,lat,lng,image_url,homepage_url,ticket_url,source,benefits,benefit_rules,description",
     event_benefits: "id,rule_key,event_id,type,value,price_after,label,auto_extracted,user_id",
     places: "id,category,subcategory,name,price,ref_price,address,lat,lng,hours,note,source,is_sample,user_id,meta,updated_at",
     user_profiles: "user_id,nickname,birth,student_type,gu,soldier,interest_genres,demo_mode,noti_settings,extra_fields,updated_at",
@@ -290,6 +290,7 @@
       connection.mode = "remote";
       await hydrate();
       try { await ensureNickname(); } catch (error) { fail(error); }
+      await checkAdmin();
       announce("geojimap:account-change", account());
       return { ok: true, mode: "remote" };
     } catch (error) { connection.mode = "remote-error"; fail(error); return { ok: false, mode: "remote-error", error: connection.error }; }
@@ -309,6 +310,25 @@
     const response = await fetch(`${base}/storage/v1/object/report-photos/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type }), body: blob });
     if (!response.ok) throw new Error("사진 업로드에 실패했어요.");
     return `${base}/storage/v1/object/public/report-photos/${path}`;
+  }
+  // 관계자 증빙(사업자등록증·대관 확인서)은 비공개 저장소에 올리고 경로만 돌려준다
+  async function uploadProof(value) {
+    if (!value || !value.startsWith("data:")) return null;
+    const blob = await (await fetch(value)).blob();
+    if (blob.size > 5 * 1024 * 1024) throw new Error("증빙 파일은 5MB 이하로 선택해 주세요.");
+    const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" }[blob.type];
+    if (!extension) throw new Error("증빙 파일은 JPG, PNG, WebP 사진이나 PDF로 올려 주세요.");
+    const path = `${userId()}/${uuid()}.${extension}`;
+    const response = await fetch(`${base}/storage/v1/object/partner-proofs/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type }), body: blob });
+    if (!response.ok) throw new Error("증빙 파일 업로드에 실패했어요.");
+    return path;
+  }
+  async function checkAdmin() {
+    let value = false;
+    if (configured && session && !account().isGuest) { try { value = (await request("/rest/v1/rpc/is_app_admin", { method: "POST", body: "{}" })) === true; } catch (_) { value = false; } }
+    cache("is_admin", value);
+    announce("geojimap:admin-change", { admin: value });
+    return value;
   }
   // ---- 기록 탭 메모·사진·갈 날짜·영수증: 로그인한 계정에 저장 (2026-11-16, 전엔 기기 localStorage에만 있었음) ----
   const diaryEnabled = () => configured && connection.mode === "remote" && !account().isGuest;
@@ -417,6 +437,40 @@
       }
       return { ok: true, synced };
     },
+    // ---- 관계자 등록 신청 → 관리자 심사 (2026-11-19) ----
+    isAdmin: () => Boolean(read().is_admin),
+    checkAdmin: () => run(checkAdmin),
+    listSubmissions: all => run(async () => {
+      if (!configured) return list("submissions");
+      const mine = all ? "" : `&user_id=eq.${encodeURIComponent(userId())}`;
+      const rows = await request(`/rest/v1/culture_submissions?select=*${mine}&order=created_at.desc&limit=500`);
+      if (!all) cache("submissions", rows);
+      return rows;
+    }),
+    getMySubmissions: () => list("submissions"),
+    addSubmission: (row, files = {}) => run(async () => {
+      if (configured && account().isGuest) throw Object.assign(new Error("로그인한 뒤 신청할 수 있어요."), { code: "auth_required" });
+      const data = { ...row, user_id: userId() };
+      if (configured) {
+        data.image_url = await uploadPhoto(files.image || "");
+        data.proof_file_path = await uploadProof(files.proof || "");
+        const saved = (await insert("culture_submissions", data))[0];
+        cache("submissions", [saved, ...list("submissions").filter(r => r.id !== saved.id)]);
+        return saved;
+      }
+      const saved = { ...data, id: uuid(), status: "대기", created_at: now(), image_url: files.image || null };
+      cache("submissions", [saved, ...list("submissions")]);
+      return saved;
+    }),
+    reviewSubmission: (id, action, reason, checks) => run(async () => {
+      const result = await request("/rest/v1/rpc/review_culture_submission", { method: "POST", body: JSON.stringify({ p_id: id, p_action: action, p_reason: reason || null, p_checks: checks || {} }) });
+      try { cache("culture_events", (await selectAll("culture_events")).map(global.cultureEventsData.toEvent)); } catch (_) {}
+      return result;
+    }),
+    proofUrl: path => run(async () => {
+      const result = await request(`/storage/v1/object/sign/partner-proofs/${path}`, { method: "POST", body: JSON.stringify({ expiresIn: 600 }) });
+      return `${base}/storage/v1${result.signedURL || result.signedUrl}`;
+    }),
     getMyReports: () => list("reports").filter(r => r.user_id === userId()),
     getMyReviews: () => list("reviews").filter(r => r.user_id === userId()),
     getReports: () => list("reports"),
