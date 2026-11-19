@@ -311,18 +311,6 @@
     if (!response.ok) throw new Error("사진 업로드에 실패했어요.");
     return `${base}/storage/v1/object/public/report-photos/${path}`;
   }
-  // 관계자 증빙(사업자등록증·대관 확인서)은 비공개 저장소에 올리고 경로만 돌려준다
-  async function uploadProof(value) {
-    if (!value || !value.startsWith("data:")) return null;
-    const blob = await (await fetch(value)).blob();
-    if (blob.size > 5 * 1024 * 1024) throw new Error("증빙 파일은 5MB 이하로 선택해 주세요.");
-    const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" }[blob.type];
-    if (!extension) throw new Error("증빙 파일은 JPG, PNG, WebP 사진이나 PDF로 올려 주세요.");
-    const path = `${userId()}/${uuid()}.${extension}`;
-    const response = await fetch(`${base}/storage/v1/object/partner-proofs/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type }), body: blob });
-    if (!response.ok) throw new Error("증빙 파일 업로드에 실패했어요.");
-    return path;
-  }
   async function checkAdmin() {
     let value = false;
     if (configured && session && !account().isGuest) { try { value = (await request("/rest/v1/rpc/is_app_admin", { method: "POST", body: "{}" })) === true; } catch (_) { value = false; } }
@@ -453,7 +441,6 @@
       const data = { ...row, user_id: userId() };
       if (configured) {
         data.image_url = (await uploadPhoto(files.image || "")) || null;
-        data.proof_file_path = await uploadProof(files.proof || "");
         let saved;
         try { saved = (await insert("culture_submissions", data))[0]; }
         catch (error) { if (/too_many_pending/.test(error?.message || "")) throw Object.assign(new Error("검사 대기 중인 신청이 5건이에요. 결과가 나온 뒤에 더 신청해 주세요."), { code: "too_many_pending" }); throw error; }
@@ -519,10 +506,6 @@
       try { cache("culture_events", (await selectAll("culture_events")).map(global.cultureEventsData.toEvent)); } catch (_) {}
       cache("submissions", list("submissions").filter(r => !ids.includes(r.id)));
       return n;
-    }),
-    proofUrl: path => run(async () => {
-      const result = await request(`/storage/v1/object/sign/partner-proofs/${path}`, { method: "POST", body: JSON.stringify({ expiresIn: 600 }) });
-      return `${base}/storage/v1${result.signedURL || result.signedUrl}`;
     }),
     getMyReports: () => list("reports").filter(r => r.user_id === userId()),
     getMyReviews: () => list("reviews").filter(r => r.user_id === userId()),

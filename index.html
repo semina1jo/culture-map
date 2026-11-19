@@ -758,16 +758,6 @@ const V = {s:1, tx:0, ty:0};
 /* 모든 장소에 현장 상태 집계 (데모 시드값) */
 events.forEach((it,i) => { if (!it.votes) it.votes = {went: 2 + (i*7)%9, ended: 0, wrong: i%5===0 ? 1 : 0}; });
 /* 현장 상태는 정보 확인용 3가지. DB 값(went·ended·wrong)은 그대로 두고 화면 문구만 바꾼다 */
-const STATUS_ORDER = ["ended","went","wrong"];
-const STATUS_L = {ended:"없어졌어요", went:"정보와 맞아요", wrong:"정보가 달라요"};
-const STATUS_ICON = {ended:"⛔", went:"✅", wrong:"✏️"};
-function liveLine(it){
-  const v = it.votes; if (!v) return "";
-  const warn = v.ended >= 2 ? `<b style="color:var(--red)">없어졌다는 제보 ${v.ended}건 · 가기 전에 확인하세요</b>` : v.wrong >= 2 ? `<b style="color:var(--red)">정보가 다르다는 제보 ${v.wrong}건</b>` : "";
-  return `<div class="sec"><h3>현장 상태 <span>다녀온 사람들이 남긴 확인</span></h3>
-    <div class="votes ro">${STATUS_ORDER.map(k=>`<div><b>${v[k]}</b>${STATUS_L[k]}</div>`).join("")}</div>
-    ${warn?`<div class="status">${warn}</div>`:""}${S.myStatus[it.id]?`<div class="status">내 상태: ${STATUS_L[S.myStatus[it.id]]}</div>`:""}</div>`;
-}
 
 /* ===== 유틸 ===== */
 const $ = s => document.querySelector(s);
@@ -1528,26 +1518,6 @@ function haversineM(aLat,aLng,bLat,bLng){
 function visitKey(id){ return `${id}:${TODAY}`; }
 function hasVisit(id){ return window.dataService.getVisits().some(v=>v.event_id===id && v.visit_date===window.dataService.today()); }
 function backToDetail(id){ return detail(id); }
-async function completeVisit(id, it, distance, simulated){
-  const result=await window.dataService.recordVisit(id,simulated,distance); if(!result.ok) return;
-  const already=result.value.already;
-  if(!already){ S.verified.push({id,name:it.name,price:it.price_min ?? it.price,ref:it.ref}); }
-  logReceipt(id, "방문 인증");
-  sheet(`<div class="verify"><div class="big">${already?"✅":"🎉"}</div><p>${already?"오늘 이미 방문 인증했어요.":"방문 인증 완료"}</p><span class="note">${esc(it.name)} · ${simulated?"시연 모드 위치 가정":`${Math.round(distance)}m 거리`}</span>${!already?`<span class="note">정가 대비 ${Math.max(0,(it.ref||it.price||0)-((it.price_min ?? it.price) || 0)).toLocaleString()}원 아꼈어요.</span>`:""}</div>
-    <div class="sec" id="vSt"><h3>지금 현장은 어때요? <span>눌러서 현재 상태 남기기</span></h3><div class="votes">${STATUS_ORDER.map(k=>`<button data-st="${k}"><b>${STATUS_ICON[k]}</b>${STATUS_L[k]}</button>`).join("")}</div><div id="vStMsg"></div></div>
-    <div class="acts"><button class="blk w" id="vDone">닫기</button></div>`);
-  $("#vDone").onclick = () => { closeSheet(); backToDetail(id); };
-  document.querySelectorAll("[data-st]").forEach(b => b.onclick = () => { const k=b.dataset.st, prev=S.myStatus[id]; if(prev===k) return; it.votes=it.votes||{went:0,ended:0,wrong:0}; if(prev) it.votes[prev]--; it.votes[k]++; S.myStatus[id]=k; $("#vStMsg").innerHTML=`<div class="status">현장 상태를 ${STATUS_L[k]}로 표시했어요.</div>`; renderMap(); });
-}
-function verify(id){
-  const it=findAny(id); if(!it) return;
-  if(hasVisit(id)){ completeVisit(id,it,0,S.demoMode); return; }
-  sheet(`<div class="verify"><div class="spin"></div><p>${S.demoMode?"시연 모드 위치를 가정하고 있어요":"현재 위치를 확인하고 있어요"}</p><span class="note">${esc(it.name)} · 인증 기준 반경 200m</span></div>`);
-  const finish=(distance,simulated=false)=>{ if(distance<=200 || simulated) completeVisit(id,it,distance,simulated); else sheet(`<div class="verify"><div class="big">📍</div><p>행사 장소에서 ${Math.round(distance)}m 떨어져 있어요</p><span class="note">200m 안에서 다시 시도해 주세요.</span><div class="acts"><button class="blk w" id="vClose">확인</button></div></div>`); $("#vClose")?.addEventListener("click",closeSheet); };
-  if(S.demoMode){ setTimeout(()=>finish(0,true),500); return; }
-  if(!navigator.geolocation){ finish(9999,false); return; }
-  navigator.geolocation.getCurrentPosition(pos=>{ const lat=it.lat||37.5572,lng=it.lng||126.9245; finish(haversineM(pos.coords.latitude,pos.coords.longitude,lat,lng),false); }, ()=>{ sheet(`<div class="verify"><div class="big">⚠️</div><p>위치 권한을 확인할 수 없어요</p><span class="note">브라우저 위치 권한을 허용하거나 시연 모드를 켜서 다시 시도해 주세요.</span><div class="acts"><button class="blk w" id="vClose">확인</button></div></div>`); $("#vClose").onclick=closeSheet; }, {enableHighAccuracy:true,timeout:7000,maximumAge:60000});
-}
 
 // 2026-11-19: 사용자가 가격·운영시간·현장 사진을 직접 고치는 기능은 없앴다. 정보는 장소 등록 신청 → 관리자 승인으로만 바뀐다.
 // 지도 정보 신고: 서버에 저장되고, 관리자 페이지 '신고' 탭에서 처리한다
@@ -1638,7 +1608,6 @@ function refreshNotifications(){
   const now = [];
   if(S.prefs.end){ events.filter(e=>S.saved.has(e.id)&&!hideDemo(e)&&soon(e)).forEach(e=>now.push({id:`end-${e.id}`,kind:"곧 종료",text:`찜한 ${e.name}이 곧 종료돼요`,time:"지금",read:false,target_id:e.id})); }
   if(S.prefs.free){ events.filter(e=>!hideDemo(e)&&(e.price_min===0||e.price===0)&&S.prefs.genres.has(e.genre4||e.genre)&&inRegion(e)).slice(0,5).forEach(e=>now.push({id:`free-${e.id}`,kind:"새 무료 행사",text:`${eventGu(e)?eventGu(e)+" · ":""}관심 분야 무료 행사 ${e.name}`,time:"지금",read:false,target_id:e.id})); }
-  if(S.prefs.judge){ judgeList.filter(j=>j.status==="승격"&&j.ref&&(!j.user_id||j.user_id===window.dataService.userId())).forEach(j=>now.push({id:`judge-${j.id}`,kind:"제보 승격",text:`내 제보 ${j.name}이 확인을 받아 지도에 정식으로 올라갔어요`,time:"지금",read:false,target_id:j.ref})); }
   const tmr = addFilterDays(REC_TODAY, 1);
   Object.entries(diary().plans).forEach(([pid, date]) => { const it = findAny(pid); if (!it) return;
     if (date === tmr) now.push({id:`plan-${pid}-${date}-d1`, kind:"내일 갈 곳", text:`내일 ${it.name}에 가기로 했어요`, time:"지금", read:false, target_id:pid});
@@ -1647,13 +1616,13 @@ function refreshNotifications(){
   const josa = (w, a, b) => { const c = String(w).trim().slice(-1).charCodeAt(0) - 0xAC00; return w + (c >= 0 && c <= 11171 && c % 28 ? a : b); };
   // 등록 신청 결과와 신고 처리 결과: 새로 생긴 것만 맨 위에 올린다
   const fresh = [];
-  window.dataService.getMySubmissions().filter(r => r.reviewed_at && r.status !== "대기").forEach(r => {
+  if (S.prefs.judge) window.dataService.getMySubmissions().filter(r => r.reviewed_at && r.status !== "대기").forEach(r => {
     const unpub = isUnpub(r), kind = r.status === "승인" ? "등록 승인" : unpub ? "지도에서 내림" : "등록 반려";
     fresh.push({ id: `sub-${r.id}-${r.status}-${r.reject_kind || ""}-${r.reviewed_at}`, kind, time: dotDate(r.reviewed_at), read: false,
       text: r.status === "승인" ? `등록 신청한 ${josa(r.title,"이","가")} 지도에 올라갔어요` : unpub ? `${josa(r.title,"이","가")} 지도에서 내려갔어요. 눌러서 사유를 확인하세요` : `등록 신청한 ${josa(r.title,"이","가")} 반려됐어요. 눌러서 사유를 확인하세요`,
       target_id: r.status === "승인" && r.event_id ? `culture_events_${r.event_id}` : null, why: r.status === "반려" ? r.id : null });
   });
-  window.dataService.getMyCultureReports().filter(r => r.status !== "접수").forEach(r => {
+  if (S.prefs.judge) window.dataService.getMyCultureReports().filter(r => r.status !== "접수").forEach(r => {
     fresh.push({ id: `rep-${r.id}-${r.status}`, kind: "신고 처리", time: dotDate(r.handled_at || r.created_at), read: false,
       text: r.status === "지도에서 내림" ? `신고한 ${josa(r.event_title,"을","를")} 확인하고 지도에서 내렸어요` : `신고한 ${josa(r.event_title,"을","를")} 확인했는데 문제없는 정보였어요`,
       report: { title: r.event_title, status: r.status, note: r.admin_note || "" } });
@@ -1677,7 +1646,7 @@ function notiSheet(){
       <label class="sw" for="pO"><span>관심 지역·장르의 선착순·사전예약이 열리면 알림</span><input type="checkbox" id="pO" ${S.prefs.open?"checked":""}></label>
       <label class="sw" for="pE"><span>찜한 행사 종료 3일 전 알림</span><input type="checkbox" id="pE" ${S.prefs.end?"checked":""}></label>
       <label class="sw" for="pFree"><span>관심 지역·장르의 새 무료 행사 알림</span><input type="checkbox" id="pFree" ${S.prefs.free?"checked":""}></label>
-      <label class="sw" for="pJudge"><span>내 제보가 확인되면 알림</span><input type="checkbox" id="pJudge" ${S.prefs.judge?"checked":""}></label></div>`);
+      <label class="sw" for="pJudge"><span>등록 신청·신고 결과 알림</span><input type="checkbox" id="pJudge" ${S.prefs.judge?"checked":""}></label></div>`);
   $("#nX").onclick = closeSheet;
   $("#pO").onchange = ev => { S.prefs.open=ev.target.checked; persistPreferences(); };
   $("#pE").onchange = ev => { S.prefs.end=ev.target.checked; persistPreferences(); };
@@ -2378,13 +2347,6 @@ function searchSheet(){
   input.addEventListener("keydown", ev => { if (ev.key === "Enter") { saveRecentSearch(input.value); input.blur(); } });
   renderSearch();
   setTimeout(() => input.focus(), 50);
-}
-function myReportsSheet(){
-  const rows=window.dataService.getMyReports().sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
-  sheet(`<div class="sh-h"><h2>내 제보 <span class="note">${rows.length}개</span></h2><button class="x" id="mrX" aria-label="닫기">${ico.x}</button></div>
-    ${rows.map(r=>{ const j=judgeList.find(x=>x.report_id===r.id), st0=j?j.status:(r.status||"확인 중"), st=st0==="승격"?"확인됨":st0, exists=Boolean(findAny(r.id));
-      return `<button class="listitem" ${exists?`data-myreport="${esc(r.id)}"`:"disabled"}><span class="ph">${EMOJI[r.genre]||"🎫"}</span><span style="min-width:0"><b>${esc(r.name)}</b><small>${esc(r.tab)} · ${dotDate(r.created_at)} · ${r.meta?.guest?"임시 닉네임으로 제보":"회원 제보"}</small></span><span class="tag">${esc(st)}</span></button>`; }).join("") || '<p class="note" style="padding:12px 0">아직 남긴 제보가 없어요.</p>'}`);
-  $("#mrX").onclick = () => { closeSheet(); renderPage(); };
 }
 /* ===== 아낀 돈 영수증: 이번 달 관람 횟수·쓴 돈·아낀 돈 + 서울시민 평균 비교 ===== */
 /* 비교 통계는 여기서만 고치면 된다. 연간 수치를 12로 나눠 한 달 기준으로 보여준다. */
