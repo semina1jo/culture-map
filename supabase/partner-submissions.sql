@@ -145,3 +145,12 @@ alter table public.culture_events drop constraint culture_events_category_check;
 alter table public.culture_events add constraint culture_events_category_check check (category = any (array['전시','공연','체험','축제','팝업','무료 공간']));
 alter table public.culture_submissions drop constraint culture_submissions_category_check;
 alter table public.culture_submissions add constraint culture_submissions_category_check check (category = any (array['전시','공연','체험','축제','팝업','무료 공간']));
+
+-- 8) 2026-11-19: 더미(예시) 신청. is_demo=true인 신청을 승인하면 culture_events.is_demo=true로 들어가고,
+--    앱에서는 설정의 '더미(예시) 데이터 보기'를 켰을 때만 지도에 보인다.
+alter table public.culture_submissions add column if not exists is_demo boolean not null default false;
+alter table public.culture_events add column if not exists is_demo boolean not null default false;
+-- review_culture_submission: is_demo 복사하도록 다시 정의함 (Supabase 마이그레이션 submissions_demo_flag)
+-- 예시 신청 5건(팝업·전시·공연·무료 공간·체험)은 관리자 계정(user_id) 이름으로 넣어 둠. 다시 넣으려면:
+--   delete from culture_events where id in (select event_id from culture_submissions where is_demo);
+--   delete from culture_submissions where is_demo;  → 그다음 insert

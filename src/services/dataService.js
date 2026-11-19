@@ -16,7 +16,7 @@
   const connection = { mode: configured ? "connecting" : "sample", error: null, pending: 0 };
   const columns = {
     cultural_events: "id,codename,guname,title,date,place,org_name,use_trgt,use_fee,is_free,main_img,strtdate,end_date,org_link,hmpg_addr,lat,lot,price_min,price_label,genre4,is_sample,source,user_id,meta,updated_at",
-    culture_events: "id,title,category,raw_category,place,place_addr,gu,org_name,start_date,end_date,event_time,price,fee_text,lat,lng,image_url,homepage_url,ticket_url,source,benefits,benefit_rules,description",
+    culture_events: "id,title,category,raw_category,place,place_addr,gu,org_name,start_date,end_date,event_time,price,fee_text,lat,lng,image_url,homepage_url,ticket_url,source,benefits,benefit_rules,description,is_demo",
     event_benefits: "id,rule_key,event_id,type,value,price_after,label,auto_extracted,user_id",
     places: "id,category,subcategory,name,price,ref_price,address,lat,lng,hours,note,source,is_sample,user_id,meta,updated_at",
     user_profiles: "user_id,nickname,birth,student_type,gu,soldier,interest_genres,demo_mode,noti_settings,extra_fields,updated_at",

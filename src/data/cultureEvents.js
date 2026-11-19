@@ -34,6 +34,8 @@
       // 사용자가 등록 신청하고 관리자가 승인한 정보
       is_partner: /관계자 등록|장소 등록/.test(source),
       is_sample: false,
+      // 장소 등록 더미 신청을 승인한 정보: 설정의 '더미(예시) 데이터 보기'를 켰을 때만 지도에 보인다
+      is_demo: row.is_demo === true,
       name: row.title,
       TITLE: row.title,
       genre: row.category,
