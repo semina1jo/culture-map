@@ -182,3 +182,8 @@ grant execute on function public.delete_demo_submissions(uuid[]) to authenticate
 --     관리자는 아무 신청이나 고칠 수 있다. 전체 정의는 Supabase 마이그레이션 submissions_edit_policies 참고
 
 -- 13) 2026-11-19: 도배 방지. 한 사람의 '검사 대기' 신청은 5건까지 (관리자·예시 제외). 트리거 culture_submissions_limit (마이그레이션 submissions_pending_limit)
+
+-- 14) 2026-11-19: 승인 전 대표 이미지 비공개. 신청 이미지는 partner-proofs(비공개)에 올리고 image_path만 저장,
+--     목록에서는 1시간짜리 서명 주소로 보여 주고, 승인할 때 관리자 화면이 report-photos(공개)로 복사해 image_url을 채운 뒤 승인한다.
+alter table public.culture_submissions add column if not exists image_path text;
+-- culture_submissions_guard: 신청자가 이미지를 바꾸면 image_url(공개본)을 비우고, image_url은 관리자만 채울 수 있게 함 (마이그레이션 submissions_private_image)

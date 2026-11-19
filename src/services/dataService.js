@@ -311,6 +311,40 @@
     if (!response.ok) throw new Error("사진 업로드에 실패했어요.");
     return `${base}/storage/v1/object/public/report-photos/${path}`;
   }
+  // 승인 전 대표 이미지: 비공개 저장소(partner-proofs)에 올리고 경로만 돌려준다
+  async function uploadPrivateImage(value) {
+    if (!value || !value.startsWith("data:")) return null;
+    const blob = await (await fetch(value)).blob();
+    if (blob.size > 5 * 1024 * 1024) throw new Error("사진은 5MB 이하로 선택해 주세요.");
+    const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" }[blob.type];
+    if (!extension) throw new Error("JPG, PNG, WebP, GIF 사진을 사용해 주세요.");
+    const path = `${userId()}/${uuid()}.${extension}`;
+    const response = await fetch(`${base}/storage/v1/object/partner-proofs/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type }), body: blob });
+    if (!response.ok) throw new Error("사진 업로드에 실패했어요.");
+    return path;
+  }
+  // 비공개 이미지 경로들 → 잠깐 쓸 수 있는 주소(1시간)
+  async function signImages(rows) {
+    const paths = [...new Set(rows.map(r => r.image_path).filter(Boolean))];
+    if (!configured || !paths.length) return rows;
+    try {
+      const signed = await request("/storage/v1/object/sign/partner-proofs", { method: "POST", body: JSON.stringify({ expiresIn: 3600, paths }) });
+      const map = new Map((signed || []).filter(x => x.signedURL).map(x => [x.path, `${base}/storage/v1${x.signedURL}`]));
+      return rows.map(r => r.image_path && map.has(r.image_path) ? { ...r, _img: map.get(r.image_path) } : r);
+    } catch (_) { return rows; }
+  }
+  // 승인할 때: 비공개 이미지를 공개 저장소(report-photos)로 복사하고 주소를 신청에 적어 둔다
+  async function publishImage(row) {
+    if (!row.image_path || row.image_url) return row.image_url || null;
+    const signed = await request(`/storage/v1/object/sign/partner-proofs/${row.image_path}`, { method: "POST", body: JSON.stringify({ expiresIn: 120 }) });
+    const blob = await (await fetch(`${base}/storage/v1${signed.signedURL || signed.signedUrl}`)).blob();
+    const path = `${userId()}/${uuid()}.${(row.image_path.split(".").pop() || "jpg")}`;
+    const up = await fetch(`${base}/storage/v1/object/report-photos/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type || "image/jpeg" }), body: blob });
+    if (!up.ok) throw new Error("대표 이미지를 공개하지 못했어요.");
+    const url = `${base}/storage/v1/object/public/report-photos/${path}`;
+    await request(`/rest/v1/culture_submissions?id=eq.${encodeURIComponent(row.id)}`, { method: "PATCH", body: JSON.stringify({ image_url: url }) });
+    return url;
+  }
   async function checkAdmin() {
     let value = false;
     if (configured && session && !account().isGuest) { try { value = (await request("/rest/v1/rpc/is_app_admin", { method: "POST", body: "{}" })) === true; } catch (_) { value = false; } }
@@ -431,7 +465,7 @@
     listSubmissions: all => run(async () => {
       if (!configured) return list("submissions");
       const mine = all ? "" : `&user_id=eq.${encodeURIComponent(userId())}`;
-      const rows = await request(`/rest/v1/culture_submissions?select=*${mine}&order=created_at.desc&limit=500`);
+      const rows = await signImages(await request(`/rest/v1/culture_submissions?select=*${mine}&order=created_at.desc&limit=500`));
       if (!all) cache("submissions", rows);
       return rows;
     }),
@@ -440,9 +474,10 @@
       if (configured && account().isGuest) throw Object.assign(new Error("로그인한 뒤 신청할 수 있어요."), { code: "auth_required" });
       const data = { ...row, user_id: userId() };
       if (configured) {
-        data.image_url = (await uploadPhoto(files.image || "")) || null;
+        data.image_url = null;
+        data.image_path = await uploadPrivateImage(files.image || "");
         let saved;
-        try { saved = (await insert("culture_submissions", data))[0]; }
+        try { saved = (await signImages(await insert("culture_submissions", data)))[0]; }
         catch (error) { if (/too_many_pending/.test(error?.message || "")) throw Object.assign(new Error("검사 대기 중인 신청이 5건이에요. 결과가 나온 뒤에 더 신청해 주세요."), { code: "too_many_pending" }); throw error; }
         cache("submissions", [saved, ...list("submissions").filter(r => r.id !== saved.id)]);
         return saved;
@@ -455,11 +490,11 @@
     updateSubmission: (id, patch, files = {}) => run(async () => {
       const data = { ...patch };
       if (configured) {
-        if (files.image) data.image_url = (await uploadPhoto(files.image)) || null;
+        if (files.image) { data.image_path = await uploadPrivateImage(files.image); data.image_url = null; }
         let rows;
         try { rows = await request(`/rest/v1/culture_submissions?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(data) }); }
         catch (error) { if (/too_many_pending/.test(error?.message || "")) throw Object.assign(new Error("검사 대기 중인 신청이 5건이에요. 결과가 나온 뒤에 다시 신청해 주세요."), { code: "too_many_pending" }); throw error; }
-        const saved = rows?.[0]; if (!saved) throw new Error("고칠 수 없는 신청이에요. 이미 심사가 끝났을 수 있어요.");
+        const saved = (await signImages(rows || []))[0]; if (!saved) throw new Error("고칠 수 없는 신청이에요. 이미 심사가 끝났을 수 있어요.");
         cache("submissions", list("submissions").map(r => r.id === id ? saved : r));
         return saved;
       }
@@ -469,7 +504,8 @@
       cache("submissions", list("submissions").map(r => r.id === id ? saved : r));
       return saved;
     }),
-    reviewSubmission: (id, action, reason, checks) => run(async () => {
+    reviewSubmission: (id, action, reason, checks, row) => run(async () => {
+      if (action === "approve" && row?.image_path && !row.image_url) await publishImage(row);
       const result = await request("/rest/v1/rpc/review_culture_submission", { method: "POST", body: JSON.stringify({ p_id: id, p_action: action, p_reason: reason || null, p_checks: checks || {} }) });
       try { cache("culture_events", (await selectAll("culture_events")).map(global.cultureEventsData.toEvent)); } catch (_) {}
       return result;

@@ -1956,7 +1956,7 @@ function adminPage(pg){
     </ol>
     ${ADM.loading && !ADM.loaded ? '<p class="note" style="padding:20px 0">신청 목록을 불러오는 중이에요.</p>' :
       rows.map(r => `<div class="adm-row"><button class="adm-item" data-adm="${esc(r.id)}">
-        <span class="ph">${r.image_url?`<img src="${esc(r.image_url)}" alt="">`:EMOJI[r.category]||"🎫"}</span>
+        <span class="ph">${(r._img||r.image_url)?`<img src="${esc(r._img||r.image_url)}" alt="">`:EMOJI[r.category]||"🎫"}</span>
         <span class="adm-main"><b>${r.is_demo?'<em class="tag demo-tag">예시</em> ':""}${isUnpub(r)?'<em class="tag demo-tag unpub-tag">지도에서 내림</em> ':""}${esc(r.title)}</b><small>${esc(r.org_name||r.place)} · ${esc(r.contact_email||"")}</small><small>${r.kind==="상설"?"상설 장소":`${esc(r.start_date)} ~ ${esc(r.end_date)}`} · ${r.price===0?"무료":won(r.price)}</small></span>
         <span class="adm-date">${dotDate(r.created_at).slice(5)}</span></button>${r.status==="반려"?`<button class="out sm why-btn" data-why="${esc(r.id)}">사유 보기</button>`:""}</div>`).join("") || `<p class="note" style="padding:20px 0">${ADM.filter==="대기"?"검사를 기다리는 신청이 없어요.":ADM.filter==="승인"?"아직 지도에 올린 신청이 없어요.":"반려한 신청이 없어요."}</p>`}`;
   $("#admBack").onclick = () => { admRemember(null); S.tab = "me"; render(); };
@@ -2023,7 +2023,7 @@ function demoCleanupPage(pg){
     <p class="note" style="margin:0 0 12px">예시로 넣은 신청만 지울 수 있어요. 지도에 올라간 예시는 지도에서도 함께 사라져요.</p>
     ${demos.length ? `<label class="cl-all"><input type="checkbox" id="clAll" ${all?"checked":""}> 전체 선택 <span class="note">${ADM.pick.size}/${demos.length}</span></label>
     ${demos.map(r => `<label class="cl-row"><input type="checkbox" data-pick="${esc(r.id)}" ${ADM.pick.has(r.id)?"checked":""}>
-      <span class="ph">${r.image_url?`<img src="${esc(r.image_url)}" alt="">`:EMOJI[r.category]||"🎫"}</span>
+      <span class="ph">${(r._img||r.image_url)?`<img src="${esc(r._img||r.image_url)}" alt="">`:EMOJI[r.category]||"🎫"}</span>
       <span class="adm-main"><b>${esc(r.title)}</b><small>${esc(r.category)} · 신청 ${dotDate(r.created_at)}</small></span>
       <span class="tag ${r.status==="승인"?"grn":r.status==="반려"?"red":""}">${subLabel(r)}</span></label>`).join("")}
     <div class="cl-bar"><button class="out" id="clCancel">취소</button><button class="blk danger" id="clDelete" ${ADM.pick.size?"":"disabled"}>선택한 ${ADM.pick.size}건 삭제</button></div>`
@@ -2089,7 +2089,7 @@ function adminDetail(id){
   const benefits = (r.benefit_rules||[]).map(b => esc(b.l)).join(", ");
   sheet(`<div class="sh-h"><h2>${esc(r.title)}</h2><button class="x" id="adX" aria-label="닫기">${ico.x}</button></div>
     <div class="addr"><span class="tag ${r.status==="승인"?"grn":r.status==="반려"?"red":""}">${subLabel(r)}</span>${r.is_demo?' <span class="tag demo-tag">예시</span>':""} ${r.kind==="상설"?"상설 장소":"행사"} · ${esc(r.category)} · 신청 ${dotDate(r.created_at)}</div>
-    ${r.image_url?`<img class="adm-hero" src="${esc(r.image_url)}" alt="대표 이미지">`:""}
+    ${(r._img||r.image_url)?`<img class="adm-hero" src="${esc(r._img||r.image_url)}" alt="대표 이미지">`:""}
     <div class="rows">
       <div class="rowi">${ico.cal}<div>${r.kind==="상설"?"상설 운영":`${esc(r.start_date)} ~ ${esc(r.end_date)}`}<small>기간</small></div></div>
       <div class="rowi">${ico.clock}<div>${esc(r.event_time||"입력 없음")}<small>운영 시간·회차</small></div></div>
@@ -2125,7 +2125,7 @@ function adminDetail(id){
     if (action === "approve") { const c = checks(); const miss = all.filter(x => !c[x.k]); if (miss.length) { $("#adErr").textContent = `확인하지 않은 항목이 ${miss.length}개 있어요. 모두 확인해야 지도에 올릴 수 있어요.`; return; } }
     if (action !== "approve" && !reason) { $("#adErr").textContent = action === "reject" ? "반려 사유를 적어 주세요. 신청자에게 보여요." : "지도에서 내리는 이유를 적어 주세요."; $("#adReason").focus(); return; }
     btn.disabled = true;
-    const res = await window.dataService.reviewSubmission(r.id, action, reason, checks());
+    const res = await window.dataService.reviewSubmission(r.id, action, reason, checks(), r);
     if (!res.ok) { btn.disabled = false; $("#adErr").textContent = res.error?.message || "처리하지 못했어요. 다시 시도해 주세요."; return; }
     admRemember({ id: null, filter: ADM.filter }); applyDataState(); closeSheet(); ADM.loaded = false; await loadAdminRows();
     toast(action === "approve" ? (r.is_demo && !S.showDemo ? "승인했어요. 예시 신청이라 설정에서 더미(예시) 데이터 보기를 켜야 지도에 보여요." : "승인했어요. 지도에 올라갔어요.") : action === "reject" ? "반려했어요. 신청자의 내 신청 목록에 사유가 보여요." : "지도에서 내렸어요.");
