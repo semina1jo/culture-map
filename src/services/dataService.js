@@ -452,7 +452,7 @@
       if (configured && account().isGuest) throw Object.assign(new Error("로그인한 뒤 신청할 수 있어요."), { code: "auth_required" });
       const data = { ...row, user_id: userId() };
       if (configured) {
-        data.image_url = await uploadPhoto(files.image || "");
+        data.image_url = (await uploadPhoto(files.image || "")) || null;
         data.proof_file_path = await uploadProof(files.proof || "");
         const saved = (await insert("culture_submissions", data))[0];
         cache("submissions", [saved, ...list("submissions").filter(r => r.id !== saved.id)]);
