@@ -129,3 +129,13 @@ do $$ begin
       using (bucket_id='partner-proofs' and ((storage.foldername(name))[1]=(select auth.uid())::text or public.is_app_admin()));
   end if;
 end $$;
+
+-- 6) 2026-11-19 단순화: 관계자 인증 단계 없이 '장소 등록 신청'만 받는다.
+--    신청자·증빙 칸은 남겨 두되(추가만 원칙) 비워도 되게 바꾸고, 지도 출처 이름을 '장소 등록'으로 바꾼다.
+alter table public.culture_submissions
+  alter column contact_name drop not null,
+  alter column contact_email drop not null,
+  alter column org_name drop not null,
+  alter column role drop not null,
+  alter column proof_type drop not null;
+-- review_culture_submission: 승인 시 source를 '장소 등록' / '상설 시설(장소 등록)'으로 저장하도록 다시 정의함 (Supabase 마이그레이션 place_submissions_simplify)

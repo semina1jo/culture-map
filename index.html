@@ -481,7 +481,7 @@ form input:focus,form select:focus,form textarea:focus{border-color:var(--blue);
 i.p{background:var(--blue)}i.e{background:var(--accent)}
 .cal-n.sun{color:var(--red)}.cal-n.sat{color:var(--blue)}
 
-/* ===== 관계자 등록 신청 · 관리자 심사 (2026-11-19) ===== */
+/* ===== 장소 등록 신청 · 관리자 심사 (2026-11-19) ===== */
 .flow-rail{list-style:none;display:flex;gap:0;margin:6px 0 0;padding:0;counter-reset:fr}
 .flow-rail li{flex:1;position:relative;counter-increment:fr;font-size:12px;font-weight:700;color:var(--muted);padding-top:22px;text-align:center}
 .flow-rail li::before{content:counter(fr);position:absolute;top:0;left:50%;transform:translateX(-50%);width:20px;height:20px;border-radius:50%;background:var(--chip);color:var(--ink2);font-size:11px;line-height:20px;z-index:1}
@@ -1169,7 +1169,7 @@ function renderMap(){
     const e = c.list[0], f = eff(e), p = c.p, loc = { lat: c.lat, lng: c.lng };
     return `<button class="pin ${tier(f.price)} ${S.sel===e.id?"sel":""} ${e.src==="사용자 제보"?"rep":""} ${isDemoCulture(e)?"demo":""}" style="left:${p.x}px;top:${p.y}px" data-lat="${loc.lat}" data-lng="${loc.lng}" data-peek="${e.id}" aria-label="${esc(e.name)} ${priceText(e,f)}${isDemoCulture(e)?" (예시)":""}">
       <span class="p"><span class="e">${pinThumb(e)}</span>${priceText(e,f)}</span>
-      <span class="s">${f.rule?.t==="wday" ? "🎬 문화가 있는 날" : f.rule ? "🎟️ 내 혜택가" : e.src==="사용자 제보" ? "제보" : lowestSeat(e) ? "최저석" : discounts.some(d=>d.ref===e.id&&d.left>0) ? "오늘 할인" : isDemoCulture(e) ? "예시" : soon(e) ? "곧 종료" : e.is_partner ? "공식 등록" : e.is_permanent_place ? "상설" : e.is_public_culture ? "문화행사" : e.reserve ? "예약" : "바로 입장"}</span></button>`;
+      <span class="s">${f.rule?.t==="wday" ? "🎬 문화가 있는 날" : f.rule ? "🎟️ 내 혜택가" : e.src==="사용자 제보" ? "제보" : lowestSeat(e) ? "최저석" : discounts.some(d=>d.ref===e.id&&d.left>0) ? "오늘 할인" : isDemoCulture(e) ? "예시" : soon(e) ? "곧 종료" : e.is_partner ? "등록 장소" : e.is_permanent_place ? "상설" : e.is_public_culture ? "문화행사" : e.reserve ? "예약" : "바로 입장"}</span></button>`;
   }).join("");
   $("#world").innerHTML = mapSVG() + pins + meDotHtml();
   // 범례: 상설을 점으로 보이거나 숨길 때만 표시
@@ -1433,11 +1433,11 @@ function detail(id,level){
   if ($("#dTicket")) $("#dTicket").onclick = () => { if (/^https?:\/\//i.test(e.ticket_url)) window.open(e.ticket_url, "_blank", "noopener,noreferrer"); };
 }
 
-/* 관계자 등록 정보: 등록 기관·소개·예매 링크 */
+/* 등록 신청으로 올라온 정보: 주최·소개·예매 링크 */
 function partnerBlock(e){
   if (!e.is_partner) return "";
-  return `<div class="sec partner-sec"><h3>공식 등록 정보 <span>관계자가 등록하고 관리자가 확인했어요</span></h3>
-    ${e.org_name?`<div class="kv"><span>등록 기관</span><b>${esc(e.org_name)}</b>${e.benefits?`<span>기타 혜택</span><b>${esc(e.benefits)}</b>`:""}</div>`:""}
+  return `<div class="sec partner-sec"><h3>등록 정보 <span>관리자가 확인한 정보예요</span></h3>
+    ${e.org_name?`<div class="kv"><span>주최·운영</span><b>${esc(e.org_name)}</b>${e.benefits?`<span>기타 혜택</span><b>${esc(e.benefits)}</b>`:""}</div>`:""}
     ${e.description?`<p class="partner-desc">${esc(e.description)}</p>`:""}
     ${e.ticket_url?'<button class="out w" id="dTicket" style="width:100%;margin-top:8px">예매하기</button>':""}</div>`;
 }
@@ -1507,7 +1507,7 @@ function verify(id){
   navigator.geolocation.getCurrentPosition(pos=>{ const lat=it.lat||37.5572,lng=it.lng||126.9245; finish(haversineM(pos.coords.latitude,pos.coords.longitude,lat,lng),false); }, ()=>{ sheet(`<div class="verify"><div class="big">⚠️</div><p>위치 권한을 확인할 수 없어요</p><span class="note">브라우저 위치 권한을 허용하거나 시연 모드를 켜서 다시 시도해 주세요.</span><div class="acts"><button class="blk w" id="vClose">확인</button></div></div>`); $("#vClose").onclick=closeSheet; }, {enableHighAccuracy:true,timeout:7000,maximumAge:60000});
 }
 
-// 2026-11-19: 사용자가 가격·운영시간·현장 사진을 직접 고치는 기능은 없앴다. 정보는 관계자 등록 → 관리자 승인으로만 바뀐다.
+// 2026-11-19: 사용자가 가격·운영시간·현장 사진을 직접 고치는 기능은 없앴다. 정보는 장소 등록 신청 → 관리자 승인으로만 바뀐다.
 function reportAbuse(id){
   const it = findAny(id);
   sheet(`<div class="sh-h"><h2>신고하기</h2><button class="x" id="rX" aria-label="닫기">${ico.x}</button></div><p class="note">${esc(it.name)}</p>
@@ -1620,59 +1620,28 @@ function savedSheet(){
   $("#sX").onclick = closeSheet;
 }
 
-/* ===== 관계자 등록 신청 → 관리자 검사(등록 전 대기) → 지도에 정식 등록 (2026-11-19) =====
-   일반 사용자 제보는 받지 않는다. 관계자가 설정 탭에서 신청하고, 팀(관리자)이 확인한 정보만 지도에 올린다. */
-const PARTNER_ROLES = ["운영자","기획자","작가","기타"];
-const PROOF_TYPES = [
-  {k:"사업자등록번호", d:"사업자등록번호와 등록증 사진", ph:"000-00-00000", file:true, fileReq:true},
-  {k:"기관 이메일", d:"기관 도메인 메일 (개인 메일 불가)", ph:"name@기관도메인"},
-  {k:"공식 SNS·홈페이지", d:"직접 관리하는 공식 계정 주소", ph:"https://instagram.com/…"},
-  {k:"대관 확인서", d:"개인 작가·소규모 기획자", ph:"대관한 공간 이름", file:true, fileReq:true},
-];
-const FREE_MAIL = /@(gmail|naver|daum|hanmail|kakao|nate|hotmail|outlook|live|icloud|me|yahoo)\./i;
+/* ===== 장소 등록 신청 → 관리자 검사(등록 전 대기) → 지도에 정식 등록 (2026-11-19) =====
+   로그인한 사용자가 설정 탭에서 신청하고, 팀(관리자)이 확인한 정보만 지도에 올린다. 관계자 인증 단계는 두지 않는다. */
 const SUB_STATUS = {대기:"검사 대기", 승인:"지도 등록", 반려:"반려"};
-const PARTNER_CONTACT_KEY = "culture-map-partner-contact";
-// 사업자등록번호 검증번호(마지막 자리) 계산. 형식이 맞는지만 확인하고, 실제 영업 여부는 관리자가 홈택스에서 본다
-function bizNoOk(v){
-  const d = String(v||"").replace(/\D/g,""); if (d.length !== 10) return false;
-  const w = [1,3,7,1,3,7,1,3,5]; let s = 0;
-  for (let i = 0; i < 9; i++) s += w[i] * +d[i];
-  s += Math.floor(+d[8] * 5 / 10);
-  return (10 - s % 10) % 10 === +d[9];
-}
-const fmtBizNo = v => { const d=String(v||"").replace(/\D/g,""); return d.length===10?`${d.slice(0,3)}-${d.slice(3,5)}-${d.slice(5)}`:v; };
 const readFileUrl = file => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(file); });
 // 혜택가로 만 원 이하가 되는지: 기본가 또는 할인 대상 가격 중 하나라도 만 원 이하
 const meetsPriceRule = (price, rules) => price <= 10000 || (rules||[]).some(r => r.p <= 10000);
 
 function partnerEntry(){
-  if (needLogin("관계자 등록 신청", partnerEntry)) return;
+  if (needLogin("장소 등록 신청", partnerEntry)) return;
   partnerSheet();
 }
 function partnerSheet(){
-  let saved = {}; try { saved = JSON.parse(localStorage.getItem(PARTNER_CONTACT_KEY) || "{}"); } catch (_) {}
   const acc = window.dataService.account();
   const targets = Object.keys(VENUE_TARGET);
-  sheet(`<div class="sh-h"><h2>관계자 등록 신청</h2><button class="x" id="pX" aria-label="닫기">${ico.x}</button></div>
+  sheet(`<div class="sh-h"><h2>장소 등록 신청</h2><button class="x" id="pX" aria-label="닫기">${ico.x}</button></div>
     <ol class="flow-rail" aria-label="등록 과정"><li class="on">신청</li><li>관리자 검사</li><li>지도에 등록</li></ol>
-    <p class="note" style="margin:8px 0 0">공연장·전시 공간을 운영하거나 행사를 기획하는 분이 직접 정보를 올리는 곳이에요. 관리자가 증빙과 내용을 확인한 뒤 지도에 '공식 등록'으로 표시돼요.</p>
+    <p class="note" style="margin:8px 0 0">알리고 싶은 행사나 장소를 올려 주세요. 관리자가 내용을 확인한 뒤 지도에 올라가요.</p>
     <form id="pF" class="pform" novalidate>
-      <fieldset><legend>신청하는 분</legend>
-        <div class="two"><div><label for="pCN">담당자 이름</label><input id="pCN" maxlength="40" autocomplete="name" value="${esc(saved.contact_name||"")}"></div>
-        <div><label for="pRole">역할</label><select id="pRole">${PARTNER_ROLES.map(r=>`<option ${saved.role===r?"selected":""}>${r}</option>`).join("")}</select></div></div>
-        <label for="pOrg">소속 기관·공간·단체</label><input id="pOrg" maxlength="60" placeholder="예: ○○갤러리, ○○문화재단" value="${esc(saved.org_name||"")}">
-        <div class="two"><div><label for="pCE">연락 이메일</label><input id="pCE" type="email" autocomplete="email" value="${esc(saved.contact_email||acc.email||"")}"></div>
-        <div><label for="pCP">연락처 <span class="note">선택</span></label><input id="pCP" type="tel" autocomplete="tel" placeholder="010-0000-0000" value="${esc(saved.contact_phone||"")}"></div></div>
-      </fieldset>
-      <fieldset><legend>관계자 증빙 <span class="note">하나만 골라 주세요</span></legend>
-        <div class="proof-pick" role="radiogroup">${PROOF_TYPES.map((p,i)=>`<label class="proof-opt"><input type="radio" name="pProof" value="${p.k}" ${(saved.proof_type?saved.proof_type===p.k:i===0)?"checked":""}><span><b>${p.k}</b><small>${p.d}</small></span></label>`).join("")}</div>
-        <label for="pPV" id="pPVL">증빙 정보</label><input id="pPV" maxlength="200">
-        <div id="pPFW"><label for="pPF">증빙 파일 <span class="note">사진 또는 PDF · 관리자만 볼 수 있어요</span></label><input id="pPF" type="file" accept="image/*,application/pdf"></div>
-        <p class="note proof-hint" id="pPH"></p>
-      </fieldset>
       <fieldset><legend>등록할 정보</legend>
         <div class="opt seg" role="radiogroup" aria-label="종류"><button type="button" data-pkind="행사" aria-pressed="true">기간이 있는 행사</button><button type="button" data-pkind="상설" aria-pressed="false">상설 장소</button></div>
         <label for="pT">이름</label><input id="pT" maxlength="80" placeholder="예: 신진 작가 판화전">
+        <label for="pOrg">주최·운영 <span class="note">선택</span></label><input id="pOrg" maxlength="60" placeholder="예: ○○갤러리, ○○문화재단">
         <div class="two"><div><label for="pG">분야</label><select id="pG">${GENRES.map(g=>`<option>${g}</option>`).join("")}</select></div>
         <div><label for="pTime">운영 시간·회차</label><input id="pTime" maxlength="80" placeholder="예: 화–일 11:00–19:00"></div></div>
         <div class="two" id="pDates"><div><label for="pS">시작일</label><input id="pS" type="date" value="${FILTER_TODAY}"></div><div><label for="pE">종료일</label><input id="pE" type="date" value="${addFilterDays(FILTER_TODAY,14)}"></div></div>
@@ -1693,22 +1662,12 @@ function partnerSheet(){
         <div class="mini-map" id="pMap"><p class="note">지도를 불러오는 중이에요.</p></div>
         <p class="note" id="pMapNote" style="margin:6px 0 0">핀을 끌어서 정확한 입구 위치에 맞춰 주세요.</p>
       </fieldset>
-      <label class="agree"><input type="checkbox" id="pAgree"> 입력한 정보가 사실이며, 확인을 위해 관리자가 연락할 수 있다는 데 동의해요.</label>
+      <label class="agree"><input type="checkbox" id="pAgree"> 입력한 정보가 사실이며, 확인이 필요하면 관리자가 내 계정 이메일로 연락할 수 있다는 데 동의해요.</label>
       <div class="err" id="pErr" role="alert"></div>
       <div class="acts"><button class="out" type="button" id="pC">취소</button><button class="blk" type="submit" id="pSubmit">신청 보내기</button></div>
     </form>`, {level:"full"});
-  let kind = "행사", image = null, proofFile = null, loc = null, marker = null;
+  let kind = "행사", image = null, loc = null, marker = null;
   $("#pX").onclick = $("#pC").onclick = closeSheet;
-
-  // 증빙 종류에 따라 입력 칸 바꾸기
-  const syncProof = () => {
-    const p = PROOF_TYPES.find(x => x.k === document.querySelector('input[name="pProof"]:checked').value);
-    $("#pPVL").textContent = {사업자등록번호:"사업자등록번호", "기관 이메일":"기관 이메일 주소", "공식 SNS·홈페이지":"공식 계정·홈페이지 주소", "대관 확인서":"대관한 공간 이름"}[p.k];
-    $("#pPV").placeholder = p.ph; $("#pPFW").hidden = !p.file;
-    $("#pPH").textContent = {사업자등록번호:"관리자가 국세청 정보로 번호를 확인하고, 공개된 대표 연락처로 신청자를 확인해요.", "기관 이메일":"이 주소로 확인 메일을 보내요. 메일 도메인이 공식 홈페이지 주소와 같아야 해요.", "공식 SNS·홈페이지":"관리자가 확인 코드를 보내면 그 계정으로 회신해 주세요.", "대관 확인서":"공간 측 공개 연락처로 대관 사실을 확인해요. 확인 후에도 '관계자 등록'으로 표시돼요."}[p.k];
-  };
-  document.querySelectorAll('input[name="pProof"]').forEach(r => r.onchange = syncProof); syncProof();
-  if (saved.proof_value) $("#pPV").value = saved.proof_value;
 
   // 행사 / 상설
   document.querySelectorAll("[data-pkind]").forEach(b => b.onclick = () => {
@@ -1726,7 +1685,6 @@ function partnerSheet(){
   $("#pBenAdd").onclick = addBen;
 
   $("#pImg").onchange = async ev => { const f = ev.target.files[0]; if (!f) return; image = await readFileUrl(f); $("#pImgPrev").src = image; $("#pImgPrev").hidden = false; };
-  $("#pPF").onchange = async ev => { const f = ev.target.files[0]; proofFile = f ? await readFileUrl(f) : null; };
 
   // 위치: 신청 폼 안의 작은 지도에서 핀을 옮겨 정한다 (구글 지도가 없으면 지금 보는 지도 가운데)
   const mainMap = window.mapsService?.getMap?.();
@@ -1753,21 +1711,12 @@ function partnerSheet(){
   $("#pF").addEventListener("submit", async ev => {
     ev.preventDefault();
     const v = id => $(id).value.trim();
-    const proof = document.querySelector('input[name="pProof"]:checked').value, pt = PROOF_TYPES.find(x => x.k === proof);
     const price = Math.max(0, Math.round(Number($("#pP").value) || 0));
     const rules = [...document.querySelectorAll("#pBen .ben-row")].map(r => { const t = r.querySelector("select").value, raw = r.querySelector("input").value; if (raw === "") return null; const p = Math.max(0, Math.round(Number(raw))); return { ...VENUE_TARGET[t], p, l: `${t} ${p === 0 ? "무료" : won(p)}` }; }).filter(Boolean);
     const urlOk = u => !u || /^https?:\/\/\S+\.\S+/.test(u);
     const st = kind === "행사" ? $("#pS").value : null, en = kind === "행사" ? $("#pE").value : null;
     let err = "";
-    if (!v("#pCN")) err = "담당자 이름을 입력해 주세요.";
-    else if (!v("#pOrg")) err = "소속 기관·공간·단체 이름을 입력해 주세요.";
-    else if (!/^\S+@\S+\.\S+$/.test(v("#pCE"))) err = "연락 이메일을 확인해 주세요.";
-    else if (!v("#pPV")) err = `${$("#pPVL").textContent}을(를) 입력해 주세요.`;
-    else if (proof === "사업자등록번호" && !bizNoOk(v("#pPV"))) err = "사업자등록번호 10자리를 다시 확인해 주세요. 마지막 검증 숫자가 맞지 않아요.";
-    else if (proof === "기관 이메일" && (!/^\S+@\S+\.\S+$/.test(v("#pPV")) || FREE_MAIL.test(v("#pPV")))) err = "기관 도메인 이메일을 입력해 주세요. 네이버·지메일 같은 개인 메일은 쓸 수 없어요.";
-    else if (proof === "공식 SNS·홈페이지" && !/^https?:\/\/\S+\.\S+/.test(v("#pPV"))) err = "공식 계정 주소를 https:// 로 시작하게 넣어 주세요.";
-    else if (pt.fileReq && !proofFile) err = "증빙 파일을 올려 주세요.";
-    else if (!v("#pT")) err = "등록할 행사·장소 이름을 입력해 주세요.";
+    if (!v("#pT")) err = "등록할 행사·장소 이름을 입력해 주세요.";
     else if (kind === "행사" && (!st || !en || en < st)) err = "시작일과 종료일을 확인해 주세요. 종료일은 시작일보다 빠를 수 없어요.";
     else if (kind === "행사" && en < FILTER_TODAY) err = "이미 끝난 행사는 등록할 수 없어요.";
     else if (!meetsPriceRule(price, rules)) err = "만 원 이하이거나, 할인 대상 가격이 만 원 이하인 정보만 등록할 수 있어요.";
@@ -1781,13 +1730,11 @@ function partnerSheet(){
     else if (!$("#pAgree").checked) err = "정보 확인 동의에 체크해 주세요.";
     if (err) { $("#pErr").textContent = err; return; }
     $("#pErr").textContent = "";
-    const contact = { contact_name: v("#pCN"), contact_phone: v("#pCP") || null, contact_email: v("#pCE"), org_name: v("#pOrg"), role: $("#pRole").value, proof_type: proof, proof_value: proof === "사업자등록번호" ? fmtBizNo(v("#pPV")) : v("#pPV") };
-    try { localStorage.setItem(PARTNER_CONTACT_KEY, JSON.stringify(contact)); } catch (_) {}
-    const row = { ...contact, kind, title: v("#pT"), category: $("#pG").value, place: v("#pPl"), place_addr: v("#pAd"), lat: loc.lat, lng: loc.lng,
+    const row = { contact_email: acc.email || null, org_name: v("#pOrg") || null, kind, title: v("#pT"), category: $("#pG").value, place: v("#pPl"), place_addr: v("#pAd"), lat: loc.lat, lng: loc.lng,
       start_date: st, end_date: en, event_time: v("#pTime") || null, price, fee_text: v("#pFee") || null, benefit_rules: rules, benefit_note: v("#pBN") || null,
       ticket_url: v("#pTU") || null, homepage_url: v("#pHU") || null, description: v("#pDesc") || null };
     $("#pSubmit").disabled = true; $("#pSubmit").textContent = "보내는 중…";
-    const result = await window.dataService.addSubmission(row, { image, proof: pt.file ? proofFile : null });
+    const result = await window.dataService.addSubmission(row, { image });
     if (!result.ok) { $("#pErr").textContent = result.error?.message || "신청을 보내지 못했어요. 입력 내용은 그대로 있어요."; $("#pSubmit").disabled = false; $("#pSubmit").textContent = "신청 보내기"; return; }
     closeSheet(); renderPage();
     toast("신청을 보냈어요. 관리자가 확인하면 지도에 올라가요.");
@@ -1818,35 +1765,21 @@ function adminPage(pg){
   const rows = ADM.rows.filter(r => r.status === ADM.filter);
   pg.innerHTML = `<div class="adm-top"><button class="linkbtn adm-back" id="admBack">← 설정</button><button class="linkbtn" id="admReload">새로고침</button></div>
     <h1>등록 심사</h1>
-    <p class="note" style="margin:0 0 12px">관계자가 보낸 신청을 확인하고 지도에 올리는 곳이에요. 승인한 정보만 사용자에게 보여요.</p>
+    <p class="note" style="margin:0 0 12px">사용자가 보낸 장소·행사 등록 신청을 확인하고 지도에 올리는 곳이에요. 승인한 정보만 지도에 보여요.</p>
     <ol class="flow-rail adm-rail" role="tablist">
       ${["대기","승인","반려"].map(s => `<li><button role="tab" data-admf="${s}" aria-selected="${ADM.filter===s}"><b>${count(s)}</b>${SUB_STATUS[s]}</button></li>`).join("")}
     </ol>
     ${ADM.loading && !ADM.loaded ? '<p class="note" style="padding:20px 0">신청 목록을 불러오는 중이에요.</p>' :
       rows.map(r => `<button class="adm-item" data-adm="${esc(r.id)}">
         <span class="ph">${r.image_url?`<img src="${esc(r.image_url)}" alt="">`:EMOJI[r.category]||"🎫"}</span>
-        <span class="adm-main"><b>${esc(r.title)}</b><small>${esc(r.org_name)} · ${esc(r.proof_type)}</small><small>${r.kind==="상설"?"상설 장소":`${esc(r.start_date)} ~ ${esc(r.end_date)}`} · ${r.price===0?"무료":won(r.price)}</small></span>
+        <span class="adm-main"><b>${esc(r.title)}</b><small>${esc(r.org_name||r.place)} · ${esc(r.contact_email||"")}</small><small>${r.kind==="상설"?"상설 장소":`${esc(r.start_date)} ~ ${esc(r.end_date)}`} · ${r.price===0?"무료":won(r.price)}</small></span>
         <span class="adm-date">${dotDate(r.created_at).slice(5)}</span></button>`).join("") || `<p class="note" style="padding:20px 0">${ADM.filter==="대기"?"검사를 기다리는 신청이 없어요.":ADM.filter==="승인"?"아직 지도에 올린 신청이 없어요.":"반려한 신청이 없어요."}</p>`}`;
   $("#admBack").onclick = () => { S.tab = "me"; render(); };
   $("#admReload").onclick = () => { ADM.loaded = false; loadAdminRows(); renderPage(); };
 }
 // 증빙 종류별 확인 항목. 자동으로 판단할 수 있는 건 결과를 같이 보여 준다
 function adminChecks(r){
-  const proof = {
-    "사업자등록번호": [
-      {k:"biz_no", t:"사업자등록번호 형식 확인", auto: bizNoOk(r.proof_value) ? "검증 숫자 일치" : "검증 숫자 불일치", bad: !bizNoOk(r.proof_value)},
-      {k:"biz_status", t:"홈택스에서 계속사업자인지 확인", link:"https://hometax.go.kr"},
-      {k:"biz_contact", t:"등록증의 대표 연락처로 신청자 확인"}],
-    "기관 이메일": [
-      {k:"mail_domain", t:"메일 도메인이 기관 홈페이지 주소와 같음", auto: FREE_MAIL.test(r.proof_value||"") ? "개인 메일 도메인" : "기관 도메인", bad: FREE_MAIL.test(r.proof_value||"")},
-      {k:"mail_reply", t:"확인 메일에 회신 받음"}],
-    "공식 SNS·홈페이지": [
-      {k:"sns_open", t:"공식 계정이 실제 기관 계정임", link: r.proof_value},
-      {k:"sns_code", t:"그 계정으로 확인 코드 회신 받음"}],
-    "대관 확인서": [
-      {k:"rent_doc", t:"대관 확인서 내용 확인"},
-      {k:"rent_call", t:"공간 측 공개 연락처로 대관 사실 확인"}],
-  }[r.proof_type] || [];
+  const proof = [];
   const okPrice = meetsPriceRule(r.price, r.benefit_rules);
   const norm = s => String(s||"").replace(/[\s\[\]()〈〉<>「」『』·.,]/g,"").toLowerCase();
   const dup = events.filter(e => e.is_public_culture && !e.is_partner && norm(e.name) && (norm(e.name).includes(norm(r.title)) || norm(r.title).includes(norm(e.name))) && norm(r.title).length >= 3).slice(0, 3);
@@ -1875,14 +1808,12 @@ function adminDetail(id){
       <div class="rowi">${ico.pin}<div>${esc(r.place)}<small>${esc(r.place_addr||"")}</small></div></div>
       ${r.description?`<div class="rowi">${ico.doc}<div>${esc(r.description)}<small>소개</small></div></div>`:""}
     </div>
-    <div class="sec"><h3>신청자 <span>${esc(r.role)}</span></h3>
-      <div class="kv"><span>담당자</span><b>${esc(r.contact_name)}</b><span>소속</span><b>${esc(r.org_name)}</b><span>이메일</span><b>${esc(r.contact_email)}</b>${r.contact_phone?`<span>연락처</span><b>${esc(r.contact_phone)}</b>`:""}<span>${esc(r.proof_type)}</span><b>${esc(r.proof_value||"")}</b></div>
-      ${r.proof_file_path?'<button class="out sm" id="adProof" style="margin-top:8px">증빙 파일 열기</button>':""}
+    <div class="sec"><h3>신청 정보</h3>
+      <div class="kv"><span>신청 계정</span><b>${esc(r.contact_email||"알 수 없음")}</b>${r.org_name?`<span>주최·운영</span><b>${esc(r.org_name)}</b>`:""}${r.ticket_url?`<span>예매 링크</span><b>${esc(r.ticket_url)}</b>`:""}${r.homepage_url?`<span>안내 페이지</span><b>${esc(r.homepage_url)}</b>`:""}</div>
     </div>
-    <div class="sec"><h3>관계자 확인 <span>${esc(r.proof_type)}</span></h3>${proof.map(checkRow).join("")}</div>
     <div class="sec"><h3>정보 확인</h3>${info.map(checkRow).join("")}</div>
     ${r.status==="반려"&&r.reject_reason?`<div class="status">반려 사유: ${esc(r.reject_reason)}</div>`:""}
-    ${r.status==="대기"?`<label for="adReason" class="flab">반려 사유 <span class="note">반려할 때만</span></label><textarea id="adReason" class="adm-reason" maxlength="200" placeholder="예: 공식 계정에서 확인 코드 회신이 없어요."></textarea>`:""}
+    ${r.status==="대기"?`<label for="adReason" class="flab">반려 사유 <span class="note">반려할 때만</span></label><textarea id="adReason" class="adm-reason" maxlength="200" placeholder="예: 공식 안내 페이지의 날짜와 달라요."></textarea>`:""}
     ${r.status==="승인"?`<label for="adReason" class="flab">지도에서 내리는 이유</label><textarea id="adReason" class="adm-reason" maxlength="200" placeholder="예: 행사가 취소됐어요."></textarea>`:""}
     <div class="err" id="adErr" role="alert"></div>
     <div class="acts">
@@ -1891,7 +1822,6 @@ function adminDetail(id){
     </div>`, {level:"full"});
   $("#adX").onclick = closeSheet;
   const checks = () => Object.fromEntries([...document.querySelectorAll("[data-chk]")].map(c => [c.dataset.chk, c.checked]));
-  if ($("#adProof")) $("#adProof").onclick = async () => { const u = await window.dataService.proofUrl(r.proof_file_path); if (u.ok) window.open(u.value, "_blank", "noopener"); else toast("증빙 파일을 열지 못했어요."); };
   const act = async (action, btn) => {
     const reason = $("#adReason")?.value.trim() || "";
     if (action === "approve") { const c = checks(); const miss = all.filter(x => !c[x.k]); if (miss.length) { $("#adErr").textContent = `확인하지 않은 항목이 ${miss.length}개 있어요. 모두 확인해야 지도에 올릴 수 있어요.`; return; } }
@@ -1900,7 +1830,7 @@ function adminDetail(id){
     const res = await window.dataService.reviewSubmission(r.id, action, reason, checks());
     if (!res.ok) { btn.disabled = false; $("#adErr").textContent = res.error?.message || "처리하지 못했어요. 다시 시도해 주세요."; return; }
     applyDataState(); closeSheet(); ADM.loaded = false; await loadAdminRows();
-    toast(action === "approve" ? "승인했어요. 지도에 '공식 등록'으로 올라갔어요." : action === "reject" ? "반려했어요. 신청자의 내 신청 목록에 사유가 보여요." : "지도에서 내렸어요.");
+    toast(action === "approve" ? "승인했어요. 지도에 올라갔어요." : action === "reject" ? "반려했어요. 신청자의 내 신청 목록에 사유가 보여요." : "지도에서 내렸어요.");
   };
   if ($("#adApprove")) $("#adApprove").onclick = ev => act("approve", ev.currentTarget);
   if ($("#adReject")) $("#adReject").onclick = ev => act("reject", ev.currentTarget);
@@ -1919,12 +1849,12 @@ function renderPage(){
       <div class="card"><h3>내 계정 <span class="tag">${acc.isGuest?"게스트":"회원"}</span></h3>
         <div class="task"><div><b>${esc(acc.nickname||"닉네임 준비 중")}</b><small>${acc.isGuest?"임시 닉네임 · 로그인하면 내 닉네임으로 바꿀 수 있어요.":esc(acc.email)}</small></div><button class="out sm" id="acctNick" style="white-space:nowrap;flex:none">닉네임 변경</button></div>
         ${acc.isGuest
-          ?`<button class="out g-btn" id="acctGoogle" style="margin-top:10px"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Google로 계속하기</button><div class="acts" style="margin-top:8px"><button class="blk" id="acctSignup">이메일로 가입</button><button class="out" id="acctLogin">로그인</button></div><p class="note" style="margin:8px 0 0">리뷰·평점과 관계자 등록 신청은 로그인 후 할 수 있어요.</p>`
+          ?`<button class="out g-btn" id="acctGoogle" style="margin-top:10px"><svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Google로 계속하기</button><div class="acts" style="margin-top:8px"><button class="blk" id="acctSignup">이메일로 가입</button><button class="out" id="acctLogin">로그인</button></div><p class="note" style="margin:8px 0 0">리뷰·평점과 장소 등록 신청은 로그인 후 할 수 있어요.</p>`
           :`<div class="acts" style="margin-top:10px"><button class="out w" id="acctLogout">로그아웃</button></div>`}
       </div>
       <div class="card"><h3>내 활동</h3><div class="acts" style="margin-top:4px"><button class="out w" id="myReviews">내 리뷰 ${window.dataService.getMyReviews().length}</button></div></div>
-      <div class="card"><h3>관계자 등록</h3><p class="note" style="margin:0">공연장·전시 공간을 운영하거나 행사를 기획한다면 직접 등록을 신청할 수 있어요. 관리자가 확인한 뒤 지도에 올라가요.</p><div class="acts" style="margin-top:10px"><button class="blk" id="partnerNew">등록 신청</button><button class="out" id="partnerMine">내 신청 ${window.dataService.getMySubmissions().length}</button></div></div>
-      ${window.dataService.isAdmin()?`<div class="card adm-card"><h3>관리자 <span class="tag grn">관리자 계정</span></h3><p class="note" style="margin:0">신청을 검사하고 승인하면 지도에 정식으로 등록돼요.</p><button class="blk w" id="adminOpen" style="width:100%;margin-top:10px">등록 심사 페이지</button></div>`:""}
+      <div class="card"><h3>장소 등록</h3><p class="note" style="margin:0">지도에 없는 행사나 장소를 등록 신청할 수 있어요. 관리자가 확인한 뒤 지도에 올라가요.</p><div class="acts" style="margin-top:10px"><button class="blk" id="partnerNew">등록 신청</button><button class="out" id="partnerMine">내 신청 ${window.dataService.getMySubmissions().length}</button></div></div>
+      ${window.dataService.isAdmin()?`<div class="card adm-card"><h3>관리자 <span class="tag grn">관리자 계정</span></h3><p class="note" style="margin:0">등록 신청을 검사하고 승인하면 지도에 올라가요.</p><button class="blk w" id="adminOpen" style="width:100%;margin-top:10px">등록 심사 페이지</button></div>`:""}
       <div class="card"><h3>내 혜택 정보 <button class="out sm" id="profBtn">${S.profile?"수정":"입력하기"}</button></h3>
         ${S.profile?profileSummary():'<p class="note" style="margin:0">나이·거주지 같은 정보를 넣으면 무료·할인 대상인 문화생활을 골라서 보여줘요.</p>'}
         <label class="sw" for="benSw" style="border-bottom:0;padding-bottom:0"><span>문화 탭에서 내 혜택 적용해서 보기</span><input type="checkbox" id="benSw" ${S.benefit?"checked":""}></label>

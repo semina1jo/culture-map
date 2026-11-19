@@ -31,8 +31,8 @@
       id: "culture_events_" + String(row.id),
       public_id: row.id,
       is_public_culture: true,
-      // 관계자가 신청하고 관리자가 승인한 정보
-      is_partner: /관계자 등록/.test(source),
+      // 사용자가 등록 신청하고 관리자가 승인한 정보
+      is_partner: /관계자 등록|장소 등록/.test(source),
       is_sample: false,
       name: row.title,
       TITLE: row.title,
