@@ -2092,11 +2092,21 @@ function adminChecks(r){
   const proof = [];
   const okPrice = meetsPriceRule(r.price, r.benefit_rules);
   const norm = s => String(s||"").replace(/[\s\[\]()〈〉<>「」『』·.,]/g,"").toLowerCase();
-  const dup = events.filter(e => e.is_public_culture && !e.is_partner && norm(e.name) && (norm(e.name).includes(norm(r.title)) || norm(r.title).includes(norm(e.name))) && norm(r.title).length >= 3).slice(0, 3);
+  // 중복 후보: 공공데이터, 이미 지도에 있는 등록 장소, 다른 대기·승인 신청. 이름이 비슷하거나, 80m 안에서 같은 분야·겹치는 기간이면 표시
+  const t0 = norm(r.title), myEvent = r.event_id ? `culture_events_${r.event_id}` : null;
+  const nameLike = n => { const x = norm(n); return x && t0.length >= 3 && x.length >= 3 && (x.includes(t0) || t0.includes(x)); };
+  const overlap = (s1, e1, s2, e2) => (!s1 || !s2) ? (!s1 && !s2) : (s1 <= (e2 || s2) && s2 <= (e1 || s1));
+  const near = (lat, lng) => Number.isFinite(lat) && Number.isFinite(lng) && haversineM(r.lat, r.lng, lat, lng) <= 80;
+  const dup = [
+    ...events.filter(e => e.is_public_culture && e.id !== myEvent && !e.hidden && (nameLike(e.name) || (near(e.lat, e.lng) && (e.genre4 || e.genre) === r.category && overlap(r.start_date, r.end_date, e.start || null, e.end || null))))
+      .map(e => ({ name: `${e.is_partner ? "등록 장소" : "공공데이터"} · ${e.name}` })),
+    ...ADM.rows.filter(x => x.id !== r.id && (x.status === "대기" || x.status === "승인") && (nameLike(x.title) || (near(x.lat, x.lng) && x.category === r.category && overlap(r.start_date, r.end_date, x.start_date, x.end_date))))
+      .map(x => ({ name: `${x.status === "대기" ? "검사 대기 신청" : "승인된 신청"} · ${x.title}` })),
+  ].slice(0, 4);
   const info = [
     {k:"source_match", t:"날짜·가격을 예매·공식 안내 페이지와 대조", link: r.ticket_url || r.homepage_url},
     {k:"price_rule", t:"만 원 기준 충족 (할인가 포함)", auto: okPrice ? "기준 충족" : "기준 초과", bad: !okPrice},
-    {k:"no_dup", t:"공공데이터에 이미 있는 행사가 아님", auto: dup.length ? `비슷한 이름 ${dup.length}건` : "비슷한 이름 없음", bad: dup.length > 0, dup},
+    {k:"no_dup", t:"이미 있는 정보와 겹치지 않음", auto: dup.length ? `겹칠 수 있는 정보 ${dup.length}건` : "겹치는 정보 없음", bad: dup.length > 0, dup},
     {k:"location", t:"지도 위치와 주소가 맞음", map: `https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}`},
   ];
   return { proof, info };
