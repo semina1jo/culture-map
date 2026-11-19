@@ -1724,6 +1724,23 @@ function demoPoster(d){
   return c.toDataURL("image/jpeg", 0.85);
 }
 
+// 주소 → 좌표. 구글 Geocoding API를 먼저 쓰고, 꺼져 있거나 못 찾으면 OpenStreetMap(Nominatim)으로 찾는다. 서울 범위 밖 결과는 버린다
+const inSeoul = p => p && p.lat > 37.4 && p.lat < 37.72 && p.lng > 126.75 && p.lng < 127.2;
+async function geocodeAddress(q){
+  if (window.google?.maps?.Geocoder) {
+    const g = await new Promise(res => new google.maps.Geocoder().geocode({ address: q, region: "kr" }, (r, st) => res(st === "OK" && r?.[0] ? { lat: r[0].geometry.location.lat(), lng: r[0].geometry.location.lng() } : null)));
+    if (inSeoul(g)) return g;
+  }
+  for (const t of [...new Set([q, q.replace(/\s*\(.*?\)\s*/g, " ").replace(/\d+층.*$/, "").trim()])]) {
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=kr&accept-language=ko&q=${encodeURIComponent(t)}`);
+      const j = r.ok ? await r.json() : []; const p = j?.[0] ? { lat: +j[0].lat, lng: +j[0].lon } : null;
+      if (inSeoul(p)) return p;
+    } catch (_) {}
+  }
+  return null;
+}
+
 function partnerEntry(){
   if (needLogin("장소 등록 신청", partnerEntry)) return;
   partnerSheet();
@@ -1812,17 +1829,18 @@ function partnerSheet(){
     marker = new google.maps.Marker({ position: start, map: mini, draggable: true });
     marker.addListener("dragend", () => { const p = marker.getPosition(); loc = { lat: p.lat(), lng: p.lng() }; });
     mini.addListener("click", ev => { marker.setPosition(ev.latLng); loc = { lat: ev.latLng.lat(), lng: ev.latLng.lng() }; });
-    $("#pAdGo").onclick = () => {
+    $("#pAdGo").onclick = async () => {
       const q = $("#pAd").value.trim(); if (!q) { $("#pMapNote").textContent = "주소를 먼저 입력해 주세요."; return; }
-      new google.maps.Geocoder().geocode({ address: q, region: "kr" }, (res, status) => {
-        if (status !== "OK" || !res?.[0]) { $("#pMapNote").textContent = "주소로 위치를 찾지 못했어요. 지도에서 핀을 직접 옮겨 주세요."; return; }
-        const p = res[0].geometry.location; mini.setCenter(p); mini.setZoom(17); marker.setPosition(p); loc = { lat: p.lat(), lng: p.lng() };
-        $("#pMapNote").textContent = "찾은 위치로 핀을 옮겼어요. 입구와 다르면 핀을 끌어서 맞춰 주세요.";
-      });
+      $("#pMapNote").textContent = "주소로 위치를 찾는 중이에요.";
+      const p = await geocodeAddress(q);
+      if (!p) { $("#pMapNote").textContent = "주소로 위치를 찾지 못했어요. 지도에서 핀을 직접 옮겨 주세요."; return; }
+      mini.setCenter(p); mini.setZoom(17); marker.setPosition(p); loc = p;
+      $("#pMapNote").textContent = "찾은 위치로 핀을 옮겼어요. 입구와 다르면 핀을 끌어서 맞춰 주세요.";
     };
   } else {
-    $("#pMap").innerHTML = '<p class="note">지도를 쓸 수 없어서, 지금 보고 있는 지도 가운데를 위치로 써요.</p>';
-    $("#pAdGo").hidden = true; $("#pMapNote").hidden = true;
+    $("#pMap").innerHTML = '<p class="note">지도를 쓸 수 없어서, 주소로 찾은 위치(못 찾으면 지금 보고 있는 지도 가운데)를 써요.</p>';
+    $("#pMapNote").textContent = "주소를 넣고 '위치 찾기'를 눌러 주세요.";
+    $("#pAdGo").onclick = async () => { const q = $("#pAd").value.trim(); if (!q) return; const p = await geocodeAddress(q); if (p) { loc = p; $("#pMapNote").textContent = `위치를 찾았어요 (${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}).`; } else $("#pMapNote").textContent = "주소로 위치를 찾지 못했어요. 지금 보고 있는 지도 가운데를 위치로 써요."; };
   }
 
   $("#pF").addEventListener("submit", async ev => {
