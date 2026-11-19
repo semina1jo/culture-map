@@ -2109,10 +2109,10 @@ function adminDetail(id){
     ${r.status==="승인"?`<label for="adReason" class="flab">지도에서 내리는 이유</label><textarea id="adReason" class="adm-reason" maxlength="200" placeholder="예: 행사가 취소됐어요."></textarea>`:""}
     <div class="err" id="adErr" role="alert"></div>
     <div class="acts">
-      ${r.status==="대기"?`<button class="out" id="adReject">반려</button><button class="blk" id="adApprove">승인하고 지도에 등록</button>`:""}
+      ${r.status==="대기"?`<button class="out" id="adReject">반려</button><button class="out" id="adEdit">내용 수정</button>`:""}
     </div>
     <div class="acts" style="margin-top:8px">
-      ${r.status==="대기"?`<button class="out" id="adEdit">내용 수정</button>`:""}
+      ${r.status==="대기"?`<button class="blk w" id="adApprove" style="grid-column:1/-1;width:100%">승인하고 지도에 등록</button>`:""}
       ${r.status==="승인"?`<button class="out" id="adUnpub">지도에서 내리기</button><button class="blk" data-open="culture_events_${esc(r.event_id)}">지도에서 보기</button>`:""}
     </div>`, {level:"full"});
   $("#adX").onclick = () => { admRemember({ id: null, filter: ADM.filter }); closeSheet(); };
