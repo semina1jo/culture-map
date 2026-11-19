@@ -496,6 +496,8 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 .pform .proof-opt input{width:auto;margin:2px 0 0;accent-color:var(--accent);flex:none}
 .pform .proof-opt b{display:block;font-size:13px}.pform .proof-opt small{display:block;font-size:11px;font-weight:500;color:var(--muted);line-height:1.35;margin-top:2px}
 .pform .proof-opt:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.demo-fill{margin-top:10px;border-radius:14px;padding:8px 14px}
+.demo-fill .note{margin-left:4px;font-weight:500}
 .req{color:var(--red);font-weight:800;margin-left:2px}
 .agree .req{margin:0 2px 0 0}
 .opt.seg{display:grid;grid-template-columns:1fr 1fr;margin:8px 0 2px}
@@ -1629,6 +1631,29 @@ const readFileUrl = file => new Promise((ok, no) => { const r = new FileReader()
 // 혜택가로 만 원 이하가 되는지: 기본가 또는 할인 대상 가격 중 하나라도 만 원 이하
 const meetsPriceRule = (price, rules) => price <= 10000 || (rules||[]).some(r => r.p <= 10000);
 
+// 시연 모드 '예시 데이터 채우기'용
+const DEMO_PLACE = { place: "홍익대학교 서울캠퍼스", addr: "서울 마포구 와우산로 94", lat: 37.5509, lng: 126.9255 };
+const DEMO_FILLS = [
+  {kind:"행사", genre:"팝업", title:"[예시] 홍대 졸업작품 굿즈 팝업", org:"홍익대 예시 학생회", spot:"학생회관 1층", time:"평일 11:00–19:00", from:1, to:10, price:0, fee:"무료 입장", desc:"졸업 전시 작가들이 만든 엽서·스티커·포스터를 소개하는 팝업이에요.", home:"https://example.com/hongik-popup"},
+  {kind:"행사", genre:"전시", title:"[예시] 시각디자인과 졸업 전시", org:"홍익대 예시 시각디자인과", spot:"홍문관 로비", time:"매일 10:00–18:00", from:0, to:7, price:0, fee:"무료", desc:"졸업 작품 40여 점을 전시해요. 작가와 대화하는 시간이 매일 오후 3시에 있어요.", home:"https://example.com/hongik-degree-show"},
+  {kind:"행사", genre:"공연", title:"[예시] 겨울 밴드 동아리 정기 공연", org:"홍익대 예시 밴드 동아리", spot:"학생회관 공연장", time:"토 18:00", from:9, to:9, price:12000, fee:"일반 12,000원 · 대학생 6,000원", ben:[["대학생",6000]], bnote:"현장 예매 시 음료 1잔 증정", desc:"동아리 다섯 팀이 무대에 오르는 연말 정기 공연이에요.", ticket:"https://example.com/band-ticket"},
+  {kind:"행사", genre:"체험", title:"[예시] 판화 원데이 클래스", org:"홍익대 예시 판화 공방", spot:"조형관 공방", time:"토·일 14:00 (2시간)", from:3, to:17, price:8000, fee:"재료비 포함 8,000원", ben:[["대학생",5000]], desc:"엽서 크기 리놀륨 판화를 직접 새기고 찍어 가요.", ticket:"https://example.com/print-class"},
+  {kind:"상설", genre:"무료 공간", title:"[예시] 캠퍼스 열린 라운지", org:"홍익대 예시 운영팀", spot:"중앙도서관 1층", time:"평일 09:00–21:00", price:0, fee:"무료", desc:"누구나 쉬어 갈 수 있는 열람 공간이에요. 콘센트와 무료 와이파이가 있어요.", home:"https://example.com/open-lounge"},
+];
+// 예시 대표 이미지: 분야 색과 이름으로 간단한 포스터를 그린다
+function demoPoster(d){
+  const c = document.createElement("canvas"); c.width = 600; c.height = 800; const g = c.getContext("2d");
+  const bg = {전시:"#E9EFD8",공연:"#F3E3D3",체험:"#E0ECEA",축제:"#F6E7B8",팝업:"#F1DDE4","무료 공간":"#E4E8F1"}[d.genre] || "#EEE";
+  g.fillStyle = bg; g.fillRect(0, 0, 600, 800);
+  g.fillStyle = "#1F2B22"; g.font = "120px sans-serif"; g.textAlign = "center"; g.fillText(EMOJI[d.genre] || "🎫", 300, 300);
+  g.font = "bold 40px sans-serif"; const t = d.title.replace("[예시] ", "");
+  // 12자가 넘으면 가운데에 가장 가까운 띄어쓰기에서 두 줄로 나눈다
+  const cut = [...t].map((ch, i) => ch === " " ? i : -1).filter(i => i > 0).sort((x, y) => Math.abs(x - t.length / 2) - Math.abs(y - t.length / 2))[0];
+  (t.length > 12 && cut ? [t.slice(0, cut), t.slice(cut + 1)] : [t]).forEach((line, i) => g.fillText(line, 300, 450 + i * 54));
+  g.font = "28px sans-serif"; g.fillStyle = "#4A5A4E"; g.fillText(DEMO_PLACE.place, 300, 640); g.fillText("예시 포스터", 300, 690);
+  return c.toDataURL("image/jpeg", 0.85);
+}
+
 function partnerEntry(){
   if (needLogin("장소 등록 신청", partnerEntry)) return;
   partnerSheet();
@@ -1640,6 +1665,7 @@ function partnerSheet(){
     <ol class="flow-rail" aria-label="등록 과정"><li class="on">신청</li><li>관리자 검사</li><li>지도에 등록</li></ol>
     <p class="note" style="margin:8px 0 0">알리고 싶은 행사나 장소를 올려 주세요. 관리자가 내용을 확인한 뒤 지도에 올라가요.</p>
     <p class="note req-legend" style="margin:6px 0 0"><b class="req">*</b> 표시는 꼭 입력해야 해요.</p>
+    ${S.demoMode?'<button type="button" class="out sm demo-fill" id="pDemo">예시 데이터 채우기 <span class="note">시연 모드</span></button>':""}
     <form id="pF" class="pform" novalidate>
       <fieldset><legend>등록할 정보</legend>
         <div class="opt seg" role="radiogroup" aria-label="종류"><button type="button" data-pkind="행사" aria-pressed="true">기간이 있는 행사</button><button type="button" data-pkind="상설" aria-pressed="false">상설 장소</button></div>
@@ -1670,8 +1696,25 @@ function partnerSheet(){
       <div class="err" id="pErr" role="alert"></div>
       <div class="acts"><button class="out" type="button" id="pC">취소</button><button class="blk" type="submit" id="pSubmit">신청 보내기</button></div>
     </form>`, {level:"full"});
-  let kind = "행사", image = null, loc = null, marker = null;
+  let kind = "행사", image = null, loc = null, marker = null, mini = null, demoFilled = false;
   $("#pX").onclick = $("#pC").onclick = closeSheet;
+
+  // 시연 모드: 예시 데이터 채우기. 주소는 홍익대학교 서울캠퍼스로 고정, 누를 때마다 다른 예시
+  if ($("#pDemo")) $("#pDemo").onclick = () => {
+    const d = DEMO_FILLS[(S.demoFillIdx = ((S.demoFillIdx ?? -1) + 1) % DEMO_FILLS.length)];
+    document.querySelector(`[data-pkind="${d.kind}"]`).click();
+    const set = (id, val) => { $(id).value = val ?? ""; };
+    set("#pT", d.title); set("#pOrg", d.org); $("#pG").value = d.genre; set("#pTime", d.time);
+    if (d.kind === "행사") { set("#pS", addFilterDays(FILTER_TODAY, d.from)); set("#pE", addFilterDays(FILTER_TODAY, d.to)); }
+    set("#pP", d.price); set("#pFee", d.fee); set("#pBN", d.bnote); set("#pDesc", d.desc); set("#pTU", d.ticket); set("#pHU", d.home);
+    $("#pBen").innerHTML = ""; (d.ben || []).forEach(([t, p]) => { addBen(); const row = $("#pBen").lastElementChild; row.querySelector("select").value = t; row.querySelector("input").value = p; });
+    set("#pPl", DEMO_PLACE.place + (d.spot ? ` ${d.spot}` : "")); set("#pAd", DEMO_PLACE.addr);
+    loc = { lat: DEMO_PLACE.lat, lng: DEMO_PLACE.lng };
+    if (marker) { marker.setPosition(loc); mini.setCenter(loc); mini.setZoom(17); $("#pMapNote").textContent = "예시 위치(홍익대학교 서울캠퍼스)로 핀을 옮겼어요."; }
+    image = demoPoster(d); $("#pImgPrev").src = image; $("#pImgPrev").hidden = false;
+    $("#pAgree").checked = true; $("#pErr").textContent = ""; demoFilled = true;
+    toast("예시 데이터를 채웠어요. 이 신청은 예시로 저장돼요.");
+  };
 
   // 행사 / 상설
   document.querySelectorAll("[data-pkind]").forEach(b => b.onclick = () => {
@@ -1695,7 +1738,7 @@ function partnerSheet(){
   const start = mainMap?.getCenter ? { lat: mainMap.getCenter().lat(), lng: mainMap.getCenter().lng() } : (() => { const b = viewBounds(); return window.mapsService.fromWorld(b.cx, b.cy); })();
   loc = start;
   if (window.google?.maps && mainMap) {
-    const mini = new google.maps.Map($("#pMap"), { center: start, zoom: 16, disableDefaultUI: true, zoomControl: true, gestureHandling: "greedy", clickableIcons: false });
+    mini = new google.maps.Map($("#pMap"), { center: start, zoom: 16, disableDefaultUI: true, zoomControl: true, gestureHandling: "greedy", clickableIcons: false });
     marker = new google.maps.Marker({ position: start, map: mini, draggable: true });
     marker.addListener("dragend", () => { const p = marker.getPosition(); loc = { lat: p.lat(), lng: p.lng() }; });
     mini.addListener("click", ev => { marker.setPosition(ev.latLng); loc = { lat: ev.latLng.lat(), lng: ev.latLng.lng() }; });
@@ -1733,14 +1776,14 @@ function partnerSheet(){
     else if (!$("#pAgree").checked) err = "정보 확인 동의에 체크해 주세요.";
     if (err) { $("#pErr").textContent = err; return; }
     $("#pErr").textContent = "";
-    const row = { contact_email: acc.email || null, org_name: v("#pOrg") || null, kind, title: v("#pT"), category: $("#pG").value, place: v("#pPl"), place_addr: v("#pAd"), lat: loc.lat, lng: loc.lng,
+    const row = { is_demo: demoFilled, contact_email: acc.email || null, org_name: v("#pOrg") || null, kind, title: v("#pT"), category: $("#pG").value, place: v("#pPl"), place_addr: v("#pAd"), lat: loc.lat, lng: loc.lng,
       start_date: st, end_date: en, event_time: v("#pTime") || null, price, fee_text: v("#pFee") || null, benefit_rules: rules, benefit_note: v("#pBN") || null,
       ticket_url: v("#pTU") || null, homepage_url: v("#pHU") || null, description: v("#pDesc") || null };
     $("#pSubmit").disabled = true; $("#pSubmit").textContent = "보내는 중…";
     const result = await window.dataService.addSubmission(row, { image });
     if (!result.ok) { $("#pErr").textContent = result.error?.message || "신청을 보내지 못했어요. 입력 내용은 그대로 있어요."; $("#pSubmit").disabled = false; $("#pSubmit").textContent = "신청 보내기"; return; }
     closeSheet(); renderPage();
-    toast("신청을 보냈어요. 관리자가 확인하면 지도에 올라가요.");
+    toast(demoFilled ? "예시 신청을 보냈어요. 승인하면 더미(예시) 데이터 보기를 켰을 때 지도에 보여요." : "신청을 보냈어요. 관리자가 확인하면 지도에 올라가요.");
   });
 }
 
