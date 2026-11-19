@@ -139,3 +139,9 @@ alter table public.culture_submissions
   alter column role drop not null,
   alter column proof_type drop not null;
 -- review_culture_submission: 승인 시 source를 '장소 등록' / '상설 시설(장소 등록)'으로 저장하도록 다시 정의함 (Supabase 마이그레이션 place_submissions_simplify)
+
+-- 7) 2026-11-19: 문화 종류에 '팝업' 추가 (지도 데이터·등록 신청 둘 다)
+alter table public.culture_events drop constraint culture_events_category_check;
+alter table public.culture_events add constraint culture_events_category_check check (category = any (array['전시','공연','체험','축제','팝업','무료 공간']));
+alter table public.culture_submissions drop constraint culture_submissions_category_check;
+alter table public.culture_submissions add constraint culture_submissions_category_check check (category = any (array['전시','공연','체험','축제','팝업','무료 공간']));

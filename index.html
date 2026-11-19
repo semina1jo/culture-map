@@ -585,9 +585,9 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 const TODAY = "2026-11-02";
 const FILTER_TODAY = window.dataService.today();
 const CAL_MIN = "2026-11", CAL_MAX = "2026-12";
-/* 문화 종류. '무료 공간'(도서관 등)은 2026-11-16 서울시 문화공간 정보 연동 때 추가 */
-const GENRES = ["전시","공연","체험","축제","무료 공간"];
-const EMOJI = {전시:"🖼️",공연:"🎤",체험:"🧴",축제:"🎪","무료 공간":"📚"};
+/* 문화 종류. '무료 공간'(도서관 등)은 2026-11-16 서울시 문화공간 정보 연동 때, '팝업'은 2026-11-19 추가(지금은 장소 등록 신청으로만 들어옴) */
+const GENRES = ["전시","공연","체험","축제","팝업","무료 공간"];
+const EMOJI = {전시:"🖼️",공연:"🎤",체험:"🧴",축제:"🎪",팝업:"🛍️","무료 공간":"📚"};
 const W = 1000, H = 1400, M_PER_UNIT = 2.6;   /* 지도 1단위 ≈ 2.6m, 가로 약 2.6km */
 
 /* ===== 샘플 데이터 (가상, 성수동 일대) ===== */
@@ -645,7 +645,7 @@ const events = [
 ];
 
 /* 서울시 culturalEventInfo 원본 필드와 화면 계산 필드를 함께 유지한다. */
-const GENRE4_MAP = {"무료 공간":"무료 공간","도서관":"무료 공간","전시":"전시","미술":"전시","공연":"공연","음악":"공연","체험":"체험","교육":"체험","축제":"축제","행사":"축제"};
+const GENRE4_MAP = {"무료 공간":"무료 공간","도서관":"무료 공간","전시":"전시","미술":"전시","공연":"공연","음악":"공연","체험":"체험","교육":"체험","축제":"축제","행사":"축제","팝업":"팝업","팝업스토어":"팝업"};
 const HONGDAE_PLACES = ["서교동 예시 갤러리","연남동 예시 문화공간","동교동 예시 야외무대","대현동 예시 커뮤니티홀"];
 function normalizeCultureEvent(e, i){
   const price = Number.isFinite(e.price) ? e.price : 0;
@@ -954,7 +954,7 @@ const INDOOR_RE = /미술관|박물관|갤러리|극장|아트홀|홀|센터|도
 const OUTDOOR_RE = /공원|광장|거리|야외|마당|한강|숲|운동장|정원|둘레길|산|천변|시장/;
 const isIndoor = e => { const hay = [e.place, e.name].filter(Boolean).join(" ");
   if (OUTDOOR_RE.test(hay) || (e.genre4 || e.genre) === "축제") return false;
-  return INDOOR_RE.test(hay) || ["전시","공연","무료 공간"].includes(e.genre4 || e.genre); };
+  return INDOOR_RE.test(hay) || ["전시","공연","팝업","무료 공간"].includes(e.genre4 || e.genre); };
 function nextWeekend(){ const t = new Date(`${REC_TODAY}T00:00:00`), dow = t.getDay();
   const sat = dow === 0 ? addFilterDays(REC_TODAY, -1) : addFilterDays(REC_TODAY, 6 - dow); return [dow === 0 ? REC_TODAY : sat, addFilterDays(sat, 1)]; }
 /* 운영시간: 문구를 읽어 오늘 운영 여부·시간을 판정 (src/services/hours.js) */
@@ -2616,7 +2616,7 @@ function applyDataState(){
   S.profile=ds.getProfile(); S.benefit=Boolean(ds.read().benefit_enabled);
   S.saved=new Set(ds.getSaved().map(r=>r.target_id)); S.notis=ds.getNotifications();
   const preferences=ds.read().app_state;
-  if(preferences){ S.hideSamples=Boolean(preferences.hideSamples); S.showDemo=Boolean(preferences.showDemo); S.demoMode=preferences.demoMode??true; S.bells=new Set(preferences.bells||[]); if(preferences.prefs){ S.prefs={...S.prefs,...preferences.prefs,regions:new Set((preferences.prefs.regions||[]).map(r=>OLD_REGION[r]||r).filter(r=>SEOUL_GU.includes(r))),genres:new Set(preferences.prefs.genres||[])}; if(["전시","공연","체험","축제"].every(g=>S.prefs.genres.has(g))) S.prefs.genres.add("무료 공간"); } }
+  if(preferences){ S.hideSamples=Boolean(preferences.hideSamples); S.showDemo=Boolean(preferences.showDemo); S.demoMode=preferences.demoMode??true; S.bells=new Set(preferences.bells||[]); if(preferences.prefs){ S.prefs={...S.prefs,...preferences.prefs,regions:new Set((preferences.prefs.regions||[]).map(r=>OLD_REGION[r]||r).filter(r=>SEOUL_GU.includes(r))),genres:new Set(preferences.prefs.genres||[])}; if(["전시","공연","체험","축제"].every(g=>S.prefs.genres.has(g))){ S.prefs.genres.add("무료 공간"); S.prefs.genres.add("팝업"); } } }
   const baseJudges=judgeList.filter(j=>/^j[123]$/.test(j.id));
   const reports=ds.getReports().map(r=>{
     const demoVotes=S.demoMode?(ds.read().demo_votes||[]).filter(v=>v.report_id===r.id):[];
