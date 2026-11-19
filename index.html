@@ -1861,6 +1861,8 @@ function partnerSheet(opts = {}){
     if (ed) {
       delete row.is_demo; delete row.contact_email;
       if (kind === "상설") { row.start_date = null; row.end_date = null; }
+      // 신청자로서 고칠 때는 다시 '검사 대기'로 돌린다. (일반 계정은 DB 트리거가 해 주지만, 관리자 계정이 자기 신청을 고칠 때는 트리거가 건너뛰므로 직접 보낸다)
+      if (!asAdmin) Object.assign(row, { status: "대기", reject_reason: null, reject_kind: null, reviewed_at: null, reviewed_by: null, admin_checks: {}, event_id: null });
       const res = await window.dataService.updateSubmission(ed.id, row, { image });
       if (!res.ok) { $("#pErr").textContent = res.error?.message || "저장하지 못했어요. 입력 내용은 그대로 있어요."; $("#pSubmit").disabled = false; $("#pSubmit").textContent = submitLabel; return; }
       closeSheet();
