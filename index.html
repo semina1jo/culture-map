@@ -1799,6 +1799,20 @@ function mySubmissionsSheet(){
 
 /* ----- 관리자 심사 페이지 (설정 › 관리자 › 등록 심사) ----- */
 const ADM = { filter: "대기", rows: [], loaded: false, loading: false };
+// 링크를 열었다가 돌아왔을 때(같은 창에서 열려 앱이 다시 시작돼도) 보던 심사 화면과 체크 상태로 돌아가기 위한 기억
+const ADM_RET = "culture-map-admin-return";
+const admRecall = () => { try { return JSON.parse(sessionStorage.getItem(ADM_RET) || "null"); } catch (_) { return null; } };
+const admRemember = o => { try { o ? sessionStorage.setItem(ADM_RET, JSON.stringify(o)) : sessionStorage.removeItem(ADM_RET); } catch (_) {} };
+let admRestored = false;
+function admRestore(){
+  if (admRestored || !window.dataService.isAdmin()) return; admRestored = true;
+  const r = admRecall(); if (!r) return;
+  if (r.filter) ADM.filter = r.filter;
+  S.tab = "admin"; ADM.loaded = false; render();
+  loadAdminRows().then(() => { if (r.id && ADM.rows.some(x => x.id === r.id)) adminDetail(r.id); });
+}
+// 심사 화면의 바깥 링크는 항상 새 창(탭)으로 연다
+function openOutside(url){ if (/^https?:\/\//i.test(url)) window.open(url, "_blank", "noopener,noreferrer"); }
 async function loadAdminRows(){
   ADM.loading = true; const r = await window.dataService.listSubmissions(true); ADM.loading = false;
   if (r.ok) { ADM.rows = r.value || []; ADM.loaded = true; }
@@ -1807,6 +1821,7 @@ async function loadAdminRows(){
 function adminPage(pg){
   if (!window.dataService.isAdmin()) { pg.innerHTML = `<h1>등록 심사</h1><div class="card"><p class="note" style="margin:0">관리자 계정으로 로그인해야 볼 수 있어요.</p><button class="out w" id="admBack" style="width:100%;margin-top:10px">설정으로 돌아가기</button></div>`; $("#admBack").onclick = () => { S.tab = "me"; render(); }; return; }
   if (!ADM.loaded && !ADM.loading) loadAdminRows();
+  { const cur = admRecall(); admRemember({ id: cur?.id || null, checks: cur?.checks || {}, filter: ADM.filter }); }
   const count = s => ADM.rows.filter(r => r.status === s).length;
   const rows = ADM.rows.filter(r => r.status === ADM.filter);
   pg.innerHTML = `<div class="adm-top"><button class="linkbtn adm-back" id="admBack">← 설정</button><button class="linkbtn" id="admReload">새로고침</button></div>
@@ -1820,7 +1835,7 @@ function adminPage(pg){
         <span class="ph">${r.image_url?`<img src="${esc(r.image_url)}" alt="">`:EMOJI[r.category]||"🎫"}</span>
         <span class="adm-main"><b>${r.is_demo?'<em class="tag demo-tag">예시</em> ':""}${esc(r.title)}</b><small>${esc(r.org_name||r.place)} · ${esc(r.contact_email||"")}</small><small>${r.kind==="상설"?"상설 장소":`${esc(r.start_date)} ~ ${esc(r.end_date)}`} · ${r.price===0?"무료":won(r.price)}</small></span>
         <span class="adm-date">${dotDate(r.created_at).slice(5)}</span></button>`).join("") || `<p class="note" style="padding:20px 0">${ADM.filter==="대기"?"검사를 기다리는 신청이 없어요.":ADM.filter==="승인"?"아직 지도에 올린 신청이 없어요.":"반려한 신청이 없어요."}</p>`}`;
-  $("#admBack").onclick = () => { S.tab = "me"; render(); };
+  $("#admBack").onclick = () => { admRemember(null); S.tab = "me"; render(); };
   $("#admReload").onclick = () => { ADM.loaded = false; loadAdminRows(); renderPage(); };
 }
 // 증빙 종류별 확인 항목. 자동으로 판단할 수 있는 건 결과를 같이 보여 준다
@@ -1840,8 +1855,9 @@ function adminChecks(r){
 function adminDetail(id){
   const r = ADM.rows.find(x => x.id === id); if (!r) return;
   const { proof, info } = adminChecks(r), all = [...proof, ...info];
-  const prev = r.admin_checks || {};
-  const checkRow = c => `<label class="chk ${c.bad?"bad":""}"><input type="checkbox" data-chk="${c.k}" ${prev[c.k]?"checked":""} ${r.status!=="대기"?"disabled":""}><span>${esc(c.t)}${c.auto?` <em class="tag ${c.bad?"red":"grn"}">${esc(c.auto)}</em>`:""}${c.link&&/^https?:/.test(c.link)?` <a href="${esc(c.link)}" target="_blank" rel="noopener">열기</a>`:""}${c.map?` <a href="${esc(c.map)}" target="_blank" rel="noopener">지도에서 보기</a>`:""}${c.dup?.length?`<small>${c.dup.map(e=>esc(e.name)).join(" / ")}</small>`:""}</span></label>`;
+  const mem = admRecall(); const prev = { ...(r.admin_checks || {}), ...(mem?.id === r.id ? mem.checks || {} : {}) };
+  admRemember({ id: r.id, checks: mem?.id === r.id ? mem.checks || {} : {}, filter: ADM.filter });
+  const checkRow = c => `<label class="chk ${c.bad?"bad":""}"><input type="checkbox" data-chk="${c.k}" ${prev[c.k]?"checked":""} ${r.status!=="대기"?"disabled":""}><span>${esc(c.t)}${c.auto?` <em class="tag ${c.bad?"red":"grn"}">${esc(c.auto)}</em>`:""}${c.link&&/^https?:/.test(c.link)?` <a href="${esc(c.link)}" target="_blank" rel="noopener noreferrer" data-outside>열기 ↗</a>`:""}${c.map?` <a href="${esc(c.map)}" target="_blank" rel="noopener noreferrer" data-outside>지도에서 보기 ↗</a>`:""}${c.dup?.length?`<small>${c.dup.map(e=>esc(e.name)).join(" / ")}</small>`:""}</span></label>`;
   const benefits = (r.benefit_rules||[]).map(b => esc(b.l)).join(", ");
   sheet(`<div class="sh-h"><h2>${esc(r.title)}</h2><button class="x" id="adX" aria-label="닫기">${ico.x}</button></div>
     <div class="addr"><span class="tag ${r.status==="승인"?"grn":r.status==="반려"?"red":""}">${SUB_STATUS[r.status]}</span>${r.is_demo?' <span class="tag demo-tag">예시</span>':""} ${r.kind==="상설"?"상설 장소":"행사"} · ${esc(r.category)} · 신청 ${dotDate(r.created_at)}</div>
@@ -1866,7 +1882,11 @@ function adminDetail(id){
       ${r.status==="대기"?`<button class="out" id="adReject">반려</button><button class="blk" id="adApprove">승인하고 지도에 등록</button>`:""}
       ${r.status==="승인"?`<button class="out" id="adUnpub">지도에서 내리기</button><button class="blk" data-open="culture_events_${esc(r.event_id)}">지도에서 보기</button>`:""}
     </div>`, {level:"full"});
-  $("#adX").onclick = closeSheet;
+  $("#adX").onclick = () => { admRemember({ id: null, filter: ADM.filter }); closeSheet(); };
+  // 링크: 체크박스가 같이 눌리지 않게 막고 새 창으로 연다
+  document.querySelectorAll(".sheet [data-outside]").forEach(a => a.addEventListener("click", ev => { ev.preventDefault(); ev.stopPropagation(); openOutside(a.href); }));
+  // 체크 상태를 바로 기억해 둔다
+  document.querySelectorAll("[data-chk]").forEach(c => c.addEventListener("change", () => { const m = admRecall() || {}; admRemember({ ...m, id: r.id, checks: { ...(m.id === r.id ? m.checks : {}), [c.dataset.chk]: c.checked } }); }));
   const checks = () => Object.fromEntries([...document.querySelectorAll("[data-chk]")].map(c => [c.dataset.chk, c.checked]));
   const act = async (action, btn) => {
     const reason = $("#adReason")?.value.trim() || "";
@@ -1875,7 +1895,7 @@ function adminDetail(id){
     btn.disabled = true;
     const res = await window.dataService.reviewSubmission(r.id, action, reason, checks());
     if (!res.ok) { btn.disabled = false; $("#adErr").textContent = res.error?.message || "처리하지 못했어요. 다시 시도해 주세요."; return; }
-    applyDataState(); closeSheet(); ADM.loaded = false; await loadAdminRows();
+    admRemember({ id: null, filter: ADM.filter }); applyDataState(); closeSheet(); ADM.loaded = false; await loadAdminRows();
     toast(action === "approve" ? (r.is_demo && !S.showDemo ? "승인했어요. 예시 신청이라 설정에서 더미(예시) 데이터 보기를 켜야 지도에 보여요." : "승인했어요. 지도에 올라갔어요.") : action === "reject" ? "반려했어요. 신청자의 내 신청 목록에 사유가 보여요." : "지도에서 내렸어요.");
   };
   if ($("#adApprove")) $("#adApprove").onclick = ev => act("approve", ev.currentTarget);
@@ -2567,11 +2587,11 @@ document.addEventListener("click", async ev => {
   if (d.myreview || d.myreport || d.sopen){ if(d.sopen) saveRecentSearch($("#srI")?.value); closeSheet(); S.tab="map"; const id=d.myreview||d.myreport||d.sopen; render(); const it=findAny(id); if(it){ centerOn(it.x,it.y); backToDetail(id); } return; }
   if (d.admf){ ADM.filter=d.admf; renderPage(); return; }
   if (d.adm){ adminDetail(d.adm); return; }
-  if (d.tab){ S.tab=d.tab; closePeek(); closeSheet(); render(); return; }
+  if (d.tab){ admRemember(null); S.tab=d.tab; closePeek(); closeSheet(); render(); return; }
   if (d.peek){ peek(d.peek); return; }
   if (d.cluster){ listSheet(d.cluster.split(",")); return; }
   if (d.book){ bookSheet(d.book); return; }
-  if (d.open){ const it = findAny(d.open); if(!it){ toast("지도에서 이 장소를 찾지 못했어요. 데이터 새로고침 후 다시 시도해 주세요."); return; } closeSheet(); S.tab="map"; render(); centerOn(it.x, it.y); peek(d.open); return; }
+  if (d.open){ if (S.tab === "admin") admRemember(null); const it = findAny(d.open); if(!it){ toast("지도에서 이 장소를 찾지 못했어요. 데이터 새로고침 후 다시 시도해 주세요."); return; } closeSheet(); S.tab="map"; render(); centerOn(it.x, it.y); peek(d.open); return; }
   if (d.noti !== undefined){ const n=S.notis[+d.noti]; n.read=true; if(window.dataService) window.dataService.saveNotifications(S.notis); closeSheet(); const targetId=n.target_id || n.id, it=findAny(targetId); if(!it){ toast("알림 대상이 아직 지도에 없어요."); return; } render(); centerOn(it.x,it.y); peek(targetId); return; }
   const refreshOpt = () => { render(); const done=$("#oDone"); if (done) done.textContent=cultureList().length+"곳 보기"; };
   const pressOne = () => t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));
@@ -2679,7 +2699,7 @@ window.addEventListener("geojimap:data-error",ev=>{
   toast(messages[ev.detail.code]||"Supabase 저장·조회에 실패했어요. 연결 상태를 확인해 주세요.");
 });
 window.addEventListener("geojimap:account-change",()=>{ S.subLoaded=false; window.dataService.checkAdmin(); if(S.tab==="me") renderPage(); });
-window.addEventListener("geojimap:admin-change",()=>{ if(S.tab==="me"||S.tab==="admin") renderPage(); });
+window.addEventListener("geojimap:admin-change",()=>{ admRestore(); if(S.tab==="me"||S.tab==="admin") renderPage(); });
 window.addEventListener("geojimap:data-ready",applyDataState);
 render();
 window.dataService.ready.then(result=>{ if(result.ok && window.dataService.takeRecovery()){ applyDataState(); S.noticeShown=true; S.tab="me"; render(); newPasswordSheet(); return; } if(result.ok){ applyDataState(); const notice=window.dataService.takeAuthNotice(); if(notice){ S.noticeShown=true; toast(notice); if(!isGuest()){ S.tab="me"; render(); } } else if(result.mode==="remote") toast("Supabase 연결 완료 · 데이터를 불러왔어요."); } else toast("Supabase 연결이 완료되지 않았어요. 익명 인증과 환경변수를 확인해 주세요."); });
