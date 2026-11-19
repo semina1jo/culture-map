@@ -173,3 +173,7 @@ begin
 end $$;
 revoke all on function public.delete_demo_submissions(uuid[]) from public, anon;
 grant execute on function public.delete_demo_submissions(uuid[]) to authenticated;
+
+-- 11) 2026-11-19: 지도 정보 신고 (culture_reports) + 관리자 처리 (handle_culture_report)
+--     등록 신청으로 올라온 정보는 지도에서 지우고 신청을 '지도에서 내림'으로, 공공데이터는 culture_events.hidden_reason으로 숨긴다.
+--     전체 정의는 Supabase 마이그레이션 culture_reports 참고

@@ -16,7 +16,7 @@
   const connection = { mode: configured ? "connecting" : "sample", error: null, pending: 0 };
   const columns = {
     cultural_events: "id,codename,guname,title,date,place,org_name,use_trgt,use_fee,is_free,main_img,strtdate,end_date,org_link,hmpg_addr,lat,lot,price_min,price_label,genre4,is_sample,source,user_id,meta,updated_at",
-    culture_events: "id,title,category,raw_category,place,place_addr,gu,org_name,start_date,end_date,event_time,price,fee_text,lat,lng,image_url,homepage_url,ticket_url,source,benefits,benefit_rules,description,is_demo",
+    culture_events: "id,title,category,raw_category,place,place_addr,gu,org_name,start_date,end_date,event_time,price,fee_text,lat,lng,image_url,homepage_url,ticket_url,source,benefits,benefit_rules,description,is_demo,hidden_reason",
     event_benefits: "id,rule_key,event_id,type,value,price_after,label,auto_extracted,user_id",
     places: "id,category,subcategory,name,price,ref_price,address,lat,lng,hours,note,source,is_sample,user_id,meta,updated_at",
     user_profiles: "user_id,nickname,birth,student_type,gu,soldier,interest_genres,demo_mode,noti_settings,extra_fields,updated_at",
@@ -464,6 +464,31 @@
     }),
     reviewSubmission: (id, action, reason, checks) => run(async () => {
       const result = await request("/rest/v1/rpc/review_culture_submission", { method: "POST", body: JSON.stringify({ p_id: id, p_action: action, p_reason: reason || null, p_checks: checks || {} }) });
+      try { cache("culture_events", (await selectAll("culture_events")).map(global.cultureEventsData.toEvent)); } catch (_) {}
+      return result;
+    }),
+    // ---- 지도 정보 신고 (2026-11-19) ----
+    addCultureReport: row => run(async () => {
+      if (configured && account().isGuest) throw Object.assign(new Error("로그인한 뒤 신고할 수 있어요."), { code: "auth_required" });
+      const data = { ...row, user_id: userId() };
+      if (configured) {
+        try { const saved = (await insert("culture_reports", data))[0]; cache("culture_reports_mine", [saved, ...list("culture_reports_mine")]); return saved; }
+        catch (error) { if (/duplicate|23505|unique/i.test(String(error?.message || error?.code || ""))) throw Object.assign(new Error("이미 신고한 정보예요. 관리자가 확인 중이에요."), { code: "duplicate" }); throw error; }
+      }
+      const saved = { ...data, id: uuid(), status: "접수", created_at: now() };
+      cache("culture_reports_mine", [saved, ...list("culture_reports_mine")]);
+      return saved;
+    }),
+    getMyCultureReports: () => list("culture_reports_mine"),
+    listCultureReports: all => run(async () => {
+      if (!configured) return all ? list("culture_reports_mine") : list("culture_reports_mine");
+      const mine = all ? "" : `&user_id=eq.${encodeURIComponent(userId())}`;
+      const rows = await request(`/rest/v1/culture_reports?select=*${mine}&order=created_at.desc&limit=1000`);
+      if (!all) cache("culture_reports_mine", rows);
+      return rows;
+    }),
+    handleCultureReport: (eventKey, action, note) => run(async () => {
+      const result = await request("/rest/v1/rpc/handle_culture_report", { method: "POST", body: JSON.stringify({ p_event_key: eventKey, p_action: action, p_note: note || null }) });
       try { cache("culture_events", (await selectAll("culture_events")).map(global.cultureEventsData.toEvent)); } catch (_) {}
       return result;
     }),

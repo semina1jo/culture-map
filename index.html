@@ -552,6 +552,15 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 .blk:disabled{opacity:.45}
 .why-plain{margin:10px 0 0;font-size:14px;line-height:1.5;color:var(--ink2)}
 .why-card .acts{margin-top:16px}.why-card .acts .blk{width:auto;margin-top:0}
+.opt.seg.adm-seg{margin:6px 0 14px}
+.seg-n{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:999px;background:var(--chip);color:var(--ink2);font-size:12px;line-height:20px}
+.seg-n.hot{background:var(--red);color:#fff}
+.adm-sub{font-size:14px;margin:14px 0 2px;color:var(--ink2)}
+.rp-n{display:inline-block;min-width:24px;height:24px;border-radius:12px;background:var(--red);color:#fff;font-size:12.5px;line-height:24px;text-align:center}
+.rp-counts{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}
+.rp-memo{padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.rp-memo:last-child{border-bottom:0}
+.rp-memo p{margin:4px 0 0;line-height:1.5;color:var(--ink2)}
 .demo-tag{font-style:normal;font-size:11px;vertical-align:1px}
 .adm-date{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .adm-hero{width:100%;max-height:180px;object-fit:cover;border-radius:14px;margin-top:10px}
@@ -1539,15 +1548,29 @@ function verify(id){
 }
 
 // 2026-11-19: 사용자가 가격·운영시간·현장 사진을 직접 고치는 기능은 없앴다. 정보는 장소 등록 신청 → 관리자 승인으로만 바뀐다.
+// 지도 정보 신고: 서버에 저장되고, 관리자 페이지 '신고' 탭에서 처리한다
+const REPORT_REASONS = ["광고·홍보성 정보","가격·정보가 달라요","이미 끝났거나 문을 닫았어요","부적절한 내용"];
 function reportAbuse(id){
-  const it = findAny(id);
-  sheet(`<div class="sh-h"><h2>신고하기</h2><button class="x" id="rX" aria-label="닫기">${ico.x}</button></div><p class="note">${esc(it.name)}</p>
-    <div class="opt" id="rOpt">${["광고·홍보성 제보","가격·정보가 달라요","이미 끝났거나 문을 닫았어요","부적절한 내용"].map((r,i)=>`<button aria-pressed="${i===0}" data-r="${i}">${r}</button>`).join("")}</div>
-    <div class="acts"><button class="out" id="rC">취소</button><button class="blk" id="rOk">신고 접수</button></div>`);
-  const back = () => detail(id);
-  document.querySelectorAll("[data-r]").forEach(b => b.onclick = () => document.querySelectorAll("[data-r]").forEach(x => x.setAttribute("aria-pressed", x===b)));
-  $("#rX").onclick = $("#rC").onclick = back;
-  $("#rOk").onclick = () => { if (it.reports !== undefined){ it.reports++; if (it.reports>=3){ it.hidden=true; } } closeSheet(); closePeek(); toast("신고가 접수됐어요. 여러 명이 신고하면 지도에서 노출이 제한돼요."); };
+  if (needLogin("정보 신고", () => detail(id))) return;
+  const it = findAny(id); if (!it) return;
+  const mine = window.dataService.getMyCultureReports().find(r => r.event_key === id);
+  if (mine && mine.status === "접수") { toast("이미 신고한 정보예요. 관리자가 확인 중이에요."); return; }
+  sheet(`<div class="sh-h"><h2>정보 신고</h2><button class="x" id="rX" aria-label="닫기">${ico.x}</button></div><p class="note">${esc(it.name)}</p>
+    <div class="opt" id="rOpt" role="radiogroup" aria-label="신고 이유">${REPORT_REASONS.map((r,i)=>`<button aria-pressed="${i===0}" data-r="${i}">${r}</button>`).join("")}</div>
+    <label for="rMemo">자세한 내용</label><textarea id="rMemo" maxlength="300" placeholder="예: 공식 홈페이지에는 12월 3일에 끝난다고 나와 있어요." style="min-height:72px"></textarea>
+    <p class="note" style="margin:6px 0 0">관리자가 확인한 뒤 지도에서 내리거나 그대로 둬요. 결과는 알림으로 알려 드려요.</p>
+    <div class="err" id="rErr" role="alert"></div>
+    <div class="acts"><button class="out" id="rC">취소</button><button class="blk" id="rOk">신고 보내기</button></div>`);
+  let pick = 0;
+  document.querySelectorAll("[data-r]").forEach(b => b.onclick = () => { pick = +b.dataset.r; document.querySelectorAll("[data-r]").forEach(x => x.setAttribute("aria-pressed", x===b)); });
+  $("#rX").onclick = $("#rC").onclick = () => detail(id);
+  $("#rOk").onclick = async ev => {
+    ev.currentTarget.disabled = true;
+    const eventId = id.startsWith("culture_events_") ? id.slice("culture_events_".length) : null;
+    const res = await window.dataService.addCultureReport({ event_key: id, event_id: eventId, event_title: it.name, reason: REPORT_REASONS[pick], memo: $("#rMemo").value.trim() || null });
+    if (!res.ok) { ev.currentTarget.disabled = false; $("#rErr").textContent = res.error?.message || "신고를 보내지 못했어요. 다시 시도해 주세요."; return; }
+    closeSheet(); closePeek(); toast("신고를 보냈어요. 관리자가 확인한 뒤 처리해요.");
+  };
 }
 
 /* 필터 시트: 날짜는 달력, 가격은 버튼 + 슬라이더 */
@@ -1846,7 +1869,7 @@ function mySubmissionsSheet(){
 }
 
 /* ----- 관리자 심사 페이지 (설정 › 관리자 › 등록 심사) ----- */
-const ADM = { filter: "대기", rows: [], loaded: false, loading: false, cleanup: false, pick: new Set() };
+const ADM = { section: "sub", filter: "대기", rows: [], reports: [], loaded: false, loading: false, cleanup: false, pick: new Set() };
 // 링크를 열었다가 돌아왔을 때(같은 창에서 열려 앱이 다시 시작돼도) 보던 심사 화면과 체크 상태로 돌아가기 위한 기억
 const ADM_RET = "culture-map-admin-return";
 const admRecall = () => { try { return JSON.parse(sessionStorage.getItem(ADM_RET) || "null"); } catch (_) { return null; } };
@@ -1862,19 +1885,25 @@ function admRestore(){
 // 심사 화면의 바깥 링크는 항상 새 창(탭)으로 연다
 function openOutside(url){ if (/^https?:\/\//i.test(url)) window.open(url, "_blank", "noopener,noreferrer"); }
 async function loadAdminRows(){
-  ADM.loading = true; const r = await window.dataService.listSubmissions(true); ADM.loading = false;
+  ADM.loading = true;
+  const [r, rp] = await Promise.all([window.dataService.listSubmissions(true), window.dataService.listCultureReports(true)]);
+  ADM.loading = false;
   if (r.ok) { ADM.rows = r.value || []; ADM.loaded = true; }
+  if (rp.ok) ADM.reports = rp.value || [];
   if (S.tab === "admin") renderPage();
 }
 function adminPage(pg){
   if (!window.dataService.isAdmin()) { pg.innerHTML = `<h1>등록 심사</h1><div class="card"><p class="note" style="margin:0">관리자 계정으로 로그인해야 볼 수 있어요.</p><button class="out w" id="admBack" style="width:100%;margin-top:10px">설정으로 돌아가기</button></div>`; $("#admBack").onclick = () => { S.tab = "me"; render(); }; return; }
   if (!ADM.loaded && !ADM.loading) loadAdminRows();
   if (ADM.cleanup) { demoCleanupPage(pg); return; }
+  const openReports = reportGroups().filter(g => g.open.length).length;
+  const seg = `<div class="opt seg adm-seg" role="tablist"><button role="tab" data-admsec="sub" aria-pressed="${ADM.section==="sub"}">등록 심사 <span class="seg-n">${ADM.rows.filter(r=>r.status==="대기").length}</span></button><button role="tab" data-admsec="report" aria-pressed="${ADM.section==="report"}">신고 <span class="seg-n ${openReports?"hot":""}">${openReports}</span></button></div>`;
+  if (ADM.section === "report") { reportAdminPage(pg, seg); return; }
   { const cur = admRecall(); admRemember({ id: cur?.id || null, checks: cur?.checks || {}, filter: ADM.filter }); }
   const count = s => ADM.rows.filter(r => r.status === s).length;
   const rows = ADM.rows.filter(r => r.status === ADM.filter);
   pg.innerHTML = `<div class="adm-top"><button class="linkbtn adm-back" id="admBack">← 설정</button><button class="linkbtn" id="admReload">새로고침</button></div>
-    <h1>등록 심사</h1>
+    <h1>관리자</h1>${seg}
     <p class="note" style="margin:0 0 12px">사용자가 보낸 장소·행사 등록 신청을 확인하고 지도에 올리는 곳이에요. 승인한 정보만 지도에 보여요.</p>
     ${ADM.rows.some(r => r.is_demo) ? `<div class="demo-strip"><span>예시 신청 ${ADM.rows.filter(r => r.is_demo).length}건</span><button class="out sm" id="admCleanup">선택해서 삭제</button></div>` : ""}
     <ol class="flow-rail adm-rail" role="tablist">
@@ -1888,6 +1917,56 @@ function adminPage(pg){
   $("#admBack").onclick = () => { admRemember(null); S.tab = "me"; render(); };
   $("#admReload").onclick = () => { ADM.loaded = false; loadAdminRows(); renderPage(); };
   if ($("#admCleanup")) $("#admCleanup").onclick = () => { ADM.cleanup = true; ADM.pick = new Set(); renderPage(); };
+}
+/* ----- 신고 처리 (관리자 › 신고) ----- */
+// 같은 정보에 대한 신고를 묶는다. open = 아직 처리 안 한 신고
+function reportGroups(){
+  const m = new Map();
+  (ADM.reports || []).forEach(r => { const g = m.get(r.event_key) || { key: r.event_key, title: r.event_title, event_id: r.event_id, list: [], open: [] }; g.list.push(r); if (r.status === "접수") g.open.push(r); m.set(r.event_key, g); });
+  return [...m.values()].sort((a, b) => b.open.length - a.open.length || (b.list[0].created_at > a.list[0].created_at ? 1 : -1));
+}
+function reportAdminPage(pg, seg){
+  const groups = reportGroups(), open = groups.filter(g => g.open.length), done = groups.filter(g => !g.open.length);
+  const item = g => { const ev = findAny(g.key); const last = g.list[0];
+    return `<button class="adm-item" data-rpg="${esc(g.key)}"><span class="ph">${ev ? (EMOJI[ev.genre4||ev.genre]||"🎫") : "❔"}</span>
+      <span class="adm-main"><b>${esc(g.title)}</b><small>${g.open.length ? `처리할 신고 ${g.open.length}건` : `처리 완료 · ${esc(last.status)}`} · 최근: ${esc(last.reason)}</small><small>${ev ? esc(ev.place || "") : "지도에서 찾을 수 없는 정보"}</small></span>
+      <span class="adm-date">${g.open.length ? `<b class="rp-n">${g.open.length}</b>` : dotDate(last.handled_at || last.created_at).slice(5)}</span></button>`; };
+  pg.innerHTML = `<div class="adm-top"><button class="linkbtn adm-back" id="admBack">← 설정</button><button class="linkbtn" id="admReload">새로고침</button></div>
+    <h1>관리자</h1>${seg}
+    <p class="note" style="margin:0 0 12px">사용자가 지도 정보를 신고하면 여기 모여요. 확인한 뒤 지도에서 내리거나 문제없음으로 닫아요. 결과는 신고한 사람에게 알림으로 가요.</p>
+    ${ADM.loading && !ADM.loaded ? '<p class="note" style="padding:20px 0">신고 목록을 불러오는 중이에요.</p>' : `
+    <h3 class="adm-sub">처리할 신고</h3>${open.map(item).join("") || '<p class="note" style="padding:12px 0">처리할 신고가 없어요.</p>'}
+    ${done.length ? `<h3 class="adm-sub">처리한 신고</h3>${done.map(item).join("")}` : ""}`}`;
+  $("#admBack").onclick = () => { admRemember(null); S.tab = "me"; render(); };
+  $("#admReload").onclick = () => { ADM.loaded = false; loadAdminRows(); renderPage(); };
+}
+function reportDetail(key){
+  const g = reportGroups().find(x => x.key === key); if (!g) return;
+  const ev = findAny(key), isOpen = g.open.length > 0, sub = ADM.rows.find(r => r.event_id && g.event_id === r.event_id);
+  const counts = REPORT_REASONS.map(r => [r, g.list.filter(x => x.reason === r).length]).filter(x => x[1]);
+  sheet(`<div class="sh-h"><h2>${esc(g.title)}</h2><button class="x" id="rdX" aria-label="닫기">${ico.x}</button></div>
+    <div class="addr">${ev ? esc(ev.src || "") : "지도에서 찾을 수 없는 정보"}${sub ? " · 등록 신청으로 올라온 정보" : ""}</div>
+    <div class="sec"><h3>신고 이유 <span>${g.list.length}건</span></h3><div class="rp-counts">${counts.map(([r,n]) => `<span class="tag">${esc(r)} ${n}</span>`).join("")}</div>
+      ${g.list.map(r => `<div class="rp-memo"><b>${esc(r.reason)}</b> <span class="note">${dotDate(r.created_at)} · ${esc(r.status)}</span>${r.memo ? `<p>${esc(r.memo)}</p>` : ""}${r.admin_note ? `<p class="note">처리 메모: ${esc(r.admin_note)}</p>` : ""}</div>`).join("")}
+    </div>
+    ${isOpen ? `<label for="rdNote" class="flab">처리 메모 <span class="note">지도에서 내릴 때는 꼭 적어 주세요 · 신고한 사람에게 보여요</span></label><textarea id="rdNote" class="adm-reason" maxlength="200" placeholder="예: 공식 홈페이지에서 조기 종료를 확인했어요."></textarea>
+    <div class="err" id="rdErr" role="alert"></div>
+    <div class="acts"><button class="out" id="rdDismiss">문제없음</button><button class="blk danger" id="rdUnpub">지도에서 내리기</button></div>` : '<div class="status">이 정보에 대한 신고는 모두 처리했어요.</div>'}
+    ${ev ? '<button class="out w" id="rdOpen" style="width:100%;margin-top:8px">지도에서 보기</button>' : ""}`, {level:"full"});
+  $("#rdX").onclick = closeSheet;
+  if ($("#rdOpen")) $("#rdOpen").onclick = () => { closeSheet(); S.tab = "map"; admRemember(null); render(); centerOn(ev.x, ev.y); peek(key); };
+  const act = async (action, btn) => {
+    const note = $("#rdNote").value.trim();
+    if (action === "unpublish" && !note) { $("#rdErr").textContent = "지도에서 내리는 이유를 적어 주세요."; $("#rdNote").focus(); return; }
+    btn.disabled = true;
+    const res = await window.dataService.handleCultureReport(key, action, note);
+    if (!res.ok) { btn.disabled = false; $("#rdErr").textContent = res.error?.message || "처리하지 못했어요."; return; }
+    if (action === "unpublish" && ev && !ev.is_public_culture) ev.hidden = true; // 예시 데이터처럼 DB에 없는 정보는 이 화면에서만 숨김
+    applyDataState(); closeSheet(); ADM.loaded = false; await loadAdminRows();
+    toast(action === "dismiss" ? "문제없음으로 처리했어요." : "지도에서 내렸어요.");
+  };
+  if ($("#rdDismiss")) $("#rdDismiss").onclick = ev2 => act("dismiss", ev2.currentTarget);
+  if ($("#rdUnpub")) $("#rdUnpub").onclick = ev2 => act("unpublish", ev2.currentTarget);
 }
 /* 예시(더미) 신청 정리: 예시로 넣은 신청만 골라서 지운다 */
 function demoCleanupPage(pg){
@@ -2014,7 +2093,7 @@ function renderPage(){
       </div>
       <div class="card"><h3>내 활동</h3><div class="acts" style="margin-top:4px"><button class="out w" id="myReviews">내 리뷰 ${window.dataService.getMyReviews().length}</button></div></div>
       <div class="card"><h3>장소 등록</h3><p class="note" style="margin:0">지도에 없는 행사나 장소를 등록 신청할 수 있어요. 관리자가 확인한 뒤 지도에 올라가요.</p><div class="acts" style="margin-top:10px"><button class="blk" id="partnerNew">등록 신청</button><button class="out" id="partnerMine">내 신청 ${window.dataService.getMySubmissions().length}</button></div></div>
-      ${window.dataService.isAdmin()?`<div class="card adm-card"><h3>관리자 <span class="tag grn">관리자 계정</span></h3><p class="note" style="margin:0">등록 신청을 검사하고 승인하면 지도에 올라가요.</p><button class="blk w" id="adminOpen" style="width:100%;margin-top:10px">등록 심사 페이지</button><button class="out w" id="adminCleanup" style="width:100%;margin-top:8px">예시 신청 정리</button></div>`:""}
+      ${window.dataService.isAdmin()?`<div class="card adm-card"><h3>관리자 <span class="tag grn">관리자 계정</span></h3><p class="note" style="margin:0">등록 신청을 검사해 지도에 올리고, 들어온 신고를 처리해요.</p><button class="blk w" id="adminOpen" style="width:100%;margin-top:10px">관리자 페이지 (등록 심사·신고)</button><button class="out w" id="adminCleanup" style="width:100%;margin-top:8px">예시 신청 정리</button></div>`:""}
       <div class="card"><h3>내 혜택 정보 <button class="out sm" id="profBtn">${S.profile?"수정":"입력하기"}</button></h3>
         ${S.profile?profileSummary():'<p class="note" style="margin:0">나이·거주지 같은 정보를 넣으면 무료·할인 대상인 문화생활을 골라서 보여줘요.</p>'}
         <label class="sw" for="benSw" style="border-bottom:0;padding-bottom:0"><span>문화 탭에서 내 혜택 적용해서 보기</span><input type="checkbox" id="benSw" ${S.benefit?"checked":""}></label>
@@ -2681,6 +2760,8 @@ document.addEventListener("click", async ev => {
   if (d.myreview || d.myreport || d.sopen){ if(d.sopen) saveRecentSearch($("#srI")?.value); closeSheet(); S.tab="map"; const id=d.myreview||d.myreport||d.sopen; render(); const it=findAny(id); if(it){ centerOn(it.x,it.y); backToDetail(id); } return; }
   if (d.why){ reasonPop(d.why); return; }
   if (d.admf){ ADM.filter=d.admf; renderPage(); return; }
+  if (d.admsec){ ADM.section=d.admsec; renderPage(); return; }
+  if (d.rpg){ reportDetail(d.rpg); return; }
   if (d.adm){ adminDetail(d.adm); return; }
   if (d.tab){ admRemember(null); S.tab=d.tab; closePeek(); closeSheet(); render(); return; }
   if (d.peek){ peek(d.peek); return; }

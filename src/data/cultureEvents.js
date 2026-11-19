@@ -36,6 +36,8 @@
       is_sample: false,
       // 장소 등록 더미 신청을 승인한 정보: 설정의 '더미(예시) 데이터 보기'를 켰을 때만 지도에 보인다
       is_demo: row.is_demo === true,
+      // 신고 처리로 관리자가 지도에서 내린 공공데이터
+      hidden: Boolean(row.hidden_reason),
       name: row.title,
       TITLE: row.title,
       genre: row.category,
