@@ -539,6 +539,19 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 .why-date{margin:8px 0 0}
 .why-card .blk{width:100%;margin-top:14px}
 @media (prefers-reduced-motion:no-preference){.why-card{animation:whyIn .16s ease-out}@keyframes whyIn{from{transform:scale(.96);opacity:0}}}
+.demo-strip{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--chip);border-radius:14px;padding:8px 8px 8px 14px;margin:0 0 12px;font-size:13px;font-weight:700;color:var(--ink2)}
+.demo-strip .out.sm{border-radius:12px;padding:6px 12px;font-size:12.5px}
+.cl-all{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;padding:10px 0;border-bottom:1px solid var(--line)}
+.cl-all .note{font-weight:500;margin-left:auto}
+.cl-row{display:grid;grid-template-columns:20px 48px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.cl-all input,.cl-row input{width:18px;height:18px;margin:0;accent-color:var(--accent)}
+.cl-row .ph{width:48px;height:48px;border-radius:12px;background:var(--chip);display:flex;align-items:center;justify-content:center;font-size:20px;overflow:hidden}
+.cl-row .ph img{width:100%;height:100%;object-fit:cover}
+.cl-bar{position:sticky;bottom:78px;display:grid;grid-template-columns:1fr 2fr;gap:8px;padding:12px 0;background:linear-gradient(rgba(255,250,243,0),var(--bg,#FFFAF3) 30%)}
+.blk.danger{background:var(--red)}
+.blk:disabled{opacity:.45}
+.why-plain{margin:10px 0 0;font-size:14px;line-height:1.5;color:var(--ink2)}
+.why-card .acts{margin-top:16px}.why-card .acts .blk{width:auto;margin-top:0}
 .demo-tag{font-style:normal;font-size:11px;vertical-align:1px}
 .adm-date{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .adm-hero{width:100%;max-height:180px;object-fit:cover;border-radius:14px;margin-top:10px}
@@ -1833,7 +1846,7 @@ function mySubmissionsSheet(){
 }
 
 /* ----- 관리자 심사 페이지 (설정 › 관리자 › 등록 심사) ----- */
-const ADM = { filter: "대기", rows: [], loaded: false, loading: false };
+const ADM = { filter: "대기", rows: [], loaded: false, loading: false, cleanup: false, pick: new Set() };
 // 링크를 열었다가 돌아왔을 때(같은 창에서 열려 앱이 다시 시작돼도) 보던 심사 화면과 체크 상태로 돌아가기 위한 기억
 const ADM_RET = "culture-map-admin-return";
 const admRecall = () => { try { return JSON.parse(sessionStorage.getItem(ADM_RET) || "null"); } catch (_) { return null; } };
@@ -1856,12 +1869,14 @@ async function loadAdminRows(){
 function adminPage(pg){
   if (!window.dataService.isAdmin()) { pg.innerHTML = `<h1>등록 심사</h1><div class="card"><p class="note" style="margin:0">관리자 계정으로 로그인해야 볼 수 있어요.</p><button class="out w" id="admBack" style="width:100%;margin-top:10px">설정으로 돌아가기</button></div>`; $("#admBack").onclick = () => { S.tab = "me"; render(); }; return; }
   if (!ADM.loaded && !ADM.loading) loadAdminRows();
+  if (ADM.cleanup) { demoCleanupPage(pg); return; }
   { const cur = admRecall(); admRemember({ id: cur?.id || null, checks: cur?.checks || {}, filter: ADM.filter }); }
   const count = s => ADM.rows.filter(r => r.status === s).length;
   const rows = ADM.rows.filter(r => r.status === ADM.filter);
   pg.innerHTML = `<div class="adm-top"><button class="linkbtn adm-back" id="admBack">← 설정</button><button class="linkbtn" id="admReload">새로고침</button></div>
     <h1>등록 심사</h1>
     <p class="note" style="margin:0 0 12px">사용자가 보낸 장소·행사 등록 신청을 확인하고 지도에 올리는 곳이에요. 승인한 정보만 지도에 보여요.</p>
+    ${ADM.rows.some(r => r.is_demo) ? `<div class="demo-strip"><span>예시 신청 ${ADM.rows.filter(r => r.is_demo).length}건</span><button class="out sm" id="admCleanup">선택해서 삭제</button></div>` : ""}
     <ol class="flow-rail adm-rail" role="tablist">
       ${["대기","승인","반려"].map(s => `<li><button role="tab" data-admf="${s}" aria-selected="${ADM.filter===s}"><b>${count(s)}</b>${SUB_STATUS[s]}</button></li>`).join("")}
     </ol>
@@ -1872,6 +1887,50 @@ function adminPage(pg){
         <span class="adm-date">${dotDate(r.created_at).slice(5)}</span></button>${r.status==="반려"?`<button class="out sm why-btn" data-why="${esc(r.id)}">사유 보기</button>`:""}</div>`).join("") || `<p class="note" style="padding:20px 0">${ADM.filter==="대기"?"검사를 기다리는 신청이 없어요.":ADM.filter==="승인"?"아직 지도에 올린 신청이 없어요.":"반려한 신청이 없어요."}</p>`}`;
   $("#admBack").onclick = () => { admRemember(null); S.tab = "me"; render(); };
   $("#admReload").onclick = () => { ADM.loaded = false; loadAdminRows(); renderPage(); };
+  if ($("#admCleanup")) $("#admCleanup").onclick = () => { ADM.cleanup = true; ADM.pick = new Set(); renderPage(); };
+}
+/* 예시(더미) 신청 정리: 예시로 넣은 신청만 골라서 지운다 */
+function demoCleanupPage(pg){
+  const demos = ADM.rows.filter(r => r.is_demo);
+  ADM.pick = new Set([...ADM.pick].filter(id => demos.some(r => r.id === id)));
+  const all = demos.length > 0 && ADM.pick.size === demos.length;
+  pg.innerHTML = `<div class="adm-top"><button class="linkbtn adm-back" id="clBack">← 등록 심사</button></div>
+    <h1>예시 신청 정리</h1>
+    <p class="note" style="margin:0 0 12px">예시로 넣은 신청만 지울 수 있어요. 지도에 올라간 예시는 지도에서도 함께 사라져요.</p>
+    ${demos.length ? `<label class="cl-all"><input type="checkbox" id="clAll" ${all?"checked":""}> 전체 선택 <span class="note">${ADM.pick.size}/${demos.length}</span></label>
+    ${demos.map(r => `<label class="cl-row"><input type="checkbox" data-pick="${esc(r.id)}" ${ADM.pick.has(r.id)?"checked":""}>
+      <span class="ph">${r.image_url?`<img src="${esc(r.image_url)}" alt="">`:EMOJI[r.category]||"🎫"}</span>
+      <span class="adm-main"><b>${esc(r.title)}</b><small>${esc(r.category)} · 신청 ${dotDate(r.created_at)}</small></span>
+      <span class="tag ${r.status==="승인"?"grn":r.status==="반려"?"red":""}">${subLabel(r)}</span></label>`).join("")}
+    <div class="cl-bar"><button class="out" id="clCancel">취소</button><button class="blk danger" id="clDelete" ${ADM.pick.size?"":"disabled"}>선택한 ${ADM.pick.size}건 삭제</button></div>`
+    : '<p class="note" style="padding:20px 0">남아 있는 예시 신청이 없어요.</p>'}`;
+  const back = () => { ADM.cleanup = false; ADM.pick = new Set(); renderPage(); };
+  $("#clBack").onclick = back; if ($("#clCancel")) $("#clCancel").onclick = back;
+  if ($("#clAll")) $("#clAll").onchange = ev => { ADM.pick = ev.target.checked ? new Set(demos.map(r => r.id)) : new Set(); renderPage(); };
+  document.querySelectorAll("[data-pick]").forEach(c => c.onchange = () => { c.checked ? ADM.pick.add(c.dataset.pick) : ADM.pick.delete(c.dataset.pick); renderPage(); });
+  if ($("#clDelete")) $("#clDelete").onclick = () => {
+    const ids = [...ADM.pick], onMap = demos.filter(r => ADM.pick.has(r.id) && r.status === "승인").length;
+    confirmPop({ title: `예시 신청 ${ids.length}건을 삭제할까요?`, body: `${onMap ? `지도에 올라간 ${onMap}건도 지도에서 사라져요. ` : ""}삭제하면 되돌릴 수 없어요.`, ok: "삭제", danger: true, onOk: async () => {
+      const res = await window.dataService.deleteDemoSubmissions(ids);
+      if (!res.ok) { toast(res.error?.message || "삭제하지 못했어요. 다시 시도해 주세요."); return; }
+      applyDataState(); ADM.pick = new Set(); ADM.loaded = false; await loadAdminRows();
+      if (!ADM.rows.some(r => r.is_demo)) ADM.cleanup = false;
+      renderPage(); toast(`예시 신청 ${ids.length}건을 삭제했어요.`);
+    }});
+  };
+}
+// 작은 확인 창 (사유 보기 창과 같은 모양)
+function confirmPop({ title, body, ok = "확인", danger = false, onOk }){
+  document.querySelector(".why-pop")?.remove();
+  const host = $("#scrim").parentElement, box = document.createElement("div"); box.className = "why-pop";
+  box.innerHTML = `<div class="why-card" role="alertdialog" aria-modal="true" aria-labelledby="cfT"><h3 id="cfT">${esc(title)}</h3><p class="why-plain">${esc(body)}</p>
+    <div class="acts"><button class="out" id="cfNo">취소</button><button class="blk ${danger?"danger":""}" id="cfOk">${esc(ok)}</button></div></div>`;
+  const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = ev => { if (ev.key === "Escape") close(); };
+  box.addEventListener("click", ev => { if (ev.target === box) close(); });
+  host.append(box); document.addEventListener("keydown", onKey);
+  box.querySelector("#cfNo").onclick = close; box.querySelector("#cfNo").focus();
+  box.querySelector("#cfOk").onclick = async ev => { ev.currentTarget.disabled = true; close(); await onOk?.(); };
 }
 // 증빙 종류별 확인 항목. 자동으로 판단할 수 있는 건 결과를 같이 보여 준다
 function adminChecks(r){
@@ -1955,7 +2014,7 @@ function renderPage(){
       </div>
       <div class="card"><h3>내 활동</h3><div class="acts" style="margin-top:4px"><button class="out w" id="myReviews">내 리뷰 ${window.dataService.getMyReviews().length}</button></div></div>
       <div class="card"><h3>장소 등록</h3><p class="note" style="margin:0">지도에 없는 행사나 장소를 등록 신청할 수 있어요. 관리자가 확인한 뒤 지도에 올라가요.</p><div class="acts" style="margin-top:10px"><button class="blk" id="partnerNew">등록 신청</button><button class="out" id="partnerMine">내 신청 ${window.dataService.getMySubmissions().length}</button></div></div>
-      ${window.dataService.isAdmin()?`<div class="card adm-card"><h3>관리자 <span class="tag grn">관리자 계정</span></h3><p class="note" style="margin:0">등록 신청을 검사하고 승인하면 지도에 올라가요.</p><button class="blk w" id="adminOpen" style="width:100%;margin-top:10px">등록 심사 페이지</button></div>`:""}
+      ${window.dataService.isAdmin()?`<div class="card adm-card"><h3>관리자 <span class="tag grn">관리자 계정</span></h3><p class="note" style="margin:0">등록 신청을 검사하고 승인하면 지도에 올라가요.</p><button class="blk w" id="adminOpen" style="width:100%;margin-top:10px">등록 심사 페이지</button><button class="out w" id="adminCleanup" style="width:100%;margin-top:8px">예시 신청 정리</button></div>`:""}
       <div class="card"><h3>내 혜택 정보 <button class="out sm" id="profBtn">${S.profile?"수정":"입력하기"}</button></h3>
         ${S.profile?profileSummary():'<p class="note" style="margin:0">나이·거주지 같은 정보를 넣으면 무료·할인 대상인 문화생활을 골라서 보여줘요.</p>'}
         <label class="sw" for="benSw" style="border-bottom:0;padding-bottom:0"><span>문화 탭에서 내 혜택 적용해서 보기</span><input type="checkbox" id="benSw" ${S.benefit?"checked":""}></label>
@@ -2662,7 +2721,8 @@ document.addEventListener("click", async ev => {
     case "acctGoogle": window.dataService.signInGoogle(); break;
     case "partnerNew": partnerEntry(); break;
     case "partnerMine": mySubmissionsSheet(); break;
-    case "adminOpen": S.tab="admin"; ADM.loaded=false; render(); window.scrollTo?.(0,0); break;
+    case "adminOpen": S.tab="admin"; ADM.cleanup=false; ADM.loaded=false; render(); window.scrollTo?.(0,0); break;
+    case "adminCleanup": S.tab="admin"; ADM.cleanup=true; ADM.pick=new Set(); ADM.loaded=false; render(); window.scrollTo?.(0,0); break;
     case "myReviews": myReviewsSheet(); break;
     case "benefitInputBtn": benefitInputSheet(); break;
     case "cDate": S.calYM=(S.date||FILTER_TODAY).slice(0,7); optSheet("date"); break;

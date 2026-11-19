@@ -467,6 +467,14 @@
       try { cache("culture_events", (await selectAll("culture_events")).map(global.cultureEventsData.toEvent)); } catch (_) {}
       return result;
     }),
+    // 관리자: 예시(더미) 신청 골라서 삭제. 지도에 올라간 예시도 함께 지운다
+    deleteDemoSubmissions: ids => run(async () => {
+      if (!configured) { const set = new Set(ids); cache("submissions", list("submissions").filter(r => !(set.has(r.id) && r.is_demo))); return ids.length; }
+      const n = await request("/rest/v1/rpc/delete_demo_submissions", { method: "POST", body: JSON.stringify({ p_ids: ids }) });
+      try { cache("culture_events", (await selectAll("culture_events")).map(global.cultureEventsData.toEvent)); } catch (_) {}
+      cache("submissions", list("submissions").filter(r => !ids.includes(r.id)));
+      return n;
+    }),
     proofUrl: path => run(async () => {
       const result = await request(`/storage/v1/object/sign/partner-proofs/${path}`, { method: "POST", body: JSON.stringify({ expiresIn: 600 }) });
       return `${base}/storage/v1${result.signedURL || result.signedUrl}`;

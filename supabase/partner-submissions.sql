@@ -158,3 +158,18 @@ alter table public.culture_events add column if not exists is_demo boolean not n
 -- 9) 2026-11-19: 반려와 '지도에서 내림'을 구분 (둘 다 status='반려', 사유는 reject_reason)
 alter table public.culture_submissions add column if not exists reject_kind text check (reject_kind is null or reject_kind in ('반려','지도에서 내림'));
 -- review_culture_submission: reject → '반려', unpublish → '지도에서 내림', approve → null (마이그레이션 submissions_reject_kind)
+
+-- 10) 2026-11-19: 관리자용 예시 신청 삭제 (is_demo인 것만, 지도에 올라간 예시도 함께 삭제)
+create or replace function public.delete_demo_submissions(p_ids uuid[])
+returns integer language plpgsql security definer set search_path = public as $$
+declare n integer;
+begin
+  if not public.is_app_admin() then raise exception 'admin_only'; end if;
+  delete from public.culture_events where id in (
+    select 'partner_' || replace(id::text, '-', '') from public.culture_submissions where id = any(p_ids) and is_demo);
+  delete from public.culture_submissions where id = any(p_ids) and is_demo;
+  get diagnostics n = row_count;
+  return n;
+end $$;
+revoke all on function public.delete_demo_submissions(uuid[]) from public, anon;
+grant execute on function public.delete_demo_submissions(uuid[]) to authenticated;
