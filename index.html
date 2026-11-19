@@ -537,6 +537,7 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 .why-name{margin:4px 0 0;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .why-text{margin:12px 0 0;padding:12px;border-radius:12px;background:var(--red-soft);color:var(--ink);font-size:14px;line-height:1.5;white-space:pre-line;word-break:break-word}
 .why-date{margin:8px 0 0}
+.why-text.info{background:var(--accent-soft)}
 .why-card .blk{width:100%;margin-top:14px}
 @media (prefers-reduced-motion:no-preference){.why-card{animation:whyIn .16s ease-out}@keyframes whyIn{from{transform:scale(.96);opacity:0}}}
 .demo-strip{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--chip);border-radius:14px;padding:8px 8px 8px 14px;margin:0 0 12px;font-size:13px;font-weight:700;color:var(--ink2)}
@@ -1641,7 +1642,23 @@ function refreshNotifications(){
   Object.entries(diary().plans).forEach(([pid, date]) => { const it = findAny(pid); if (!it) return;
     if (date === tmr) now.push({id:`plan-${pid}-${date}-d1`, kind:"내일 갈 곳", text:`내일 ${it.name}에 가기로 했어요`, time:"지금", read:false, target_id:pid});
     if (date === REC_TODAY) now.push({id:`plan-${pid}-${date}-d0`, kind:"오늘 갈 곳", text:`오늘 ${it.name}에 가는 날이에요`, time:"지금", read:false, target_id:pid}); });
-  const map=new Map(); [...S.notis,...now].forEach(n=>{ if(!map.has(n.id)) map.set(n.id,n); });
+  // 받침에 따라 이/가, 을/를을 붙인다
+  const josa = (w, a, b) => { const c = String(w).trim().slice(-1).charCodeAt(0) - 0xAC00; return w + (c >= 0 && c <= 11171 && c % 28 ? a : b); };
+  // 등록 신청 결과와 신고 처리 결과: 새로 생긴 것만 맨 위에 올린다
+  const fresh = [];
+  window.dataService.getMySubmissions().filter(r => r.reviewed_at && r.status !== "대기").forEach(r => {
+    const unpub = isUnpub(r), kind = r.status === "승인" ? "등록 승인" : unpub ? "지도에서 내림" : "등록 반려";
+    fresh.push({ id: `sub-${r.id}-${r.status}-${r.reject_kind || ""}-${r.reviewed_at}`, kind, time: dotDate(r.reviewed_at), read: false,
+      text: r.status === "승인" ? `등록 신청한 ${josa(r.title,"이","가")} 지도에 올라갔어요` : unpub ? `${josa(r.title,"이","가")} 지도에서 내려갔어요. 눌러서 사유를 확인하세요` : `등록 신청한 ${josa(r.title,"이","가")} 반려됐어요. 눌러서 사유를 확인하세요`,
+      target_id: r.status === "승인" && r.event_id ? `culture_events_${r.event_id}` : null, why: r.status === "반려" ? r.id : null });
+  });
+  window.dataService.getMyCultureReports().filter(r => r.status !== "접수").forEach(r => {
+    fresh.push({ id: `rep-${r.id}-${r.status}`, kind: "신고 처리", time: dotDate(r.handled_at || r.created_at), read: false,
+      text: r.status === "지도에서 내림" ? `신고한 ${josa(r.event_title,"을","를")} 확인하고 지도에서 내렸어요` : `신고한 ${josa(r.event_title,"을","를")} 확인했는데 문제없는 정보였어요`,
+      report: { title: r.event_title, status: r.status, note: r.admin_note || "" } });
+  });
+  const known = new Set(S.notis.map(n => n.id));
+  const map=new Map(); [...fresh.filter(n => !known.has(n.id)), ...S.notis, ...now].forEach(n=>{ if(!map.has(n.id)) map.set(n.id,n); });
   S.notis=[...map.values()].slice(0,30); if(window.dataService) window.dataService.saveNotifications(S.notis);
 }
 
@@ -1857,6 +1874,16 @@ function reasonPop(id){
   box.addEventListener("click", ev => { if (ev.target === box) close(); });
   host.append(box); box.querySelector("#whyOk").onclick = close; box.querySelector("#whyOk").focus();
   document.addEventListener("keydown", onKey);
+}
+// 정보 작은 창 (신고 처리 결과 등)
+function infoPop(title, name, text){
+  document.querySelector(".why-pop")?.remove();
+  const host = $("#scrim").parentElement, box = document.createElement("div"); box.className = "why-pop";
+  box.innerHTML = `<div class="why-card" role="dialog" aria-modal="true" aria-labelledby="ipT"><h3 id="ipT">${esc(title)}</h3><p class="why-name">${esc(name)}</p><p class="why-text info">${esc(text)}</p><button class="blk w" id="ipOk">확인</button></div>`;
+  const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = ev => { if (ev.key === "Escape") close(); };
+  box.addEventListener("click", ev => { if (ev.target === box) close(); });
+  host.append(box); document.addEventListener("keydown", onKey); box.querySelector("#ipOk").onclick = close; box.querySelector("#ipOk").focus();
 }
 function mySubmissionsSheet(){
   const rows = window.dataService.getMySubmissions();
@@ -2768,6 +2795,8 @@ document.addEventListener("click", async ev => {
   if (d.cluster){ listSheet(d.cluster.split(",")); return; }
   if (d.book){ bookSheet(d.book); return; }
   if (d.open){ if (S.tab === "admin") admRemember(null); const it = findAny(d.open); if(!it){ toast("지도에서 이 장소를 찾지 못했어요. 데이터 새로고침 후 다시 시도해 주세요."); return; } closeSheet(); S.tab="map"; render(); centerOn(it.x, it.y); peek(d.open); return; }
+  if (d.noti !== undefined && (S.notis[+d.noti]?.why || S.notis[+d.noti]?.report)){ const n=S.notis[+d.noti]; n.read=true; window.dataService.saveNotifications(S.notis); notiSheet();
+    if (n.why) reasonPop(n.why); else infoPop("신고 처리 결과", n.report.title, n.report.status === "지도에서 내림" ? `확인 결과 지도에서 내렸어요.${n.report.note ? "\n" + n.report.note : ""}` : `확인 결과 문제없는 정보였어요.${n.report.note ? "\n" + n.report.note : ""}`); return; }
   if (d.noti !== undefined){ const n=S.notis[+d.noti]; n.read=true; if(window.dataService) window.dataService.saveNotifications(S.notis); closeSheet(); const targetId=n.target_id || n.id, it=findAny(targetId); if(!it){ toast("알림 대상이 아직 지도에 없어요."); return; } render(); centerOn(it.x,it.y); peek(targetId); return; }
   const refreshOpt = () => { render(); const done=$("#oDone"); if (done) done.textContent=cultureList().length+"곳 보기"; };
   const pressOne = () => t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));
@@ -2875,7 +2904,13 @@ window.addEventListener("geojimap:data-error",ev=>{
   if(String(ev.detail.code||"").startsWith("auth_")) return; // 계정 오류는 가입·로그인 시트 안에 표시
   toast(messages[ev.detail.code]||"Supabase 저장·조회에 실패했어요. 연결 상태를 확인해 주세요.");
 });
-window.addEventListener("geojimap:account-change",()=>{ S.subLoaded=false; window.dataService.checkAdmin(); if(S.tab==="me") renderPage(); });
+window.addEventListener("geojimap:account-change",()=>{ S.subLoaded=false; window.dataService.checkAdmin(); loadMyResults(); if(S.tab==="me") renderPage(); });
+// 내 등록 신청·신고 결과를 불러와 알림에 반영한다
+async function loadMyResults(){
+  const ds = window.dataService; if (!ds || ds.account().isGuest) return;
+  await Promise.all([ds.listSubmissions(false), ds.listCultureReports(false)]);
+  refreshNotifications(); $("#notiDot").hidden = !S.notis.some(n => !n.read && !hideDemoNoti(n));
+}
 window.addEventListener("geojimap:admin-change",()=>{ admRestore(); if(S.tab==="me"||S.tab==="admin") renderPage(); });
 window.addEventListener("geojimap:data-ready",applyDataState);
 render();
