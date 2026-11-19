@@ -154,3 +154,7 @@ alter table public.culture_events add column if not exists is_demo boolean not n
 -- 예시 신청 5건(팝업·전시·공연·무료 공간·체험)은 관리자 계정(user_id) 이름으로 넣어 둠. 다시 넣으려면:
 --   delete from culture_events where id in (select event_id from culture_submissions where is_demo);
 --   delete from culture_submissions where is_demo;  → 그다음 insert
+
+-- 9) 2026-11-19: 반려와 '지도에서 내림'을 구분 (둘 다 status='반려', 사유는 reject_reason)
+alter table public.culture_submissions add column if not exists reject_kind text check (reject_kind is null or reject_kind in ('반려','지도에서 내림'));
+-- review_culture_submission: reject → '반려', unpublish → '지도에서 내림', approve → null (마이그레이션 submissions_reject_kind)

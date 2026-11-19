@@ -525,6 +525,20 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 .adm-item .ph img{width:100%;height:100%;object-fit:cover}
 .adm-main{min-width:0}.adm-main b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .adm-main small{display:block;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adm-row{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
+.adm-row .adm-item{border-bottom:0;flex:1;min-width:0}
+.adm-row.my-sub .listitem{flex:1;min-width:0;border-bottom:0}
+.why-wide{width:100%;margin-top:12px;padding:10px}
+.unpub-tag{background:var(--chip);color:var(--ink2)}
+.why-btn{flex:none;border-radius:12px;padding:6px 10px;font-size:12px;white-space:nowrap}
+.why-pop{position:absolute;inset:0;z-index:25;background:rgba(31,43,34,.32);display:flex;align-items:center;justify-content:center;padding:24px}
+.why-card{width:min(320px,100%);background:#fff;border-radius:20px;padding:18px 18px 16px;box-shadow:0 12px 32px rgba(31,43,34,.22)}
+.why-card h3{margin:0;font-size:16px}
+.why-name{margin:4px 0 0;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.why-text{margin:12px 0 0;padding:12px;border-radius:12px;background:var(--red-soft);color:var(--ink);font-size:14px;line-height:1.5;white-space:pre-line;word-break:break-word}
+.why-date{margin:8px 0 0}
+.why-card .blk{width:100%;margin-top:14px}
+@media (prefers-reduced-motion:no-preference){.why-card{animation:whyIn .16s ease-out}@keyframes whyIn{from{transform:scale(.96);opacity:0}}}
 .demo-tag{font-style:normal;font-size:11px;vertical-align:1px}
 .adm-date{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .adm-hero{width:100%;max-height:180px;object-fit:cover;border-radius:14px;margin-top:10px}
@@ -1627,6 +1641,9 @@ function savedSheet(){
 /* ===== 장소 등록 신청 → 관리자 검사(등록 전 대기) → 지도에 정식 등록 (2026-11-19) =====
    로그인한 사용자가 설정 탭에서 신청하고, 팀(관리자)이 확인한 정보만 지도에 올린다. 관계자 인증 단계는 두지 않는다. */
 const SUB_STATUS = {대기:"검사 대기", 승인:"지도 등록", 반려:"반려"};
+// 반려 탭 안에서도, 승인했다가 지도에서 내린 건은 따로 표시한다
+const isUnpub = r => r?.status === "반려" && r.reject_kind === "지도에서 내림";
+const subLabel = r => isUnpub(r) ? "지도에서 내림" : (SUB_STATUS[r.status] || r.status);
 const readFileUrl = file => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(file); });
 // 혜택가로 만 원 이하가 되는지: 기본가 또는 할인 대상 가격 중 하나라도 만 원 이하
 const meetsPriceRule = (price, rules) => price <= 10000 || (rules||[]).some(r => r.p <= 10000);
@@ -1787,11 +1804,29 @@ function partnerSheet(){
   });
 }
 
+// 반려 사유 작은 창 (바텀시트 위에 가운데로 뜬다)
+function reasonPop(id){
+  const r = ADM.rows.find(x => x.id === id) || window.dataService.getMySubmissions().find(x => x.id === id);
+  if (!r) return;
+  document.querySelector(".why-pop")?.remove();
+  const host = $("#scrim").parentElement, prevFocus = document.activeElement;
+  const box = document.createElement("div"); box.className = "why-pop";
+  box.innerHTML = `<div class="why-card" role="dialog" aria-modal="true" aria-labelledby="whyT">
+    <h3 id="whyT">${isUnpub(r) ? "지도에서 내린 사유" : "반려 사유"}</h3><p class="why-name">${esc(r.title)}</p>
+    <p class="why-text">${esc(r.reject_reason || "적힌 사유가 없어요.")}</p>
+    ${r.reviewed_at?`<p class="note why-date">${dotDate(r.reviewed_at)} ${isUnpub(r) ? "지도에서 내림" : "반려"}</p>`:""}
+    <button class="blk w" id="whyOk">확인</button></div>`;
+  const close = () => { box.remove(); document.removeEventListener("keydown", onKey); prevFocus?.focus?.(); };
+  const onKey = ev => { if (ev.key === "Escape") close(); };
+  box.addEventListener("click", ev => { if (ev.target === box) close(); });
+  host.append(box); box.querySelector("#whyOk").onclick = close; box.querySelector("#whyOk").focus();
+  document.addEventListener("keydown", onKey);
+}
 function mySubmissionsSheet(){
   const rows = window.dataService.getMySubmissions();
   sheet(`<div class="sh-h"><h2>내 등록 신청 <span class="note">${rows.length}건</span></h2><button class="x" id="msX" aria-label="닫기">${ico.x}</button></div>
     ${rows.map(r => { const ok = r.status === "승인" && r.event_id;
-      return `<button class="listitem" ${ok?`data-open="culture_events_${esc(r.event_id)}"`:"disabled"}><span class="ph">${EMOJI[r.category]||"🎫"}</span><span style="min-width:0"><b>${esc(r.title)}</b><small>${r.kind==="상설"?"상설 장소":"행사"} · 신청 ${dotDate(r.created_at)}${r.status==="반려"&&r.reject_reason?` · 사유: ${esc(r.reject_reason)}`:""}</small></span><span class="tag ${r.status==="승인"?"grn":r.status==="반려"?"red":""}">${SUB_STATUS[r.status]||r.status}</span></button>`; }).join("") || '<p class="note" style="padding:12px 0">아직 보낸 신청이 없어요.</p>'}
+      return `<div class="adm-row my-sub"><button class="listitem" ${ok?`data-open="culture_events_${esc(r.event_id)}"`:"disabled"}><span class="ph">${EMOJI[r.category]||"🎫"}</span><span style="min-width:0"><b>${esc(r.title)}</b><small>${r.kind==="상설"?"상설 장소":"행사"} · 신청 ${dotDate(r.created_at)}</small></span><span class="tag ${r.status==="승인"?"grn":r.status==="반려"?"red":""}">${subLabel(r)}</span></button>${r.status==="반려"?`<button class="out sm why-btn" data-why="${esc(r.id)}">사유 보기</button>`:""}</div>`; }).join("") || '<p class="note" style="padding:12px 0">아직 보낸 신청이 없어요.</p>'}
     <button class="blk w" id="msNew" style="width:100%;margin-top:14px">새로 신청하기</button>`);
   $("#msX").onclick = () => { closeSheet(); renderPage(); };
   $("#msNew").onclick = partnerEntry;
@@ -1831,10 +1866,10 @@ function adminPage(pg){
       ${["대기","승인","반려"].map(s => `<li><button role="tab" data-admf="${s}" aria-selected="${ADM.filter===s}"><b>${count(s)}</b>${SUB_STATUS[s]}</button></li>`).join("")}
     </ol>
     ${ADM.loading && !ADM.loaded ? '<p class="note" style="padding:20px 0">신청 목록을 불러오는 중이에요.</p>' :
-      rows.map(r => `<button class="adm-item" data-adm="${esc(r.id)}">
+      rows.map(r => `<div class="adm-row"><button class="adm-item" data-adm="${esc(r.id)}">
         <span class="ph">${r.image_url?`<img src="${esc(r.image_url)}" alt="">`:EMOJI[r.category]||"🎫"}</span>
-        <span class="adm-main"><b>${r.is_demo?'<em class="tag demo-tag">예시</em> ':""}${esc(r.title)}</b><small>${esc(r.org_name||r.place)} · ${esc(r.contact_email||"")}</small><small>${r.kind==="상설"?"상설 장소":`${esc(r.start_date)} ~ ${esc(r.end_date)}`} · ${r.price===0?"무료":won(r.price)}</small></span>
-        <span class="adm-date">${dotDate(r.created_at).slice(5)}</span></button>`).join("") || `<p class="note" style="padding:20px 0">${ADM.filter==="대기"?"검사를 기다리는 신청이 없어요.":ADM.filter==="승인"?"아직 지도에 올린 신청이 없어요.":"반려한 신청이 없어요."}</p>`}`;
+        <span class="adm-main"><b>${r.is_demo?'<em class="tag demo-tag">예시</em> ':""}${isUnpub(r)?'<em class="tag demo-tag unpub-tag">지도에서 내림</em> ':""}${esc(r.title)}</b><small>${esc(r.org_name||r.place)} · ${esc(r.contact_email||"")}</small><small>${r.kind==="상설"?"상설 장소":`${esc(r.start_date)} ~ ${esc(r.end_date)}`} · ${r.price===0?"무료":won(r.price)}</small></span>
+        <span class="adm-date">${dotDate(r.created_at).slice(5)}</span></button>${r.status==="반려"?`<button class="out sm why-btn" data-why="${esc(r.id)}">사유 보기</button>`:""}</div>`).join("") || `<p class="note" style="padding:20px 0">${ADM.filter==="대기"?"검사를 기다리는 신청이 없어요.":ADM.filter==="승인"?"아직 지도에 올린 신청이 없어요.":"반려한 신청이 없어요."}</p>`}`;
   $("#admBack").onclick = () => { admRemember(null); S.tab = "me"; render(); };
   $("#admReload").onclick = () => { ADM.loaded = false; loadAdminRows(); renderPage(); };
 }
@@ -1860,7 +1895,7 @@ function adminDetail(id){
   const checkRow = c => `<label class="chk ${c.bad?"bad":""}"><input type="checkbox" data-chk="${c.k}" ${prev[c.k]?"checked":""} ${r.status!=="대기"?"disabled":""}><span>${esc(c.t)}${c.auto?` <em class="tag ${c.bad?"red":"grn"}">${esc(c.auto)}</em>`:""}${c.link&&/^https?:/.test(c.link)?` <a href="${esc(c.link)}" target="_blank" rel="noopener noreferrer" data-outside>열기 ↗</a>`:""}${c.map?` <a href="${esc(c.map)}" target="_blank" rel="noopener noreferrer" data-outside>지도에서 보기 ↗</a>`:""}${c.dup?.length?`<small>${c.dup.map(e=>esc(e.name)).join(" / ")}</small>`:""}</span></label>`;
   const benefits = (r.benefit_rules||[]).map(b => esc(b.l)).join(", ");
   sheet(`<div class="sh-h"><h2>${esc(r.title)}</h2><button class="x" id="adX" aria-label="닫기">${ico.x}</button></div>
-    <div class="addr"><span class="tag ${r.status==="승인"?"grn":r.status==="반려"?"red":""}">${SUB_STATUS[r.status]}</span>${r.is_demo?' <span class="tag demo-tag">예시</span>':""} ${r.kind==="상설"?"상설 장소":"행사"} · ${esc(r.category)} · 신청 ${dotDate(r.created_at)}</div>
+    <div class="addr"><span class="tag ${r.status==="승인"?"grn":r.status==="반려"?"red":""}">${subLabel(r)}</span>${r.is_demo?' <span class="tag demo-tag">예시</span>':""} ${r.kind==="상설"?"상설 장소":"행사"} · ${esc(r.category)} · 신청 ${dotDate(r.created_at)}</div>
     ${r.image_url?`<img class="adm-hero" src="${esc(r.image_url)}" alt="대표 이미지">`:""}
     <div class="rows">
       <div class="rowi">${ico.cal}<div>${r.kind==="상설"?"상설 운영":`${esc(r.start_date)} ~ ${esc(r.end_date)}`}<small>기간</small></div></div>
@@ -1874,7 +1909,7 @@ function adminDetail(id){
       <div class="kv"><span>신청 계정</span><b>${esc(r.contact_email||"알 수 없음")}</b>${r.org_name?`<span>주최·운영</span><b>${esc(r.org_name)}</b>`:""}${r.ticket_url?`<span>예매 링크</span><b>${esc(r.ticket_url)}</b>`:""}${r.homepage_url?`<span>안내 페이지</span><b>${esc(r.homepage_url)}</b>`:""}</div>
     </div>
     <div class="sec"><h3>정보 확인</h3>${info.map(checkRow).join("")}</div>
-    ${r.status==="반려"&&r.reject_reason?`<div class="status">반려 사유: ${esc(r.reject_reason)}</div>`:""}
+    ${r.status==="반려"?`<button class="out w why-btn why-wide" data-why="${esc(r.id)}">${isUnpub(r)?"내린 사유 보기":"사유 보기"}</button>`:""}
     ${r.status==="대기"?`<label for="adReason" class="flab">반려 사유 <span class="note">반려할 때만</span></label><textarea id="adReason" class="adm-reason" maxlength="200" placeholder="예: 공식 안내 페이지의 날짜와 달라요."></textarea>`:""}
     ${r.status==="승인"?`<label for="adReason" class="flab">지도에서 내리는 이유</label><textarea id="adReason" class="adm-reason" maxlength="200" placeholder="예: 행사가 취소됐어요."></textarea>`:""}
     <div class="err" id="adErr" role="alert"></div>
@@ -2585,6 +2620,7 @@ document.addEventListener("click", async ev => {
   if (d.flag){ flagSheet(d.flag, d.target); return; }
   if (d.sq){ const input=$("#srI"); if(input){ input.value=d.sq; renderSearch(); input.focus(); } return; }
   if (d.myreview || d.myreport || d.sopen){ if(d.sopen) saveRecentSearch($("#srI")?.value); closeSheet(); S.tab="map"; const id=d.myreview||d.myreport||d.sopen; render(); const it=findAny(id); if(it){ centerOn(it.x,it.y); backToDetail(id); } return; }
+  if (d.why){ reasonPop(d.why); return; }
   if (d.admf){ ADM.filter=d.admf; renderPage(); return; }
   if (d.adm){ adminDetail(d.adm); return; }
   if (d.tab){ admRemember(null); S.tab=d.tab; closePeek(); closeSheet(); render(); return; }
