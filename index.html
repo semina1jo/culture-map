@@ -1756,6 +1756,7 @@ function partnerSheet(opts = {}){
   sheet(`<div class="sh-h"><h2>${headTitle}</h2><button class="x" id="pX" aria-label="닫기">${ico.x}</button></div>
     <ol class="flow-rail" aria-label="등록 과정"><li class="on">신청</li><li>관리자 검사</li><li>지도에 등록</li></ol>
     <p class="note" style="margin:8px 0 0">${!ed ? "알리고 싶은 행사나 장소를 올려 주세요. 관리자가 내용을 확인한 뒤 지도에 올라가요." : asAdmin ? "관리자가 신청 내용을 고쳐요. 심사 상태는 그대로예요." : "고친 신청은 다시 검사 대기로 들어가요."}</p>
+    ${(() => { if (asAdmin || ed?.status === "대기") return ""; const n = window.dataService.getMySubmissions().filter(r => r.status === "대기" && !r.is_demo).length; return n >= 3 ? `<p class="note" style="margin:6px 0 0">검사 대기 중인 신청 ${n}/5건 · 5건이 되면 결과가 나올 때까지 더 신청할 수 없어요.</p>` : ""; })()}
     ${ed?.status === "반려" && ed.reject_reason && !asAdmin ? `<p class="status" style="margin:8px 0 0">반려 사유: ${esc(ed.reject_reason)}</p>` : ""}
     <p class="note req-legend" style="margin:6px 0 0"><b class="req">*</b> 표시는 꼭 입력해야 해요.</p>
     ${S.demoMode && !ed?'<button type="button" class="out sm demo-fill" id="pDemo">예시 데이터 채우기 <span class="note">시연 모드</span></button>':""}

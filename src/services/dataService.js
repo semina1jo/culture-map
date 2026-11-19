@@ -454,7 +454,9 @@
       if (configured) {
         data.image_url = (await uploadPhoto(files.image || "")) || null;
         data.proof_file_path = await uploadProof(files.proof || "");
-        const saved = (await insert("culture_submissions", data))[0];
+        let saved;
+        try { saved = (await insert("culture_submissions", data))[0]; }
+        catch (error) { if (/too_many_pending/.test(error?.message || "")) throw Object.assign(new Error("검사 대기 중인 신청이 5건이에요. 결과가 나온 뒤에 더 신청해 주세요."), { code: "too_many_pending" }); throw error; }
         cache("submissions", [saved, ...list("submissions").filter(r => r.id !== saved.id)]);
         return saved;
       }
@@ -467,7 +469,9 @@
       const data = { ...patch };
       if (configured) {
         if (files.image) data.image_url = (await uploadPhoto(files.image)) || null;
-        const rows = await request(`/rest/v1/culture_submissions?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(data) });
+        let rows;
+        try { rows = await request(`/rest/v1/culture_submissions?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(data) }); }
+        catch (error) { if (/too_many_pending/.test(error?.message || "")) throw Object.assign(new Error("검사 대기 중인 신청이 5건이에요. 결과가 나온 뒤에 다시 신청해 주세요."), { code: "too_many_pending" }); throw error; }
         const saved = rows?.[0]; if (!saved) throw new Error("고칠 수 없는 신청이에요. 이미 심사가 끝났을 수 있어요.");
         cache("submissions", list("submissions").map(r => r.id === id ? saved : r));
         return saved;

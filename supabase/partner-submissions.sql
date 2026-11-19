@@ -180,3 +180,5 @@ grant execute on function public.delete_demo_submissions(uuid[]) to authenticate
 
 -- 12) 2026-11-19: 수정 기능. 신청자는 대기·반려 건을 고칠 수 있고(고치면 다시 '대기', 심사 기록은 지워짐 — 트리거 culture_submissions_guard),
 --     관리자는 아무 신청이나 고칠 수 있다. 전체 정의는 Supabase 마이그레이션 submissions_edit_policies 참고
+
+-- 13) 2026-11-19: 도배 방지. 한 사람의 '검사 대기' 신청은 5건까지 (관리자·예시 제외). 트리거 culture_submissions_limit (마이그레이션 submissions_pending_limit)
