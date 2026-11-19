@@ -530,6 +530,7 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 .adm-row.my-sub .listitem{flex:1;min-width:0;border-bottom:0}
 .why-wide{width:100%;margin-top:12px;padding:10px}
 .unpub-tag{background:var(--chip);color:var(--ink2)}
+.sub-acts{display:flex;flex-direction:column;gap:6px;flex:none}
 .why-btn{flex:none;border-radius:12px;padding:6px 10px;font-size:12px;white-space:nowrap}
 .why-pop{position:absolute;inset:0;z-index:25;background:rgba(31,43,34,.32);display:flex;align-items:center;justify-content:center;padding:24px}
 .why-card{width:min(320px,100%);background:#fff;border-radius:20px;padding:18px 18px 16px;box-shadow:0 12px 32px rgba(31,43,34,.22)}
@@ -1745,14 +1746,19 @@ function partnerEntry(){
   if (needLogin("장소 등록 신청", partnerEntry)) return;
   partnerSheet();
 }
-function partnerSheet(){
+// opts.edit: 고칠 신청, opts.admin: 관리자가 고치는 경우(상태는 그대로)
+function partnerSheet(opts = {}){
   const acc = window.dataService.account();
   const targets = Object.keys(VENUE_TARGET);
-  sheet(`<div class="sh-h"><h2>장소 등록 신청</h2><button class="x" id="pX" aria-label="닫기">${ico.x}</button></div>
+  const ed = opts.edit || null, asAdmin = Boolean(opts.admin);
+  const headTitle = !ed ? "장소 등록 신청" : asAdmin ? "신청 내용 수정" : ed.status === "반려" ? "고쳐서 다시 신청" : "신청 수정";
+  const submitLabel = !ed ? "신청 보내기" : asAdmin ? "수정 저장" : "다시 신청하기";
+  sheet(`<div class="sh-h"><h2>${headTitle}</h2><button class="x" id="pX" aria-label="닫기">${ico.x}</button></div>
     <ol class="flow-rail" aria-label="등록 과정"><li class="on">신청</li><li>관리자 검사</li><li>지도에 등록</li></ol>
-    <p class="note" style="margin:8px 0 0">알리고 싶은 행사나 장소를 올려 주세요. 관리자가 내용을 확인한 뒤 지도에 올라가요.</p>
+    <p class="note" style="margin:8px 0 0">${!ed ? "알리고 싶은 행사나 장소를 올려 주세요. 관리자가 내용을 확인한 뒤 지도에 올라가요." : asAdmin ? "관리자가 신청 내용을 고쳐요. 심사 상태는 그대로예요." : "고친 신청은 다시 검사 대기로 들어가요."}</p>
+    ${ed?.status === "반려" && ed.reject_reason && !asAdmin ? `<p class="status" style="margin:8px 0 0">반려 사유: ${esc(ed.reject_reason)}</p>` : ""}
     <p class="note req-legend" style="margin:6px 0 0"><b class="req">*</b> 표시는 꼭 입력해야 해요.</p>
-    ${S.demoMode?'<button type="button" class="out sm demo-fill" id="pDemo">예시 데이터 채우기 <span class="note">시연 모드</span></button>':""}
+    ${S.demoMode && !ed?'<button type="button" class="out sm demo-fill" id="pDemo">예시 데이터 채우기 <span class="note">시연 모드</span></button>':""}
     <form id="pF" class="pform" novalidate>
       <fieldset><legend>등록할 정보</legend>
         <div class="opt seg" role="radiogroup" aria-label="종류"><button type="button" data-pkind="행사" aria-pressed="true">기간이 있는 행사</button><button type="button" data-pkind="상설" aria-pressed="false">상설 장소</button></div>
@@ -1781,7 +1787,7 @@ function partnerSheet(){
       </fieldset>
       <label class="agree"><input type="checkbox" id="pAgree" aria-required="true"><span><b class="req" aria-hidden="true">*</b> 입력한 정보가 사실이며, 확인이 필요하면 관리자가 내 계정 이메일로 연락할 수 있다는 데 동의해요.</span></label>
       <div class="err" id="pErr" role="alert"></div>
-      <div class="acts"><button class="out" type="button" id="pC">취소</button><button class="blk" type="submit" id="pSubmit">신청 보내기</button></div>
+      <div class="acts"><button class="out" type="button" id="pC">취소</button><button class="blk" type="submit" id="pSubmit">${submitLabel}</button></div>
     </form>`, {level:"full"});
   let kind = "행사", image = null, loc = null, marker = null, mini = null, demoFilled = false;
   $("#pX").onclick = $("#pC").onclick = closeSheet;
@@ -1843,6 +1849,20 @@ function partnerSheet(){
     $("#pAdGo").onclick = async () => { const q = $("#pAd").value.trim(); if (!q) return; const p = await geocodeAddress(q); if (p) { loc = p; $("#pMapNote").textContent = `위치를 찾았어요 (${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}).`; } else $("#pMapNote").textContent = "주소로 위치를 찾지 못했어요. 지금 보고 있는 지도 가운데를 위치로 써요."; };
   }
 
+  // 고치기: 기존 신청 내용을 채운다
+  if (ed) {
+    document.querySelector(`[data-pkind="${ed.kind}"]`).click();
+    const set = (id, val) => { $(id).value = val ?? ""; };
+    set("#pT", ed.title); set("#pOrg", ed.org_name); $("#pG").value = ed.category; set("#pTime", ed.event_time);
+    if (ed.kind === "행사") { set("#pS", ed.start_date); set("#pE", ed.end_date); }
+    set("#pP", ed.price); set("#pFee", ed.fee_text); set("#pBN", ed.benefit_note); set("#pDesc", ed.description); set("#pTU", ed.ticket_url); set("#pHU", ed.homepage_url);
+    (ed.benefit_rules || []).forEach(rule => { const t = targets.find(k => VENUE_TARGET[k].t === rule.t && String(VENUE_TARGET[k].v) === String(rule.v)); if (!t) return; addBen(); const row = $("#pBen").lastElementChild; row.querySelector("select").value = t; row.querySelector("input").value = rule.p; });
+    set("#pPl", ed.place); set("#pAd", ed.place_addr);
+    loc = { lat: ed.lat, lng: ed.lng }; if (marker) { marker.setPosition(loc); mini.setCenter(loc); mini.setZoom(17); }
+    const img = ed._img || ed.image_url; if (img) { $("#pImgPrev").src = img; $("#pImgPrev").hidden = false; }
+    $("#pAgree").checked = true; demoFilled = Boolean(ed.is_demo);
+  }
+
   $("#pF").addEventListener("submit", async ev => {
     ev.preventDefault();
     const v = id => $(id).value.trim();
@@ -1853,7 +1873,7 @@ function partnerSheet(){
     let err = "";
     if (!v("#pT")) err = "등록할 행사·장소 이름을 입력해 주세요.";
     else if (kind === "행사" && (!st || !en || en < st)) err = "시작일과 종료일을 확인해 주세요. 종료일은 시작일보다 빠를 수 없어요.";
-    else if (kind === "행사" && en < FILTER_TODAY) err = "이미 끝난 행사는 등록할 수 없어요.";
+    else if (kind === "행사" && en < FILTER_TODAY && !asAdmin) err = "이미 끝난 행사는 등록할 수 없어요.";
     else if (!meetsPriceRule(price, rules)) err = "만 원 이하이거나, 할인 대상 가격이 만 원 이하인 정보만 등록할 수 있어요.";
     else if (rules.some(r => r.p >= price && price > 0)) err = "할인가는 기본 가격보다 낮게 넣어 주세요.";
     else if (!urlOk(v("#pTU")) || !urlOk(v("#pHU"))) err = "링크는 https:// 로 시작하는 주소로 넣어 주세요.";
@@ -1868,8 +1888,18 @@ function partnerSheet(){
       start_date: st, end_date: en, event_time: v("#pTime") || null, price, fee_text: v("#pFee") || null, benefit_rules: rules, benefit_note: v("#pBN") || null,
       ticket_url: v("#pTU") || null, homepage_url: v("#pHU") || null, description: v("#pDesc") || null };
     $("#pSubmit").disabled = true; $("#pSubmit").textContent = "보내는 중…";
+    if (ed) {
+      delete row.is_demo; delete row.contact_email;
+      if (kind === "상설") { row.start_date = null; row.end_date = null; }
+      const res = await window.dataService.updateSubmission(ed.id, row, { image });
+      if (!res.ok) { $("#pErr").textContent = res.error?.message || "저장하지 못했어요. 입력 내용은 그대로 있어요."; $("#pSubmit").disabled = false; $("#pSubmit").textContent = submitLabel; return; }
+      closeSheet();
+      if (asAdmin) { ADM.loaded = false; await loadAdminRows(); adminDetail(ed.id); toast("신청 내용을 고쳤어요."); }
+      else { renderPage(); mySubmissionsSheet(); toast(ed.status === "반려" ? "고친 신청을 다시 보냈어요. 관리자가 다시 확인해요." : "신청을 고쳤어요."); }
+      return;
+    }
     const result = await window.dataService.addSubmission(row, { image });
-    if (!result.ok) { $("#pErr").textContent = result.error?.message || "신청을 보내지 못했어요. 입력 내용은 그대로 있어요."; $("#pSubmit").disabled = false; $("#pSubmit").textContent = "신청 보내기"; return; }
+    if (!result.ok) { $("#pErr").textContent = result.error?.message || "신청을 보내지 못했어요. 입력 내용은 그대로 있어요."; $("#pSubmit").disabled = false; $("#pSubmit").textContent = submitLabel; return; }
     closeSheet(); renderPage();
     toast(demoFilled ? "예시 신청을 보냈어요. 승인하면 더미(예시) 데이터 보기를 켰을 때 지도에 보여요." : "신청을 보냈어요. 관리자가 확인하면 지도에 올라가요.");
   });
@@ -1907,7 +1937,7 @@ function mySubmissionsSheet(){
   const rows = window.dataService.getMySubmissions();
   sheet(`<div class="sh-h"><h2>내 등록 신청 <span class="note">${rows.length}건</span></h2><button class="x" id="msX" aria-label="닫기">${ico.x}</button></div>
     ${rows.map(r => { const ok = r.status === "승인" && r.event_id;
-      return `<div class="adm-row my-sub"><button class="listitem" ${ok?`data-open="culture_events_${esc(r.event_id)}"`:"disabled"}><span class="ph">${EMOJI[r.category]||"🎫"}</span><span style="min-width:0"><b>${esc(r.title)}</b><small>${r.kind==="상설"?"상설 장소":"행사"} · 신청 ${dotDate(r.created_at)}</small></span><span class="tag ${r.status==="승인"?"grn":r.status==="반려"?"red":""}">${subLabel(r)}</span></button>${r.status==="반려"?`<button class="out sm why-btn" data-why="${esc(r.id)}">사유 보기</button>`:""}</div>`; }).join("") || '<p class="note" style="padding:12px 0">아직 보낸 신청이 없어요.</p>'}
+      return `<div class="adm-row my-sub"><button class="listitem" ${ok?`data-open="culture_events_${esc(r.event_id)}"`:"disabled"}><span class="ph">${EMOJI[r.category]||"🎫"}</span><span style="min-width:0"><b>${esc(r.title)}</b><small>${r.kind==="상설"?"상설 장소":"행사"} · 신청 ${dotDate(r.created_at)}</small></span><span class="tag ${r.status==="승인"?"grn":r.status==="반려"?"red":""}">${subLabel(r)}</span></button><span class="sub-acts">${r.status==="반려"?`<button class="out sm why-btn" data-why="${esc(r.id)}">사유 보기</button>`:""}${r.status==="대기"||r.status==="반려"?`<button class="out sm why-btn" data-subedit="${esc(r.id)}">${r.status==="반려"?"고쳐서 다시 신청":"수정"}</button>`:""}</span></div>`; }).join("") || '<p class="note" style="padding:12px 0">아직 보낸 신청이 없어요.</p>'}
     <button class="blk w" id="msNew" style="width:100%;margin-top:14px">새로 신청하기</button>`);
   $("#msX").onclick = () => { closeSheet(); renderPage(); };
   $("#msNew").onclick = partnerEntry;
@@ -2098,9 +2128,13 @@ function adminDetail(id){
     <div class="err" id="adErr" role="alert"></div>
     <div class="acts">
       ${r.status==="대기"?`<button class="out" id="adReject">반려</button><button class="blk" id="adApprove">승인하고 지도에 등록</button>`:""}
+    </div>
+    <div class="acts" style="margin-top:8px">
+      ${r.status==="대기"?`<button class="out" id="adEdit">내용 수정</button>`:""}
       ${r.status==="승인"?`<button class="out" id="adUnpub">지도에서 내리기</button><button class="blk" data-open="culture_events_${esc(r.event_id)}">지도에서 보기</button>`:""}
     </div>`, {level:"full"});
   $("#adX").onclick = () => { admRemember({ id: null, filter: ADM.filter }); closeSheet(); };
+  if ($("#adEdit")) $("#adEdit").onclick = () => partnerSheet({ edit: r, admin: true });
   // 링크: 체크박스가 같이 눌리지 않게 막고 새 창으로 연다
   document.querySelectorAll(".sheet [data-outside]").forEach(a => a.addEventListener("click", ev => { ev.preventDefault(); ev.stopPropagation(); openOutside(a.href); }));
   // 체크 상태를 바로 기억해 둔다
@@ -2804,6 +2838,7 @@ document.addEventListener("click", async ev => {
   if (d.sq){ const input=$("#srI"); if(input){ input.value=d.sq; renderSearch(); input.focus(); } return; }
   if (d.myreview || d.myreport || d.sopen){ if(d.sopen) saveRecentSearch($("#srI")?.value); closeSheet(); S.tab="map"; const id=d.myreview||d.myreport||d.sopen; render(); const it=findAny(id); if(it){ centerOn(it.x,it.y); backToDetail(id); } return; }
   if (d.why){ reasonPop(d.why); return; }
+  if (d.subedit){ const r = window.dataService.getMySubmissions().find(x => x.id === d.subedit); if (r) partnerSheet({ edit: r }); return; }
   if (d.admf){ ADM.filter=d.admf; renderPage(); return; }
   if (d.admsec){ ADM.section=d.admsec; renderPage(); return; }
   if (d.rpg){ reportDetail(d.rpg); return; }

@@ -462,6 +462,22 @@
       cache("submissions", [saved, ...list("submissions")]);
       return saved;
     }),
+    // 신청 고치기: 신청자는 대기·반려 건만(고치면 다시 대기), 관리자는 상태 유지
+    updateSubmission: (id, patch, files = {}) => run(async () => {
+      const data = { ...patch };
+      if (configured) {
+        if (files.image) data.image_url = (await uploadPhoto(files.image)) || null;
+        const rows = await request(`/rest/v1/culture_submissions?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(data) });
+        const saved = rows?.[0]; if (!saved) throw new Error("고칠 수 없는 신청이에요. 이미 심사가 끝났을 수 있어요.");
+        cache("submissions", list("submissions").map(r => r.id === id ? saved : r));
+        return saved;
+      }
+      if (files.image) data.image_url = files.image;
+      const cur = list("submissions").find(r => r.id === id) || {};
+      const saved = { ...cur, ...data, ...(read().is_admin ? {} : { status: "대기", reject_reason: null, reject_kind: null, reviewed_at: null }) };
+      cache("submissions", list("submissions").map(r => r.id === id ? saved : r));
+      return saved;
+    }),
     reviewSubmission: (id, action, reason, checks) => run(async () => {
       const result = await request("/rest/v1/rpc/review_culture_submission", { method: "POST", body: JSON.stringify({ p_id: id, p_action: action, p_reason: reason || null, p_checks: checks || {} }) });
       try { cache("culture_events", (await selectAll("culture_events")).map(global.cultureEventsData.toEvent)); } catch (_) {}

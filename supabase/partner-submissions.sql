@@ -177,3 +177,6 @@ grant execute on function public.delete_demo_submissions(uuid[]) to authenticate
 -- 11) 2026-11-19: 지도 정보 신고 (culture_reports) + 관리자 처리 (handle_culture_report)
 --     등록 신청으로 올라온 정보는 지도에서 지우고 신청을 '지도에서 내림'으로, 공공데이터는 culture_events.hidden_reason으로 숨긴다.
 --     전체 정의는 Supabase 마이그레이션 culture_reports 참고
+
+-- 12) 2026-11-19: 수정 기능. 신청자는 대기·반려 건을 고칠 수 있고(고치면 다시 '대기', 심사 기록은 지워짐 — 트리거 culture_submissions_guard),
+--     관리자는 아무 신청이나 고칠 수 있다. 전체 정의는 Supabase 마이그레이션 submissions_edit_policies 참고
