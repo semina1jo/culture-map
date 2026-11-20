@@ -166,9 +166,8 @@
     const counts = guCounts();
     const vals = Object.values(counts).sort((a, b) => a - b), q = f => vals[Math.floor((vals.length - 1) * f)] || 0; const lvl = n => !n ? 0 : n >= q(.67) ? 3 : n >= q(.34) ? 2 : 1; // 행사가 있는 구 사이 순위로 3단계 진하기
     const active = Object.keys(counts).length;
-    const mine = defaultGu();
     const tiles = GU_GRID.flat().map(g => g
-      ? `<button class="cu-gt l${lvl(counts[g])} ${g === mine ? "mine" : ""}" data-curgu="${g}" aria-label="${g} 이번 주 문화생활 보기 (행사 ${counts[g] || 0}건)"><b>${shortGu(g)}</b>${counts[g] ? `<small>${counts[g]}곳</small>` : ""}</button>`
+      ? `<button class="cu-gt l${lvl(counts[g])}" data-curgu="${g}" aria-label="${g} 이번 주 문화생활 보기 (행사 ${counts[g] || 0}건)"><b>${shortGu(g)}</b>${counts[g] ? `<small>${counts[g]}곳</small>` : ""}</button>`
       : `<span class="cu-gt empty" aria-hidden="true"></span>`).join("");
     const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
     return `<section class="cu-sec">
@@ -336,7 +335,6 @@
 .cu-gp{display:flex;align-items:baseline;justify-content:space-between;gap:6px}.cu-gp b{font-size:13px;font-weight:800;color:#3D5414}.cu-gp small{font-size:11.5px;color:var(--ink2)}
 .cu-rk{position:absolute;left:8px;top:8px;z-index:1;font-style:normal;min-width:26px;height:26px;padding:0 7px;box-sizing:border-box;border-radius:8px;background:rgba(31,43,34,.82);color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center}.cu-rk.top{background:#6F8F2E}
 .cu-sh3{margin:18px 0 0;font-size:15px;font-weight:800}
-.cu-gt.mine{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--accent)}
 .cu-pc{flex:none;width:136px;border:0;background:none;padding:0;text-align:left;display:flex;flex-direction:column;gap:3px;color:var(--ink)}
 .cu-pc.sq{width:148px}
 .cu-ph,.cu-lph{position:relative;display:block;height:182px;border-radius:14px;overflow:hidden;margin-bottom:5px;background:var(--chip)}
