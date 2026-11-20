@@ -77,7 +77,7 @@
 
   /* ---------- 주제 16개 ---------- */
   const TOPICS = {
-    evening: { chip: "퇴근 후", title: "퇴근하고 가볍게 즐기는 문화생활", desc: "오늘 저녁 8시 이후까지 여는 곳 · 운영시간이 확인된 곳만",
+    evening: { chip: "하루 끝에", title: "하루 끝에 가볍게 즐기는 문화생활", desc: "오늘 저녁 8시 이후까지 여는 곳 · 운영시간이 확인된 곳만",
       run() { const t = today(); const items = basePool().filter(e => activeOn(e, t) && window.hoursService.evening(hoursOn(e, t))).sort(evFirst);
         return { items, meta: e => window.hoursService.eveningText(hoursOn(e, t)) || period(e) }; } },
     quick: { chip: "약속 전 1시간", title: "약속 전 1시간, 짧고 굵게 즐기기", desc: "1km 안 · 예약 없이 · 오늘 아직 여는 곳 (거리는 내 위치, 없으면 지도 가운데 기준)",
