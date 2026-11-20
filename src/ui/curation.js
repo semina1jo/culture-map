@@ -36,7 +36,9 @@
   });
 
   /* ---------- 데이터 묶음 ---------- */
+  // 한 번 그릴 때 여러 주제가 같은 묶음을 쓰므로 그리는 동안만 기억해 둔다
   function basePool() {
+    if (CUR.pool) return CUR.pool;
     return events.filter(e => {
       if (e.hidden || e.x == null || hideDemo(e)) return false;
       if (!isAlwaysOpen(e) && (!e.end || e.end < today())) return false;
@@ -237,6 +239,10 @@
 
   /* ---------- 페이지 ---------- */
   function curationPage(pg) {
+    CUR.pool = null; CUR.pool = basePool();
+    try { renderCuration(pg); } finally { CUR.pool = null; }
+  }
+  function renderCuration(pg) {
     const keep = pg.querySelector(".cu") ? pg.scrollTop : 0;
     const used = new Map();
     const ho = heroOrder();
@@ -265,7 +271,8 @@
     pg.scrollTop = keep;
   }
   function topicSheet(k) {
-    const t = runTopic(k);
+    CUR.pool = null; CUR.pool = basePool();
+    let t; try { t = runTopic(k); } finally { CUR.pool = null; }
     const items = t.items.slice(0, 80);
     sheet(`<div class="sh-h"><h2>${esc(t.title)}</h2><button class="x" id="cuX" aria-label="닫기">${ico.x}</button></div>
       <p class="note">${esc(t.desc)} · ${t.items.length.toLocaleString()}곳${t.items.length > items.length ? ` 중 ${items.length}곳` : ""}</p>
