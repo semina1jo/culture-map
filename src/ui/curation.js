@@ -273,7 +273,7 @@
     pg.innerHTML = `<div class="cu">
       <h1>큐레이션</h1><p class="cu-lead">적은 돈으로 알차게, 데이터로 골랐어요</p>
       ${heroes.length ? `<section class="cu-sec"><div class="cu-h"><h2>오늘의 큐레이션</h2></div><div class="cu-row heroes">${heroes.map((t, i) => heroCard(t, i, heroes.length, ho.label)).join("")}</div></section>` : ""}
-      <section class="cu-sec"><div class="cu-h"><h2>주제별로 골라보기</h2></div><div class="cu-chips">${CHIP_ORDER.map(k => `<button class="cu-chip" data-cur="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${CHIP_ICON[k]}</svg><span>${TOPICS[k].chip}</span>${TOPICS[k].review && demoOn() ? '<i title="예시 데이터"></i>' : ""}</button>`).join("")}</div></section>
+      <section class="cu-sec"><div class="cu-h"><h2>주제별로 골라보기</h2></div><div class="cu-chips">${CHIP_ORDER.map(k => `<button class="cu-chip" data-cur="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${CHIP_ICON[k]}</svg><span>${TOPICS[k].chip}</span></button>`).join("")}</div></section>
       ${section(lc, used, "poster")}
       ${guSection()}
       ${bottom}
@@ -326,7 +326,6 @@
 .cu-chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .cu-chip{position:relative;min-height:48px;padding:0 8px;border-radius:14px;background:#fff;border:1px solid #E1E6D8;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13.5px;font-weight:700;color:var(--ink);white-space:nowrap}
 .cu-chip svg{flex:none;width:17px;height:17px;fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.cu-chip i{position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:#C99A1E}
 .cu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 10px;margin-top:10px}
 .cu-gc{border:0;background:none;padding:0;text-align:left;display:flex;flex-direction:column;gap:3px;color:var(--ink);min-width:0}
 .cu-gph{position:relative;display:block;aspect-ratio:3/4;border-radius:14px;overflow:hidden;margin-bottom:5px;background:var(--chip)}
