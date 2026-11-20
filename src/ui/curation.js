@@ -88,10 +88,10 @@
     rain: { chip: "비 오는 날", title: "비 오는 날, 0원으로 즐기는 실내 문화 피난처", desc: "실내 공간 + 무료 · 이번 주에 여는 곳",
       run() { const t = today(), w = addFilterDays(t, 6); const items = basePool().filter(e => isFree(e) && isIndoor(e) && activeDuring(e, t, w)).sort(evFirst);
         return { items, meta: e => `${g4(e)} · ${shortGu(guOf(e)) || "서울"}` }; } },
-    lastcall: { chip: "마감 임박", title: "이번 주가 마지막! 놓치면 아쉬운 무료 팝업·전시", desc: "7일 안에 끝나는 무료 전시·팝업 · 끝나는 날이 빠른 순",
+    lastcall: { chip: "마감 임박", title: "이번 주가 마지막! 놓치면 아쉬운 팝업·전시", desc: "7일 안에 끝나는 전시·팝업 · 끝나는 날이 빠른 순",
       run() { const t = today(); const soonEnd = e => isEvent(e) && e.end && days(t, e.end) >= 0 && days(t, e.end) <= 6;
-        let items = basePool().filter(e => soonEnd(e) && isFree(e) && ["전시", "팝업"].includes(g4(e)));
-        if (items.length < 5) items = basePool().filter(e => soonEnd(e) && isFree(e));
+        let items = basePool().filter(e => soonEnd(e) && ["전시", "팝업"].includes(g4(e)));
+        if (items.length < 5) items = basePool().filter(soonEnd);
         return { items: items.sort((a, b) => byEnd(a, b) || (hasPhoto(b) - hasPhoto(a))), meta: e => e.place || "", badge: dday }; } },
     weekend: { chip: "무지출 주말", title: "월급날 전날에도 당당한 '무지출' 주말 코스", desc: "이번 주말 무료로 여는 곳",
       run() { const [sat, sun] = nextWeekend(); const items = basePool().filter(e => isFree(e) && activeDuring(e, sat, sun)).sort(evFirst);
@@ -103,11 +103,11 @@
       run() { return byReviews(basePool().filter(e => ["공연", "전시", "축제"].includes(g4(e))), R => R.w.partner || 0, x => x.partner, "연인 방문 리뷰"); } },
     friend: { chip: "친구와", title: "친구와 함께 가면 더 재밌는 곳", desc: "친구와 다녀온 리뷰가 많은 순", review: true,
       run() { return byReviews(basePool().filter(e => ["체험", "축제", "공연", "팝업"].includes(g4(e))), R => R.w.friend || 0, x => x.friend, "친구 방문 리뷰"); } },
-    solo: { chip: "혼자 아지트", title: "혼자 가서 조용히 사색하기 좋은 숨은 아지트", desc: "혼자 다녀온 리뷰 + '조용해요'가 많은 순", review: true,
+    solo: { chip: "혼자", title: "혼자 가서 조용히 사색하기 좋은 숨은 아지트", desc: "혼자 다녀온 리뷰 + '조용해요'가 많은 순", review: true,
       run() { return byReviews(basePool().filter(e => (g4(e) === "전시" && isIndoor(e)) || g4(e) === "무료 공간"), R => Math.min(R.w.solo || 0, Math.max(R.n.quiet || 0, R.n.rest || 0)), x => Math.min(x.solo, x.quiet + 2), "혼자 방문 리뷰"); } },
-    photo: { chip: "포토존", title: "사진첩 용량 주의! 찍기만 하면 인생샷 나오는 무료 포토존", desc: "무료 + '사진이 잘 나와요' 리뷰가 많은 순", review: true,
-      run() { return byReviews(basePool().filter(e => isFree(e) && ["전시", "축제", "팝업"].includes(g4(e))), R => R.n.photo || 0, x => x.photo, "포토존 리뷰"); } },
-    vibe: { chip: "감성 공간", title: "공간 자체가 예술인 감성 문화 공간", desc: "'분위기가 감성적이에요'·'연출이 탄탄해요' 리뷰가 많은 순", review: true,
+    photo: { chip: "포토존", title: "사진첩 용량 주의! 찍기만 하면 인생샷 나오는 곳", desc: "'사진이 잘 나와요' 리뷰가 많은 순", review: true,
+      run() { return byReviews(basePool().filter(e => ["전시", "축제", "팝업"].includes(g4(e))), R => R.n.photo || 0, x => x.photo, "포토존 리뷰"); } },
+    vibe: { chip: "분위기 맛집", title: "조명과 음악까지 완벽한 분위기 맛집", desc: "'분위기가 감성적이에요(음악·조명)'·'연출이 탄탄해요' 리뷰가 많은 순", review: true,
       run() { return byReviews(basePool().filter(e => ["전시", "공연"].includes(g4(e))), R => (R.n.vibe || 0) + (R.n.staging || 0), x => x.vibe, "감성 리뷰"); } },
     exp: { chip: "이색 체험", title: "직접 만들고 경험하는 이색 체험", desc: "체험·클래스 · 끝나는 날이 빠른 순",
       run() { const items = basePool().filter(e => g4(e) === "체험").sort((a, b) => (hasPhoto(b) - hasPhoto(a)) || byEnd(a, b));
@@ -130,10 +130,17 @@
         return { items: list.map(x => x.e), demo: true, meta: e => `최근 7일 리뷰 ${ex(e).recent}건`, anyDemo };
       } }
   };
-  const CHIP_ORDER = ["evening", "rain", "quick", "weekend", "lastcall", "wday", "date", "friend", "solo", "photo", "vibe", "exp", "local", "freeexh", "festival", "popup"];
-  // 취향 섹션은 2주마다 묶음을 바꾼다 (2026-11-16 기준). 결과가 5곳보다 적은 주제는 건너뛰고 다음 후보로 채운다
-  const TASTE_WINDOWS = [["photo", "date", "popup", "rain"], ["solo", "friend", "exp", "quick"], ["vibe", "festival", "rain", "exp"]];
-  const TASTE_ALL = ["photo", "date", "popup", "rain", "solo", "friend", "exp", "quick", "vibe", "festival"];
+  // 주제별로 골라보기(한 화면에 다 보이게 3×2) · 아래 주제 섹션 4개 (2026-11-20 사용자 요청으로 고정)
+  const CHIP_ORDER = ["quick", "evening", "rain", "solo", "date", "friend"];
+  const CHIP_ICON = {
+    quick: '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8.5"/>',
+    evening: '<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z"/>',
+    rain: '<path d="M3 12a9 9 0 0 1 18 0Z"/><path d="M12 12v6.5a2 2 0 0 1-4 0"/>',
+    solo: '<circle cx="12" cy="8" r="3.6"/><path d="M5 20.5c.8-3.6 3.6-5.8 7-5.8s6.2 2.2 7 5.8"/>',
+    date: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10Z"/>',
+    friend: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3 20c.6-3.2 3-5.2 6-5.2s5.4 2 6 5.2"/><path d="M15.5 5.6a3.2 3.2 0 0 1 0 6M17.5 14.9c1.9.6 3.1 2.4 3.5 5.1"/>'
+  };
+  const BOTTOM = ["exp", "vibe", "photo", "popup"];
   const runTopic = k => { const T = TOPICS[k]; const r = T.run(); return { key: k, ...T, ...r }; };
 
   /* ---------- 우리 동네: 구 타일 지도 ---------- */
@@ -154,29 +161,37 @@
     return { key: "local", ...TOPICS.local, title: `${gu} 이번 주 문화생활`, items: [...evs, ...places], evCount: evs.length, placeCount: places.length,
       meta: e => isEvent(e) ? `${g4(e)} · ~${md(e.end)}` : `상시 · ${g4(e)}` };
   }
-  function guSection(used) {
-    const gu = CUR.gu || defaultGu();
-    const counts = {}; weekEvents().forEach(e => { const g = guOf(e); if (GU_POS[g]) counts[g] = (counts[g] || 0) + 1; });
+  function guCounts() { const counts = {}; weekEvents().forEach(e => { const g = guOf(e); if (GU_POS[g]) counts[g] = (counts[g] || 0) + 1; }); return counts; }
+  function guSection() {
+    const counts = guCounts();
     const vals = Object.values(counts).sort((a, b) => a - b), q = f => vals[Math.floor((vals.length - 1) * f)] || 0; const lvl = n => !n ? 0 : n >= q(.67) ? 3 : n >= q(.34) ? 2 : 1; // 행사가 있는 구 사이 순위로 3단계 진하기
     const active = Object.keys(counts).length;
+    const mine = defaultGu();
     const tiles = GU_GRID.flat().map(g => g
-      ? `<button class="cu-gt l${lvl(counts[g])} ${g === gu ? "sel" : ""}" data-curgu="${g}" aria-pressed="${g === gu}" aria-label="${g} 이번 주 행사 ${counts[g] || 0}건"><b>${shortGu(g)}</b>${counts[g] ? `<small>${counts[g]}곳</small>` : ""}</button>`
+      ? `<button class="cu-gt l${lvl(counts[g])} ${g === mine ? "mine" : ""}" data-curgu="${g}" aria-label="${g} 이번 주 문화생활 보기 (행사 ${counts[g] || 0}건)"><b>${shortGu(g)}</b>${counts[g] ? `<small>${counts[g]}곳</small>` : ""}</button>`
       : `<span class="cu-gt empty" aria-hidden="true"></span>`).join("");
-    const L = localTopic(gu);
-    let line;
-    if (L.evCount) line = `${gu} 이번 주 행사 <b>${L.evCount}건</b> · 상시 무료 공간 <b>${L.placeCount}곳</b>`;
-    else {
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return `<section class="cu-sec">
+      <div class="cu-h"><div><h2>우리 동네 이번 주 문화생활</h2><small>동네를 누르면 그 동네의 이번 주 문화생활이 열려요</small></div><span class="cu-ratio">${active} / 25구</span></div>
+      <div class="cu-gumap"><div class="cu-gugrid">${tiles}</div>
+        <p class="cu-guline"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.5s-7-6.1-7-11.6A7 7 0 0 1 19 9.9c0 5.5-7 11.6-7 11.6Z"/><circle cx="12" cy="10" r="2.6"/></svg><span>${top ? `이번 주 행사가 가장 많은 동네는 <button class="cu-link" data-curgu="${top[0]}">${top[0]}</button> <b>${top[1]}건</b>` : "이번 주 행사 정보를 불러오는 중이에요"}</span></p></div>
+    </section>`;
+  }
+  function guSheet(gu) {
+    CUR.pool = null; CUR.pool = basePool();
+    let L, counts; try { L = localTopic(gu); counts = guCounts(); } finally { CUR.pool = null; }
+    const evs = L.items.filter(isEvent), places = L.items.filter(e => !isEvent(e));
+    let empty = "";
+    if (!evs.length) {
       const [r0, c0] = GU_POS[gu];
       const nb = Object.keys(counts).map(g => ({ g, d: Math.hypot(GU_POS[g][0] - r0, GU_POS[g][1] - c0), n: counts[g] })).filter(x => x.d > 0).sort((a, b) => a.d - b.d || b.n - a.n)[0];
-      line = nb ? `가까운 <button class="cu-link" data-curgu="${nb.g}">${nb.g}</button>에 이번 주 행사 <b>${nb.n}건</b>이 있어요` : `${gu}에는 이번 주 행사가 없어요`;
+      empty = `<p class="cu-empty">${gu}에는 이번 주 행사가 없어요.${nb ? ` 가까운 <button class="cu-link" data-curgu="${nb.g}">${nb.g}</button>에 <b>${nb.n}건</b>이 있어요.` : ""}</p>`;
     }
-    const cards = pick(L.items, used, 12).map(e => landCard(e, L.meta(e))).join("");
-    return `<section class="cu-sec">
-      <div class="cu-h"><div><h2>우리 동네 이번 주 문화생활</h2><small>동네를 누르면 그 동네 큐레이션으로 바뀌어요</small></div><span class="cu-ratio">${active} / 25구</span></div>
-      <div class="cu-gumap"><div class="cu-gugrid">${tiles}</div>
-        <p class="cu-guline"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.5s-7-6.1-7-11.6A7 7 0 0 1 19 9.9c0 5.5-7 11.6-7 11.6Z"/><circle cx="12" cy="10" r="2.6"/></svg><span>${line}</span></p></div>
-      ${cards ? `<div class="cu-h sub"><h3>${gu}</h3><button class="cu-more" data-cur="local">전체 보기 ${ICO.chev}</button></div><div class="cu-row">${cards}</div>` : ""}
-    </section>`;
+    sheet(`<div class="sh-h"><h2>${gu} 이번 주 문화생활</h2><button class="x" id="cuX" aria-label="닫기">${ico.x}</button></div>
+      <p class="note">이번 주 행사 ${evs.length}건 · 상시 무료 전시·공간 ${places.length}곳</p>
+      ${evs.length ? `<h3 class="cu-sh3">이번 주 행사</h3><div class="cu-grid">${evs.slice(0, 40).map((e, i) => gridCard(e, L.meta(e), { badge: dday(e) })).join("")}</div>` : empty}
+      ${places.length ? `<h3 class="cu-sh3">언제 가도 무료</h3><div class="cu-grid">${places.slice(0, 20).map(e => gridCard(e, L.meta(e), {})).join("")}</div>` : ""}`);
+    $("#cuX").onclick = closeSheet;
   }
 
   /* ---------- 카드 ---------- */
@@ -211,10 +226,16 @@
     return `<button class="cu-pc sq" data-open="${e.id}">${visual(e, "cu-ph sq")}</span>
       <span class="cu-tt">${exTag(e)}${esc(e.name)}</span><span class="cu-mt st">${ICO.stat}${esc(meta || "")}</span></button>`;
   }
+  function gridCard(e, meta, o) {
+    const b = o.badge ? `<i class="cu-dd ${/D-(DAY|[0-2])$/.test(o.badge) ? "hot" : ""}">${o.badge}</i>` : o.rank ? `<i class="cu-rk ${o.rank <= 3 ? "top" : ""}">${o.rank}</i>` : "";
+    return `<button class="cu-gc" data-open="${e.id}">${visual(e, "cu-gph")}${b}</span>
+      <span class="cu-tt">${exTag(e)}${esc(e.name)}</span><span class="cu-mt ${o.stat ? "st" : ""}">${o.stat ? ICO.stat : ""}${esc(meta || "")}</span>
+      <span class="cu-gp"><b>${priceText(e)}</b>${guOf(e) ? `<small>${esc(guOf(e))}</small>` : ""}</span></button>`;
+  }
   const demoBadge = '<span class="cu-demo">예시 데이터</span>';
-  function section(t, used, kind) {
+  function section(t, used, kind, min = 5) {
     const list = pick(t.items, used, 10);
-    if (list.length < 5 && kind !== "force") return "";
+    if (list.length < min) return "";
     const cards = list.map(e => kind === "stat" ? statCard(e, t.meta(e)) : kind === "land" ? landCard(e, t.meta(e)) : posterCard(e, t.meta(e), t.badge && t.badge(e))).join("");
     return `<section class="cu-sec"><div class="cu-h"><div><h2>${esc(t.title)}${t.demo ? demoBadge : ""}</h2><small>${esc(t.desc)}</small></div><button class="cu-more" data-cur="${t.key}" aria-label="${esc(t.title)} 전체 보기">${ICO.chev}</button></div><div class="cu-row">${cards}</div></section>`;
   }
@@ -248,24 +269,16 @@
     const ho = heroOrder();
     const heroes = ho.keys.map(runTopic).filter(t => t.items.length);
     const lc = runTopic("lastcall");
-    const tasteHtml = (() => {
-      const idx = ((Math.floor(days("2026-11-16", today()) / 14) % TASTE_WINDOWS.length) + TASTE_WINDOWS.length) % TASTE_WINDOWS.length;
-      const order = [...TASTE_WINDOWS[idx], ...TASTE_ALL.filter(k => !TASTE_WINDOWS[idx].includes(k))];
-      const out = []; for (const k of order) { if (out.length >= 4) break; const t = runTopic(k); const kind = t.review ? "stat" : "poster"; const h = section(t, used, kind); if (h) out.push(h); }
-      return out.join("");
-    })();
-    const fe = runTopic("freeexh"), wd = runTopic("wday");
-    const anyDemo = TASTE_ALL.some(k => TOPICS[k].review);
+    const bottom = BOTTOM.map(k => { const t = runTopic(k); return section(t, used, t.review ? "stat" : "poster", 1); }).join("");
+    const anyDemo = [...CHIP_ORDER, ...BOTTOM].some(k => TOPICS[k].review);
     pg.dataset.cu = "1";
     pg.innerHTML = `<div class="cu">
       <h1>큐레이션</h1><p class="cu-lead">적은 돈으로 알차게, 데이터로 골랐어요</p>
       ${heroes.length ? `<section class="cu-sec"><div class="cu-h"><h2>오늘의 큐레이션</h2></div><div class="cu-row heroes">${heroes.map((t, i) => heroCard(t, i, heroes.length, ho.label)).join("")}</div></section>` : ""}
-      <section class="cu-sec"><div class="cu-h"><h2>주제별로 골라보기</h2></div><div class="cu-row chips">${CHIP_ORDER.map(k => `<button class="cu-chip" data-cur="${k}">${TOPICS[k].chip}${TOPICS[k].review ? '<i aria-label="예시 데이터"></i>' : ""}</button>`).join("")}</div></section>
+      <section class="cu-sec"><div class="cu-h"><h2>주제별로 골라보기</h2></div><div class="cu-chips">${CHIP_ORDER.map(k => `<button class="cu-chip" data-cur="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${CHIP_ICON[k]}</svg><span>${TOPICS[k].chip}</span>${TOPICS[k].review && demoOn() ? '<i title="예시 데이터"></i>' : ""}</button>`).join("")}</div></section>
       ${section(lc, used, "poster")}
-      ${guSection(used)}
-      ${tasteHtml}
-      ${section(fe, used, "land")}
-      ${wd.items.length ? `<section class="cu-sec"><button class="cu-banner" data-cur="wday"><span class="cu-tk"><small>매주 수</small><b>${md(wd.date)}</b></span><span class="cu-bt"><small>${isWedStr(today()) ? "오늘" : "다음 수요일"}</small><b>문화가 있는 날,<br>무료로 들어가는 곳 모아보기</b></span>${ICO.chev}</button></section>` : ""}
+      ${guSection()}
+      ${bottom}
       ${anyDemo && demoOn() ? `<p class="cu-note">${ICO.clock}<span>'예시 데이터' 표시가 붙은 주제는 이용자 리뷰가 충분히 쌓이기 전까지 시연용 예시 수치로 보여줘요. 리뷰가 기준을 넘으면 실제 데이터로 자동 전환돼요.</span></p>` : ""}
     </div>`;
     pg.scrollTop = keep;
@@ -273,12 +286,11 @@
   function topicSheet(k) {
     CUR.pool = null; CUR.pool = basePool();
     let t; try { t = runTopic(k); } finally { CUR.pool = null; }
-    const items = t.items.slice(0, 80);
+    const items = t.items.slice(0, 60);
     sheet(`<div class="sh-h"><h2>${esc(t.title)}</h2><button class="x" id="cuX" aria-label="닫기">${ico.x}</button></div>
       <p class="note">${esc(t.desc)} · ${t.items.length.toLocaleString()}곳${t.items.length > items.length ? ` 중 ${items.length}곳` : ""}</p>
       ${t.demo ? '<p class="note" style="margin-top:2px"><span class="tag">예시 데이터</span>이용자 리뷰가 쌓이기 전까지 시연용 예시 수치로 순위를 매겨요.</p>' : ""}
-      ${items.map((e, i) => `<button class="listitem ${tier(effP(e))} ${isDemoCulture(e) ? "demo" : ""}" data-open="${e.id}"><span class="ph">${pinThumb(e)}</span><span style="min-width:0"><b>${t.review ? `${i + 1}. ` : ""}${esc(e.name)}</b><small>${esc(t.meta(e) || "")}${guOf(e) && k !== "local" ? ` · ${esc(guOf(e))}` : ""}</small><br>${t.badge ? `<span class="tag red">${t.badge(e)}</span>` : ""}${isDemoCulture(e) ? '<span class="tag">예시 데이터</span>' : ""}</span><span class="pr">${priceText(e)}</span></button>`).join("")
-        || '<p class="note" style="padding:12px 0">지금은 조건에 맞는 곳이 없어요.</p>'}`);
+      ${items.length ? `<div class="cu-grid">${items.map((e, i) => gridCard(e, t.meta(e), { badge: t.badge && t.badge(e), rank: t.review ? i + 1 : 0, stat: t.review })).join("")}</div>` : '<p class="note" style="padding:12px 0">지금은 조건에 맞는 곳이 없어요.</p>'}`);
     $("#cuX").onclick = closeSheet;
   }
 
@@ -286,7 +298,7 @@
   document.addEventListener("click", ev => {
     const b = ev.target.closest("[data-cur],[data-curgu]"); if (!b) return;
     ev.stopPropagation(); ev.preventDefault();
-    if (b.dataset.curgu) { CUR.gu = b.dataset.curgu; if (S.tab === "cur") renderPage(); return; }
+    if (b.dataset.curgu) { guSheet(b.dataset.curgu); return; }
     topicSheet(b.dataset.cur);
   }, true);
 
@@ -313,8 +325,18 @@
 .cu-tag svg,.cu-note svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round}
 .cu-hero:not(.first) .cu-tag{background:#fff}
 .cu-pg{position:absolute;right:12px;top:12px;font-style:normal;height:22px;padding:0 8px;border-radius:999px;background:rgba(0,0,0,.45);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center}
-.cu-row.chips{gap:8px}.cu-chip{flex:none;position:relative;height:38px;padding:0 14px;border-radius:999px;background:#fff;border:1px solid #E1E6D8;font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap}
-.cu-chip i{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:#C99A1E}
+.cu-chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cu-chip{position:relative;min-height:48px;padding:0 8px;border-radius:14px;background:#fff;border:1px solid #E1E6D8;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13.5px;font-weight:700;color:var(--ink);white-space:nowrap}
+.cu-chip svg{flex:none;width:17px;height:17px;fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cu-chip i{position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:#C99A1E}
+.cu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 10px;margin-top:10px}
+.cu-gc{border:0;background:none;padding:0;text-align:left;display:flex;flex-direction:column;gap:3px;color:var(--ink);min-width:0}
+.cu-gph{position:relative;display:block;aspect-ratio:3/4;border-radius:14px;overflow:hidden;margin-bottom:5px;background:var(--chip)}
+.cu-gph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cu-gp{display:flex;align-items:baseline;justify-content:space-between;gap:6px}.cu-gp b{font-size:13px;font-weight:800;color:#3D5414}.cu-gp small{font-size:11.5px;color:var(--ink2)}
+.cu-rk{position:absolute;left:8px;top:8px;z-index:1;font-style:normal;min-width:26px;height:26px;padding:0 7px;box-sizing:border-box;border-radius:8px;background:rgba(31,43,34,.82);color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center}.cu-rk.top{background:#6F8F2E}
+.cu-sh3{margin:18px 0 0;font-size:15px;font-weight:800}
+.cu-gt.mine{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--accent)}
 .cu-pc{flex:none;width:136px;border:0;background:none;padding:0;text-align:left;display:flex;flex-direction:column;gap:3px;color:var(--ink)}
 .cu-pc.sq{width:148px}
 .cu-ph,.cu-lph{position:relative;display:block;height:182px;border-radius:14px;overflow:hidden;margin-bottom:5px;background:var(--chip)}
