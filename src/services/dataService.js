@@ -37,11 +37,17 @@
   const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const uuid = () => global.crypto.randomUUID();
   const now = () => new Date().toISOString();
+  // 저장 데이터(약 2MB)를 매번 JSON.parse 하면 한 번에 9ms씩 걸려 화면이 크게 버벅였다(2026-11-20).
+  // 한 번 읽은 값을 기억해 두고, 저장(write)·삭제·다른 탭에서 바뀔 때만 다시 읽는다
+  let memo = null;
   function read() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
-    catch (_) { return {}; }
+    if (memo) return memo;
+    try { memo = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+    catch (_) { memo = {}; }
+    return memo;
   }
-  function write(value) { localStorage.setItem(STORAGE_KEY, JSON.stringify(value)); return value; }
+  function write(value) { memo = value; localStorage.setItem(STORAGE_KEY, JSON.stringify(value)); return value; }
+  global.addEventListener("storage", ev => { if (ev.key === STORAGE_KEY || ev.key === null) memo = null; });
   function cache(key, value) { const state = read(); state[key] = value; write(state); return value; }
   function list(key) { const value = read()[key]; return Array.isArray(value) ? value : []; }
   function localUserId() {
@@ -730,13 +736,13 @@
     signOut: async () => {
       if (configured && session) { try { await request("/auth/v1/logout", { method: "POST" }); } catch (_) {} }
       localStorage.removeItem(SESSION_KEY);
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_KEY); memo = null;
       localStorage.removeItem(USER_KEY);
       global.location.reload();
     },
     refresh: () => run(async () => { if (configured) await hydrate(); return { mode: connection.mode }; }),
     flush: () => queue,
-    resetDemo: () => { localStorage.removeItem(STORAGE_KEY); return true; },
+    resetDemo: () => { localStorage.removeItem(STORAGE_KEY); memo = null; return true; },
     parseCsv(text) {
       const rows = []; let row = [], cell = "", quoted = false;
       for (let i = 0; i < text.length; i += 1) {
