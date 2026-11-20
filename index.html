@@ -887,7 +887,7 @@ function venueRules(e){
 }
 /* ===== 문화가 있는 날(매주 수요일) — 켜고 끄는 스위치 없이, 수요일(한국 시간)에 앱을 보면 자동 적용 (2026-11-16)
    출처: 국가유산청 궁능유적본부 2026-05-26 발표 — 조선왕릉 5/27~, 덕수궁 8월~, 창덕궁·창경궁·종묘 10월~ 매주 수요일 무료.
-   경복궁은 적용 시기 미정이라 넣지 않음. 관리자 기능의 '문화가 있는 날 미리 보기'로 수요일이 아니어도 시연 가능 */
+   경복궁은 적용 시기 미정이라 넣지 않음. 시연 기능의 '문화가 있는 날 미리 보기'로 수요일이 아니어도 시연 가능 */
 const WDAY_RULES = [
   { re: /^(선정릉|선릉|정릉|태릉|강릉|태릉·강릉|의릉|헌릉|인릉|헌인릉|헌릉·인릉)$/, from: "2026-05-27", l: "문화가 있는 날 무료" },
   { re: /^덕수궁$/, from: "2026-08-01", l: "문화가 있는 날 무료" },
@@ -916,7 +916,7 @@ const effP = e => eff(e).price;
 // 공공데이터 행사도 혜택 규칙이 있으면 내 혜택가로 거른다 (혜택가로 만 원 이하가 되는 공연은 혜택을 켰을 때만 보임)
 const cultureFilterPrice = e => e.is_public_culture && !(e.ben && e.ben.length) && !wdayRule(e) ? e.price : effP(e);
 function isDemoCulture(e){ if (e?.is_demo) return true; return !!e && !e.is_public_culture && e.src!=="사용자 제보" && !e.report_id && (e.is_sample===true || e.src==="예시 데이터"); }
-/* 관리자 기능 '더미(예시) 데이터 보기'가 꺼져 있으면 예시 행사·할인·알림·찜·예시 기록을 숨긴다 */
+/* 시연 기능 '더미(예시) 데이터 보기'가 꺼져 있으면 예시 행사·할인·알림·찜·예시 기록을 숨긴다 */
 const hideDemo = e => !S.showDemo && isDemoCulture(e);
 const hideDemoNoti = n => !S.showDemo && isDemoCulture(findAny(n.target_id || n.id));
 /* ===== 상황 필터: 지금 내 상황에 맞는 조건 묶음 (다른 필터와 함께 적용) ===== */
@@ -1448,13 +1448,8 @@ function detail(id,level){
     </div>
     <button class="linkbtn" id="dReport">광고·허위 정보 신고</button></div>`,{placeId:id,level});
   $("#dX").onclick = closeSheet;
-  $("#dSave").onclick = async () => {
-    const next=S.saved.has(id), target={target_type:"event",target_id:id};
-    $("#dSave").disabled=true;
-    const result=await (next?window.dataService.removeSaved(target):window.dataService.saveTarget(target));
-    if(!result.ok){ $("#dSave") && ($("#dSave").disabled=false); return; }
-    next?S.saved.delete(id):S.saved.add(id); detail(id);
-  };
+  // 찜: 찜 안 한 곳이면 찜하고 컬렉션 고르기, 찜한 곳이면 컬렉션 고르기·찜 해제 (src/ui/collections.js, 2026-11-21)
+  $("#dSave").onclick = ev => window.collections.onSaveButton(id, ev.currentTarget);
   $("#dNaver").onclick = () => openNaverMap(e.place||e.name);
   $("#dPlan") && ($("#dPlan").onclick = () => planSheet(id));
   if($("#dHomepage")) $("#dHomepage").onclick=()=>{const url=e.homepage_url;if(/^https?:\/\//i.test(url))window.open(url,"_blank","noopener,noreferrer");else toast("홈페이지 주소를 확인해 주세요.");};
@@ -1656,6 +1651,7 @@ function notiSheet(){
 }
 
 function savedSheet(){
+  if (window.collections) { window.collections.homeSheet(); return; }
   const items = [...S.saved].map(findAny).filter(it => it && !hideDemo(it));
   sheet(`<div class="sh-h"><h2>찜 목록</h2><button class="x" id="sX" aria-label="닫기">${ico.x}</button></div>
     ${items.map(it => `<button class="listitem ${tier(it.price)}" data-open="${it.id}"><span class="ph">${EMOJI[it.genre]}</span><span><b>${esc(it.name)}</b><small>문화 · ${period(it)}</small></span><span class="pr">${priceText(it)}</span></button>`).join("") || '<p class="note" style="padding:20px 0">찜한 곳이 없어요.</p>'}`);
@@ -2164,7 +2160,7 @@ function renderPage(){
       ${supportProgramsCard()}
       ${S.bookings.length?`<div class="card"><h3>오늘 예약 <span class="note">${S.bookings.length}건</span></h3>${S.bookings.map(k=>`<div class="task"><div><b>${esc(k.title)}</b><small>${esc(k.name)} · ${k.time} · ${k.q}개 · ${won(k.sum)}</small></div><b style="letter-spacing:.06em">${k.code}</b></div>`).join("")}</div>`:""}
       <div class="card"><h3>알림</h3><button class="out" id="goNoti" style="width:100%">문화 알림 설정 열기</button></div>
-      <div class="card"><h3>관리자 기능 <span class="tag">데모</span></h3><label class="sw" for="showDemo"><span>더미(예시) 데이터 보기<small style="display:block;color:var(--muted);font-size:11.5px;font-weight:500">예시 행사·오늘 할인·예시 알림·기록 탭 예시 기록</small></span><input type="checkbox" id="showDemo" ${S.showDemo?"checked":""}></label><label class="sw" for="wdayPreview"><span>문화가 있는 날 미리 보기<small style="display:block;color:var(--muted);font-size:11.5px;font-weight:500">수요일이 아니어도 수요일 혜택을 적용해서 보기 (발표·시연용)</small></span><input type="checkbox" id="wdayPreview" ${S.wdayPreview?"checked":""}></label><label class="sw" for="demoMode"><span>시연 모드 (위치·반복 투표 허용)</span><input type="checkbox" id="demoMode" ${S.demoMode?"checked":""}></label><div class="acts"><button class="out" id="refreshDataBtn">데이터 새로고침</button><button class="out" id="resetDataBtn">데이터 초기화</button></div></div>`;
+      <div class="card"><h3>시연 기능 <span class="tag">데모</span></h3><label class="sw" for="showDemo"><span>더미(예시) 데이터 보기<small style="display:block;color:var(--muted);font-size:11.5px;font-weight:500">예시 행사·오늘 할인·예시 알림·기록 탭 예시 기록</small></span><input type="checkbox" id="showDemo" ${S.showDemo?"checked":""}></label><label class="sw" for="wdayPreview"><span>문화가 있는 날 미리 보기<small style="display:block;color:var(--muted);font-size:11.5px;font-weight:500">수요일이 아니어도 수요일 혜택을 적용해서 보기 (발표·시연용)</small></span><input type="checkbox" id="wdayPreview" ${S.wdayPreview?"checked":""}></label><label class="sw" for="demoMode"><span>시연 모드 (위치·반복 투표 허용)</span><input type="checkbox" id="demoMode" ${S.demoMode?"checked":""}></label><div class="acts"><button class="out" id="refreshDataBtn">데이터 새로고침</button><button class="out" id="resetDataBtn">데이터 초기화</button></div></div>`;
   }
 }
 
@@ -2891,7 +2887,7 @@ document.addEventListener("change", ev => {
 
 document.addEventListener("keydown", ev => { if (ev.key==="Escape"){ if (!$("#scrim").hidden) closeSheet(); else if (!$("#peek").hidden) closePeek(); } });
 function persistPreferences(){
-  window.dataService.update("app_state",{hideSamples:S.hideSamples,showDemo:S.showDemo,demoMode:S.demoMode,wdayPreview:S.wdayPreview,bells:[...S.bells],prefs:{...S.prefs,regions:[...S.prefs.regions],genres:[...S.prefs.genres]}});
+  window.dataService.update("app_state",{hideSamples:S.hideSamples,showDemo:S.showDemo,demoMode:S.demoMode,wdayPreview:S.wdayPreview,bells:[...S.bells],collections:S.collections||[],prefs:{...S.prefs,regions:[...S.prefs.regions],genres:[...S.prefs.genres]}});
 }
 function applyDataState(){
   const ds=window.dataService;
@@ -2916,7 +2912,7 @@ function applyDataState(){
   S.profile=ds.getProfile(); S.benefit=Boolean(ds.read().benefit_enabled);
   S.saved=new Set(ds.getSaved().map(r=>r.target_id)); S.notis=ds.getNotifications();
   const preferences=ds.read().app_state;
-  if(preferences){ S.hideSamples=Boolean(preferences.hideSamples); S.showDemo=Boolean(preferences.showDemo); S.demoMode=preferences.demoMode??true; S.bells=new Set(preferences.bells||[]); if(preferences.prefs){ S.prefs={...S.prefs,...preferences.prefs,regions:new Set((preferences.prefs.regions||[]).map(r=>OLD_REGION[r]||r).filter(r=>SEOUL_GU.includes(r))),genres:new Set(preferences.prefs.genres||[])}; if(["전시","공연","체험","축제"].every(g=>S.prefs.genres.has(g))){ S.prefs.genres.add("무료 공간"); S.prefs.genres.add("팝업"); } } }
+  if(preferences){ S.collections=Array.isArray(preferences.collections)?preferences.collections:(S.collections||[]); S.hideSamples=Boolean(preferences.hideSamples); S.showDemo=Boolean(preferences.showDemo); S.demoMode=preferences.demoMode??true; S.bells=new Set(preferences.bells||[]); if(preferences.prefs){ S.prefs={...S.prefs,...preferences.prefs,regions:new Set((preferences.prefs.regions||[]).map(r=>OLD_REGION[r]||r).filter(r=>SEOUL_GU.includes(r))),genres:new Set(preferences.prefs.genres||[])}; if(["전시","공연","체험","축제"].every(g=>S.prefs.genres.has(g))){ S.prefs.genres.add("무료 공간"); S.prefs.genres.add("팝업"); } } }
   const baseJudges=judgeList.filter(j=>/^j[123]$/.test(j.id));
   const reports=ds.getReports().map(r=>{
     const demoVotes=S.demoMode?(ds.read().demo_votes||[]).filter(v=>v.report_id===r.id):[];
@@ -2964,4 +2960,5 @@ document.addEventListener("change", ev => {
 
 </script>
 <script src="/src/ui/curation.js"></script>
+<script src="/src/ui/collections.js"></script>
 </body></html>
