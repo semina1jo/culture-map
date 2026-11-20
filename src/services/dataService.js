@@ -39,15 +39,33 @@
   const now = () => new Date().toISOString();
   // 저장 데이터(약 2MB)를 매번 JSON.parse 하면 한 번에 9ms씩 걸려 화면이 크게 버벅였다(2026-11-20).
   // 한 번 읽은 값을 기억해 두고, 저장(write)·삭제·다른 탭에서 바뀔 때만 다시 읽는다
-  let memo = null;
+  // 공공데이터(culture_events, 저장 데이터의 95% 이상)는 따로 저장한다(2026-11-21).
+  // 찜·알림·설정을 바꿀 때 2MB 전체를 다시 저장하지 않고, 공공데이터는 새로 받아 왔을 때만 저장한다
+  const CULTURE_KEY = STORAGE_KEY + "-culture";
+  let memo = null, savedCulture = null;
   function read() {
     if (memo) return memo;
     try { memo = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
     catch (_) { memo = {}; }
+    if (Array.isArray(memo.culture_events)) savedCulture = null; // 예전 방식(한 덩어리)으로 저장된 기기: 다음 저장 때 분리
+    else {
+      try { const c = JSON.parse(localStorage.getItem(CULTURE_KEY) || "null"); if (Array.isArray(c)) { memo.culture_events = c; savedCulture = c; } }
+      catch (_) {}
+    }
     return memo;
   }
-  function write(value) { memo = value; localStorage.setItem(STORAGE_KEY, JSON.stringify(value)); return value; }
-  global.addEventListener("storage", ev => { if (ev.key === STORAGE_KEY || ev.key === null) memo = null; });
+  function write(value) {
+    memo = value;
+    const { culture_events, ...rest } = value || {};
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
+    if (Array.isArray(culture_events) && culture_events !== savedCulture) {
+      // 공공데이터는 다시 받을 수 있으므로 저장 공간이 모자라도 앱을 멈추지 않는다
+      try { localStorage.setItem(CULTURE_KEY, JSON.stringify(culture_events)); savedCulture = culture_events; } catch (_) {}
+    }
+    return value;
+  }
+  function clearStore() { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(CULTURE_KEY); memo = null; savedCulture = null; }
+  global.addEventListener("storage", ev => { if (ev.key === STORAGE_KEY || ev.key === CULTURE_KEY || ev.key === null) { memo = null; savedCulture = null; } });
   function cache(key, value) { const state = read(); state[key] = value; write(state); return value; }
   function list(key) { const value = read()[key]; return Array.isArray(value) ? value : []; }
   function localUserId() {
@@ -74,7 +92,11 @@
       const body = await response.json().catch(() => ({}));
       throw Object.assign(new Error(body.message || body.msg || body.error_description || `Supabase 요청 실패 (${response.status})`), { code: body.code || body.error_code || String(response.status), status: response.status });
     }
-    if (response.status === 204 || response.headers.get("content-length") === "0") return null;
+    if (response.status === 204 || response.headers.get("content-length") === "0") return options.withCount ? { rows: [], total: 0 } : null;
+    if (options.withCount) {
+      const total = Number(String(response.headers.get("content-range") || "").split("/")[1]);
+      return { rows: (await response.json().catch(() => null)) || [], total: Number.isFinite(total) ? total : null };
+    }
     return response.json().catch(() => null);
   }
   function setSession(value) {
@@ -149,15 +171,30 @@
   }
   function insert(table, row) { return request(`/rest/v1/${table}`, { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(row) }); }
   function remove(table, query) { return request(`/rest/v1/${table}?${query}`, { method: "DELETE", headers: { Prefer: "return=minimal" } }); }
+  // 첫 페이지에서 전체 건수를 함께 받고, 나머지 페이지는 동시에 받는다(2026-11-21).
+  // 예전엔 200건씩 차례로 받아 공공데이터 1,100여 건에 6번(약 2초) 걸렸다
   async function selectAll(table, filter = "") {
-    const output = [];
-    for (let offset = 0; ; offset += 200) {
-      const where = ownTables.has(table) ? `&user_id=eq.${encodeURIComponent(userId())}` : "";
-      const result = await request(`/rest/v1/${table}?select=${columns[table]}${where}${filter}&order=${table === "user_profiles" ? "user_id" : "id"}&limit=200&offset=${offset}`);
-      output.push(...result);
-      if (result.length < 200) return output;
+    const where = ownTables.has(table) ? `&user_id=eq.${encodeURIComponent(userId())}` : "";
+    const order = table === "user_profiles" ? "user_id" : "id";
+    const path = (offset, limit) => `/rest/v1/${table}?select=${columns[table]}${where}${filter}&order=${order}&limit=${limit}&offset=${offset}`;
+    const PAGE = 1000;
+    const first = await request(path(0, PAGE), { headers: { Prefer: "count=exact" }, withCount: true });
+    const output = first.rows;
+    if (first.total == null) {
+      // 전체 건수를 못 받으면 예전처럼 차례로 받는다
+      for (let offset = output.length; output.length && output.length % PAGE === 0; offset += PAGE) {
+        const more = await request(path(offset, PAGE)); output.push(...more); if (more.length < PAGE) break;
+      }
+      return output;
     }
+    if (output.length >= first.total || !output.length) return output;
+    const step = output.length; // 서버가 한 번에 주는 최대 건수(보통 1,000)
+    const offsets = []; for (let o = step; o < first.total; o += step) offsets.push(o);
+    const pages = await Promise.all(offsets.map(o => request(path(o, step))));
+    pages.forEach(rows => output.push(...(rows || [])));
+    return output;
   }
+
   function run(task) {
     pending += 1; connection.pending = pending;
     const work = queue.then(async () => {
@@ -736,13 +773,13 @@
     signOut: async () => {
       if (configured && session) { try { await request("/auth/v1/logout", { method: "POST" }); } catch (_) {} }
       localStorage.removeItem(SESSION_KEY);
-      localStorage.removeItem(STORAGE_KEY); memo = null;
+      clearStore();
       localStorage.removeItem(USER_KEY);
       global.location.reload();
     },
     refresh: () => run(async () => { if (configured) await hydrate(); return { mode: connection.mode }; }),
     flush: () => queue,
-    resetDemo: () => { localStorage.removeItem(STORAGE_KEY); memo = null; return true; },
+    resetDemo: () => { clearStore(); return true; },
     parseCsv(text) {
       const rows = []; let row = [], cell = "", quoted = false;
       for (let i = 0; i < text.length; i += 1) {
