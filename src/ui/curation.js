@@ -92,7 +92,7 @@
       run() { const t = today(); const soonEnd = e => isEvent(e) && e.end && days(t, e.end) >= 0 && days(t, e.end) <= 6;
         const items = basePool().filter(soonEnd);
         return { items: items.sort((a, b) => byEnd(a, b) || (hasPhoto(b) - hasPhoto(a))), meta: e => e.place || "", badge: dday }; } },
-    weekend: { chip: "무지출 주말", title: "월급날 전날에도 당당한 '무지출' 주말 코스", desc: "이번 주말 무료로 여는 곳",
+    weekend: { chip: "무지출 주말", title: "돈이 없어도 당당한 '무지출' 주말 문화생활", desc: "이번 주말 무료로 여는 곳",
       run() { const [sat, sun] = nextWeekend(); const items = basePool().filter(e => isFree(e) && activeDuring(e, sat, sun)).sort(evFirst);
         return { items, meta: e => isEvent(e) ? period(e) : `상시 · ${shortGu(guOf(e)) || "서울"}`, range: `${md(sat)}–${md(sun)}` }; } },
     wday: { chip: "문화가 있는 날", title: "수요일 문화가 있는 날", desc: "매주 수요일 무료·할인되는 곳 (고궁·종묘·왕릉 등)",
