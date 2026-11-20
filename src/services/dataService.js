@@ -177,7 +177,8 @@
     const where = ownTables.has(table) ? `&user_id=eq.${encodeURIComponent(userId())}` : "";
     const order = table === "user_profiles" ? "user_id" : "id";
     const path = (offset, limit) => `/rest/v1/${table}?select=${columns[table]}${where}${filter}&order=${order}&limit=${limit}&offset=${offset}`;
-    const PAGE = 1000;
+    // 한 페이지가 크면 응답이 오래 걸려서(1,000건 ≈ 1.4초), 작은 페이지 여러 개를 동시에 받는다
+    const PAGE = 250;
     const first = await request(path(0, PAGE), { headers: { Prefer: "count=exact" }, withCount: true });
     const output = first.rows;
     if (first.total == null) {
@@ -188,7 +189,7 @@
       return output;
     }
     if (output.length >= first.total || !output.length) return output;
-    const step = output.length; // 서버가 한 번에 주는 최대 건수(보통 1,000)
+    const step = output.length; // 서버가 한 번에 주는 최대 건수 (PAGE 이하)
     const offsets = []; for (let o = step; o < first.total; o += step) offsets.push(o);
     const pages = await Promise.all(offsets.map(o => request(path(o, step))));
     pages.forEach(rows => output.push(...(rows || [])));
