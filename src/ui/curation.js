@@ -88,10 +88,9 @@
     rain: { chip: "비 오는 날", title: "비 오는 날, 0원으로 즐기는 실내 문화 피난처", desc: "실내 공간 + 무료 · 이번 주에 여는 곳",
       run() { const t = today(), w = addFilterDays(t, 6); const items = basePool().filter(e => isFree(e) && isIndoor(e) && activeDuring(e, t, w)).sort(evFirst);
         return { items, meta: e => `${g4(e)} · ${shortGu(guOf(e)) || "서울"}` }; } },
-    lastcall: { chip: "마감 임박", title: "이번 주가 마지막! 놓치면 아쉬운 팝업·전시", desc: "7일 안에 끝나는 전시·팝업 · 끝나는 날이 빠른 순",
+    lastcall: { chip: "마감 임박", title: "이번 주가 마지막! 놓치면 아쉬운 문화생활", desc: "7일 안에 끝나는 전시·공연·팝업·체험·축제 · 끝나는 날이 빠른 순",
       run() { const t = today(); const soonEnd = e => isEvent(e) && e.end && days(t, e.end) >= 0 && days(t, e.end) <= 6;
-        let items = basePool().filter(e => soonEnd(e) && ["전시", "팝업"].includes(g4(e)));
-        if (items.length < 5) items = basePool().filter(soonEnd);
+        const items = basePool().filter(soonEnd);
         return { items: items.sort((a, b) => byEnd(a, b) || (hasPhoto(b) - hasPhoto(a))), meta: e => e.place || "", badge: dday }; } },
     weekend: { chip: "무지출 주말", title: "월급날 전날에도 당당한 '무지출' 주말 코스", desc: "이번 주말 무료로 여는 곳",
       run() { const [sat, sun] = nextWeekend(); const items = basePool().filter(e => isFree(e) && activeDuring(e, sat, sun)).sort(evFirst);
