@@ -155,7 +155,7 @@
   function guSection(used) {
     const gu = CUR.gu || defaultGu();
     const counts = {}; weekEvents().forEach(e => { const g = guOf(e); if (GU_POS[g]) counts[g] = (counts[g] || 0) + 1; });
-    const mx = Math.max(1, ...Object.values(counts)); const lvl = n => !n ? 0 : n / mx > .45 ? 3 : n / mx > .18 ? 2 : 1; // 가장 많은 구 대비 비율로 진하기
+    const vals = Object.values(counts).sort((a, b) => a - b), q = f => vals[Math.floor((vals.length - 1) * f)] || 0; const lvl = n => !n ? 0 : n >= q(.67) ? 3 : n >= q(.34) ? 2 : 1; // 행사가 있는 구 사이 순위로 3단계 진하기
     const active = Object.keys(counts).length;
     const tiles = GU_GRID.flat().map(g => g
       ? `<button class="cu-gt l${lvl(counts[g])} ${g === gu ? "sel" : ""}" data-curgu="${g}" aria-pressed="${g === gu}" aria-label="${g} 이번 주 행사 ${counts[g] || 0}건"><b>${shortGu(g)}</b>${counts[g] ? `<small>${counts[g]}곳</small>` : ""}</button>`
