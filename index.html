@@ -606,6 +606,7 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 
   <nav class="nav" aria-label="메뉴">
     <button data-tab="map" aria-current="page"><svg viewBox="0 0 24 24"><path class="f" d="M12 21.5s-7-6.1-7-11.6A7 7 0 0 1 19 9.9c0 5.5-7 11.6-7 11.6Z"/><circle cx="12" cy="10" r="2.6"/></svg>맵</button>
+    <button data-tab="cur"><svg viewBox="0 0 24 24"><rect class="f" x="3.5" y="3.5" width="7" height="7" rx="2"/><rect class="f" x="13.5" y="3.5" width="7" height="7" rx="2"/><rect class="f" x="3.5" y="13.5" width="7" height="7" rx="2"/><rect class="f" x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>큐레이션</button>
     <button data-tab="record"><svg viewBox="0 0 24 24"><rect class="f" x="3.5" y="5" width="17" height="15.5" rx="4"/><path d="M3.5 10h17M8.5 3v4M15.5 3v4"/><path d="M12 17.6s-2.6-1.5-2.6-3.3a1.3 1.3 0 0 1 2.6-.5 1.3 1.3 0 0 1 2.6.5c0 1.8-2.6 3.3-2.6 3.3Z"/></svg>기록</button>
     <button data-tab="me"><svg viewBox="0 0 24 24"><circle class="f" cx="12" cy="8.5" r="4"/><path class="f" d="M4.5 20.5c.8-3.7 3.8-6 7.5-6s6.7 2.3 7.5 6"/></svg>설정</button>
   </nav>
@@ -2140,6 +2141,7 @@ function adminDetail(id){
 /* ===== 다른 탭 페이지 ===== */
 function renderPage(){
   const pg = $("#page");
+  if (S.tab === "cur"){ if (window.curationPage) window.curationPage(pg); return; }
   if (S.tab === "record"){ recordPage(pg); return; }
   if (S.tab === "admin"){ adminPage(pg); return; }
   if (S.tab === "me" && !S.subLoaded && !window.dataService.account().isGuest){ S.subLoaded = true; window.dataService.listSubmissions(false).then(r => { if (r.ok && S.tab === "me") renderPage(); }); }
@@ -2961,4 +2963,5 @@ document.addEventListener("change", ev => {
 });
 
 </script>
+<script src="/src/ui/curation.js"></script>
 </body></html>
