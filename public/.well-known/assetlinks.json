@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.semina1jo.gamun",
+        "sha256_cert_fingerprints": ["C4:B5:E7:58:50:5E:2E:49:62:4E:5A:DB:28:EF:8E:0E:64:A8:E6:1D:9B:93:B7:E2:93:A4:A3:61:9E:CC:7A:D3"]
+      }
+    }]
