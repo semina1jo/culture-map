@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#FAF8F4">
+<title>가문의 영광 앱 받기</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--bg:#FAF8F4;--ink:#1D2238;--sub:#4D5163;--line:#E6E2D9;--red:#C8372D}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+  main{max-width:440px;margin:0 auto;padding:48px 22px 40px;display:flex;flex-direction:column;gap:24px}
+  .brand{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+  .icon{width:104px;height:104px;border-radius:26px;background:#fff;box-shadow:0 0 0 1px var(--line);display:flex;align-items:center;justify-content:center}
+  h1{margin:0;font-size:28px;letter-spacing:-.02em}
+  .lead{margin:0;color:var(--sub)}
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;height:56px;border-radius:16px;background:var(--ink);color:var(--bg);text-decoration:none;font-weight:700;font-size:17px}
+  .btn:focus-visible,.link:focus-visible{outline:3px solid var(--red);outline-offset:3px}
+  .meta{margin:-14px 0 0;text-align:center;font-size:13px;color:var(--sub)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px}
+  .card h2{margin:0 0 8px;font-size:16px}
+  ol{margin:0;padding-left:20px;color:var(--sub);font-size:15px}
+  ol li+li{margin-top:6px}
+  .card p{margin:0;color:var(--sub);font-size:15px}
+  .link{color:var(--ink);font-weight:700}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">
+    <div class="icon">
+      <svg width="72" height="88" viewBox="20 8 80 104" aria-hidden="true"><path d="M60 108 C40 85 28 72 28 54 A32 32 0 0 1 92 54 C92 72 80 85 60 108 Z" fill="#1D2238"/><path d="M45 20 L51 28 L60 15 L69 28 L75 20 L73 33 L47 33 Z" fill="#C8372D" stroke="#C8372D" stroke-width="3" stroke-linejoin="round"/><circle cx="50" cy="54" r="4.8" fill="#FAF8F4"/><circle cx="70" cy="54" r="4.8" fill="#FAF8F4"/><path d="M51 65 Q60 72 69 65" fill="none" stroke="#FAF8F4" stroke-width="4" stroke-linecap="round"/></svg>
+    </div>
+    <h1>가문의 영광</h1>
+    <p class="lead">만 원 이하로 즐기는 전시, 공연, 체험, 무료 공간을 지도에서 찾고 기록해요.</p>
+  </div>
+
+  <a class="btn" href="/download/gamun.apk" download="가문의영광.apk">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+    안드로이드 앱 받기 (APK)
+  </a>
+  <p class="meta">약 1MB · 안드로이드 전용</p>
+
+  <section class="card">
+    <h2>설치 방법</h2>
+    <ol>
+      <li>위 버튼을 눌러 파일을 받아요.</li>
+      <li>받은 파일을 열어요. "출처를 알 수 없는 앱" 안내가 뜨면 설정에서 허용해요.</li>
+      <li>설치를 누르면 홈 화면에 가문의 영광 아이콘이 생겨요.</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2>아이폰이라면</h2>
+    <p><a class="link" href="/">웹에서 바로 열기</a>를 누른 뒤, 사파리 공유 버튼에서 "홈 화면에 추가"를 고르면 앱처럼 쓸 수 있어요.</p>
+  </section>
+</main>
+</body>
+</html>
