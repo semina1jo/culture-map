@@ -270,7 +270,7 @@
     const anyDemo = [...CHIP_ORDER, ...BOTTOM].some(k => TOPICS[k].review);
     pg.dataset.cu = "1";
     pg.innerHTML = `<div class="cu">
-      <h1 class="cu-title">이번 주, 돈 덜 드는 서울</h1><p class="sr-only">큐레이션 · 적은 돈으로 알차게, 데이터로 골랐어요</p>
+      <h1>큐레이션</h1>
       ${heroes.length ? `<section class="cu-sec first"><div class="cu-row heroes">${heroes.map((t, i) => heroCard(t, i, heroes.length, ho.label)).join("")}</div></section>` : ""}
       <section class="cu-sec"><div class="cu-h"><h2>상황별로 골라보기</h2></div><div class="cu-chips">${CHIP_ORDER.map((k, i) => `<button class="cu-chip t${i + 1}" data-cur="${k}"><i class="cu-ci"><svg viewBox="0 0 24 24" aria-hidden="true">${CHIP_ICON[k]}</svg></i><span>${TOPICS[k].chip}</span></button>`).join("")}</div></section>
       ${section(lc, used, "poster")}
@@ -304,7 +304,7 @@
 
   /* ---------- 스타일 ---------- */
   const css = `
-.cu{padding-bottom:8px}.cu h1{margin:4px 0 2px}.cu-lead{margin:0 0 4px;color:var(--ink2);font-size:14px}
+.cu{padding-bottom:8px}.cu h1{margin:2px 0 10px}.cu-lead{margin:0 0 4px;color:var(--ink2);font-size:14px}
 .cu-sec{margin-top:24px}.cu-h{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:10px}
 .cu-h h2{margin:0;font-size:17px;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:6px;flex-wrap:wrap}.cu-h small{display:block;color:var(--ink2);font-size:12.5px;margin-top:2px}
 .cu-h.sub{margin:14px 0 8px}.cu-h.sub h3{margin:0;font-size:15px;font-weight:800}
@@ -367,7 +367,7 @@
 .cu-note{display:flex;gap:6px;margin:22px 2px 0;font-size:12px;line-height:1.5;color:var(--ink2)}.cu-note svg{margin-top:3px;flex:none}
 .nav button svg .g{fill:none}.nav button[aria-current="page"] svg .g{fill:var(--accent-soft)}
 /* ===== 8차 시안 탐색 화면 레이아웃 (디자인 미리보기 브랜치) ===== */
-.cu h2,.cu-title,.cu-h2t b{font-family:var(--f-title,var(--f2,var(--f)));font-weight:700;letter-spacing:-.01em}
+.cu h2,.cu-h2t b{font-family:var(--f-title,var(--f2,var(--f)));font-weight:400;font-synthesis:none;letter-spacing:0}
 .cu-top{display:flex;align-items:center;justify-content:space-between;margin:2px 0 14px}
 .cu-region{display:flex;align-items:center;gap:4px;height:44px;padding:0 14px 0 16px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);font-weight:700;font-size:14px}
 .cu-region svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
@@ -375,10 +375,10 @@
 .cu-ic{width:44px;height:44px;border:1px solid var(--line);border-radius:50%;background:#fff;display:grid;place-items:center;padding:0;color:var(--ink)}
 .cu-ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .cu .cu-title{margin:4px 0 0;font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.25;display:block}
-.cu-sec.first{margin-top:16px}
-.cu-sec{margin-top:28px}
+.cu-sec.first{margin-top:0}
+.cu-sec{margin-top:24px}
 .cu-h h2{font-size:18px;font-weight:700}
-.cu-hero2{position:relative;flex:none;width:min(340px,86vw);height:188px;border:0;border-radius:24px;overflow:hidden;padding:0;background:var(--chip);text-align:left;color:#fff}
+.cu-hero2{position:relative;flex:none;width:min(340px,86vw);height:164px;border:0;border-radius:24px;overflow:hidden;padding:0;background:var(--chip);text-align:left;color:#fff}
 .cu-h2ph{position:absolute;inset:0;display:block}
 .cu-h2ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .cu-h2ph .cu-fb{padding:16px 18px 80px}
@@ -389,9 +389,9 @@
 .cu-h2t b{font-size:16px;font-weight:700;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:keep-all}
 .cu-h2go{flex:none;width:40px;height:40px;border-radius:50%;background:var(--pink,#FFB0C6);color:var(--ink);display:grid;place-items:center}
 .cu-h2go svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
-.cu-chip{min-height:56px;justify-content:flex-start;gap:6px;padding:0 6px;border:0;border-radius:18px;font-size:12.5px;font-weight:600}
+.cu-chip{min-height:48px;justify-content:flex-start;gap:6px;padding:0 6px;border:0;border-radius:18px;font-size:12.5px;font-weight:600}
 .cu-chip.t1{background:#DCE7FF}.cu-chip.t2{background:#FFF0D9}.cu-chip.t3{background:#E3F3EC}.cu-chip.t4{background:#FFE0E8}.cu-chip.t5{background:#E6E1FF}.cu-chip.t6{background:#EEF0F5}
-.cu-ci{flex:none;width:30px;height:30px;border-radius:50%;background:#fff;display:grid;place-items:center;font-style:normal}
+.cu-ci{flex:none;width:28px;height:28px;border-radius:50%;background:#fff;display:grid;place-items:center;font-style:normal}
 .cu-chip .cu-ci svg{width:16px;height:16px;stroke:var(--ink);stroke-width:2}
 .cu-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .cu-row{gap:12px}
