@@ -270,8 +270,6 @@
     const anyDemo = [...CHIP_ORDER, ...BOTTOM].some(k => TOPICS[k].review);
     pg.dataset.cu = "1";
     pg.innerHTML = `<div class="cu">
-      <div class="cu-top"><span></span>
-        <span class="cu-acts"><button class="cu-ic" data-cuact="search" aria-label="검색"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button><button class="cu-ic" data-cuact="noti" aria-label="문화 알림"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.3 1.6a.6.6 0 0 1-.5 1H5.2a.6.6 0 0 1-.5-1L6 16.5Z"/><path d="M10 21.5h4"/></svg></button></span></div>
       <h1 class="cu-title">이번 주, 돈 덜 드는 서울</h1><p class="sr-only">큐레이션 · 적은 돈으로 알차게, 데이터로 골랐어요</p>
       ${heroes.length ? `<section class="cu-sec first"><div class="cu-row heroes">${heroes.map((t, i) => heroCard(t, i, heroes.length, ho.label)).join("")}</div></section>` : ""}
       <section class="cu-sec"><div class="cu-h"><h2>상황별로 골라보기</h2></div><div class="cu-chips">${CHIP_ORDER.map((k, i) => `<button class="cu-chip t${i + 1}" data-cur="${k}"><i class="cu-ci"><svg viewBox="0 0 24 24" aria-hidden="true">${CHIP_ICON[k]}</svg></i><span>${TOPICS[k].chip}</span></button>`).join("")}</div></section>
@@ -376,7 +374,7 @@
 .cu-acts{display:flex;gap:8px}
 .cu-ic{width:44px;height:44px;border:1px solid var(--line);border-radius:50%;background:#fff;display:grid;place-items:center;padding:0;color:var(--ink)}
 .cu-ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.cu .cu-title{margin:0;font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.25;display:block}
+.cu .cu-title{margin:4px 0 0;font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.25;display:block}
 .cu-sec.first{margin-top:16px}
 .cu-sec{margin-top:28px}
 .cu-h h2{font-size:18px;font-weight:700}
