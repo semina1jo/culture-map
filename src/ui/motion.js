@@ -1,6 +1,6 @@
 /* 화면 움직임 (디자인 미리보기 브랜치)
    - 시트: 아래에서 올라오고, 닫을 때는 복제본만 살짝 내려가며 사라진다(실제 상태는 기존처럼 바로 정리)
-   - 탭 이동: 새 화면이 살짝 떠오르며 나타나고, 큐레이션·기록·설정의 묶음은 차례로 나타난다
+   - 탭 이동: Material 'Fade through'를 가볍게(0.2초 페이드 + 살짝 커지기)
    - '동작 줄이기'를 켠 기기에서는 아무것도 하지 않는다 */
 (function () {
   const reduce = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -21,7 +21,7 @@
       const result = openSheet.apply(this, arguments);
       if (reduce() || !scrim) return result;
       const panel = scrim.querySelector(".sheet");
-      if (!wasOpen) { once(scrim, "mo-scrim-in", 320); once(panel, "mo-sheet-in", 360); }
+      if (!wasOpen) { once(scrim, "mo-scrim-in", 340); once(panel, "mo-sheet-in", 340); }
       else if (!same) once(panel, "mo-sheet-swap", 260);
       return result;
     };
@@ -43,7 +43,7 @@
         ghost.appendChild(copy);
         scrim.parentNode.insertBefore(ghost, scrim);
         copy.scrollTop = panel.scrollTop;
-        setTimeout(() => ghost.remove(), 240);
+        setTimeout(() => ghost.remove(), 200);
       }
       return close.apply(this, arguments);
     };
@@ -58,8 +58,8 @@
     setTimeout(() => {
       const now = tab();
       if (!now || now === was) return;
-      if (now === "map") { once($s("#head"), "mo-fade-in", 300); once($s("#mapUi"), "mo-fade-in", 300); }
-      else once($s("#page"), "mo-page-in", 520);
+      if (now === "map") { once($s("#head"), "mo-fade-in", 260); once($s("#mapUi"), "mo-fade-in", 260); }
+      else once($s("#page"), "mo-page-in", 260);
     }, 0);
   }, true); // 캡처 단계: 탭이 바뀌기 전 값을 먼저 읽는다
 })();
