@@ -541,6 +541,7 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 .om-grp.al button{display:grid;place-items:center}.om-grp.al svg{width:18px;height:18px;fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round}
 .om-ink{width:52px;height:52px;border-radius:14px;border:0;background:var(--chip);display:grid;place-items:center;padding:0;flex:none}
 .om-ink span{width:22px;height:22px;border-radius:999px;border:2px solid var(--ink);background:var(--ink)}.om-ink.light span{background:#fff}
+.om-ink{position:relative}.om-ink.auto::after{content:"자동";position:absolute;bottom:3px;left:0;right:0;font-size:9.5px;font-weight:700;color:var(--ink2)}.om-ink.auto span{margin-bottom:10px}
 .om-sec{margin-top:14px;display:flex;flex-direction:column;gap:6px}
 .om-lb{font-size:13px;font-weight:600;color:var(--ink2)}
 .om-grp.big{grid-template-columns:repeat(4,minmax(0,1fr))}.om-grp.big button{height:36px;font-size:13px;font-weight:500}.om-grp.big button[aria-pressed="true"]{font-weight:600}
@@ -3022,12 +3023,12 @@ const memoSheet = (date, id) => privateSheet(date, id); // 예전 이름
    미리보기와 저장 이미지는 같은 캔버스 그리기를 쓴다(1080×1920 = 시안 216×384의 5배) */
 const OMW_KEY = "culturemap-omw-v2";
 const OMW_ON_DEFAULT = {date:true, title:true, place:true, genre:true, rating:true, paid:false, saved:false, nth:true, badge:false, memo:false, logo:true};
-const OMW_DEFAULT = {pos:"tr", align:"left", dark:true, big:"saved", on:OMW_ON_DEFAULT};
+const OMW_DEFAULT = {pos:"tr", align:"left", dark:true, inkAuto:true, big:"saved", on:OMW_ON_DEFAULT}; // inkAuto: 위젯 자리 사진 밝기로 글자색 자동
 const OMW_CHIPS = [["date","날짜"],["title","행사명"],["place","다녀온 곳"],["genre","장르"],["rating","별점"],["paid","낸 돈"],["saved","아낀 돈"],["nth","이번 달 n번째"],["badge","대표 칭호"],["memo","한 줄 메모"],["logo","로고"]];
 const OMW_BIG = [["saved","아낀 돈"],["paid","낸 돈"],["nth","n번째"],["none","없음"]];
 const OMW_POS = [["tl","왼쪽 위"],["tr","오른쪽 위"],["bl","왼쪽 아래"],["br","오른쪽 아래"]];
 function omwPrefs(){
-  try { const p = JSON.parse(localStorage.getItem(OMW_KEY)); if (p && p.on) return {...OMW_DEFAULT, ...p, on:{...OMW_ON_DEFAULT, ...p.on}, last:true}; } catch(_) {}
+  try { const p = JSON.parse(localStorage.getItem(OMW_KEY)); if (p && p.on) { const {dark, ...rest} = p; return {...OMW_DEFAULT, ...rest, inkAuto:true, on:{...OMW_ON_DEFAULT, ...p.on}, last:true}; } } catch(_) {}
   return {...OMW_DEFAULT, on:{...OMW_ON_DEFAULT}, last:false};
 }
 const DOW_KO = ["일","월","화","수","목","금","토"];
@@ -3070,7 +3071,7 @@ async function drawOmw(c, D, P, src){
   if (im) { const k = Math.max(W / im.width, H / im.height); g.drawImage(im, (W - im.width * k) / 2, (H - im.height * k) / 2, im.width * k, im.height * k); }
   else { const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, "#FFFAF3"); bg.addColorStop(1, genreCol(D.it.genre) + "66"); g.fillStyle = "#FFFAF3"; g.fillRect(0, 0, W, H); g.fillStyle = bg; g.fillRect(0, 0, W, H); }
   const on = k => P.on[k] && omwAvail(D, k), right = P.align === "right";
-  const ink = P.dark ? "#1F2B22" : "#FFFFFF", BW = 104 * K, GAP = 4 * K;
+  let ink = P.dark ? "#1F2B22" : "#FFFFFF"; const BW = 104 * K, GAP = 4 * K;
   const fmt = n => Math.round(n || 0).toLocaleString();
   const wrap = (t, f, max) => { g.font = f; const out = []; let line = "";
     // 띄어쓰기 단위로 줄을 나누고, 한 단어가 폭보다 길 때만 글자 단위로 자른다
@@ -3119,6 +3120,16 @@ async function drawOmw(c, D, P, src){
   const left = P.pos[1] === "l" ? 14 * K : W - 14 * K - BW;
   let y = P.pos[0] === "t" ? 18 * K : H - 18 * K - total;
   const x = right ? left + BW : left;
+  // 글자색 자동: 위젯이 놓일 자리(여백 포함)의 사진 평균 밝기를 보고 어둡게/밝게
+  if (P.inkAuto && im) {
+    try {
+      const pad = 6 * K, rx = Math.max(0, left - pad), ry = Math.max(0, y - pad), rw = Math.min(W - rx, BW + pad * 2), rh = Math.min(H - ry, total + pad * 2);
+      const px = g.getImageData(rx, ry, rw, rh).data; let sum = 0, n = 0;
+      for (let i = 0; i < px.length; i += 4 * 16) { sum += 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]; n++; }
+      P.dark = n ? sum / n / 255 > 0.58 : P.dark; // 밝은 자리 → 어두운 글자
+    } catch(_) { /* 다른 사이트 사진이라 읽을 수 없으면 지금 색 유지 */ }
+  } else if (P.inkAuto && !im) P.dark = true; // 사진 없을 땐 밝은 배경
+  ink = P.dark ? "#1F2B22" : "#FFFFFF";
   g.fillStyle = ink; g.textAlign = right ? "right" : "left"; g.textBaseline = "top";
   if (!P.dark) { g.shadowColor = "rgba(0,0,0,.35)"; g.shadowBlur = 5 * K; g.shadowOffsetY = K; }
   blocks.forEach(b => { g.fillStyle = ink; b.draw(x, y); y += b.h + GAP; });
@@ -3152,11 +3163,12 @@ function omwSheet(id, date, opts = {}){
     <div class="om-bot"><button class="om-share" id="omShare">스토리에 공유</button></div>
   </div>`);
   const cv = $("#omC"); let drawing = Promise.resolve(), dirty = false;
-  const redraw = () => { drawing = drawOmw(cv, D, P, src); return drawing; };
+  const syncInk = () => { const inkB = $("#omInk"); if (!inkB) return; inkB.setAttribute("aria-label", `${P.dark ? "글자를 밝게" : "글자를 어둡게"}${P.inkAuto ? " (지금은 사진 밝기로 자동)" : ""}`); inkB.classList.toggle("light", !P.dark); inkB.classList.toggle("auto", Boolean(P.inkAuto)); };
+  const redraw = () => { drawing = drawOmw(cv, D, P, src).then(syncInk); return drawing; };
   const draw = () => {
     $("#omPos").innerHTML = OMW_POS.map(([k, l]) => `<button type="button" aria-label="${l}" aria-pressed="${P.pos === k}" data-ompos="${k}"><i class="${k}"></i></button>`).join("");
     $("#omAl").innerHTML = [["left","왼쪽 정렬"],["right","오른쪽 정렬"]].map(([k, l]) => `<button type="button" aria-label="${l}" aria-pressed="${P.align === k}" data-omal="${k}">${OMW_ICO[k]}</button>`).join("");
-    const inkB = $("#omInk"); inkB.setAttribute("aria-label", P.dark ? "글자를 밝게" : "글자를 어둡게"); inkB.classList.toggle("light", !P.dark);
+    syncInk();
     $("#omBig").innerHTML = OMW_BIG.map(([k, l]) => `<button type="button" aria-pressed="${P.big === k}" data-ombig="${k}">${l}</button>`).join("");
     $("#omChips").innerHTML = OMW_CHIPS.filter(([k]) => k !== P.big).map(([k, l]) => { const av = omwAvail(D, k);
       return `<button type="button" aria-pressed="${Boolean(P.on[k] && av)}" data-omk="${k}" ${av ? "" : `disabled title="이 기록에는 ${l} 정보가 없어요"`}>${l}${!av && k === "badge" ? " · 준비 중" : ""}</button>`; }).join("");
@@ -3168,8 +3180,8 @@ function omwSheet(id, date, opts = {}){
     redraw();
   };
   const change = () => { dirty = true; draw(); };
-  $("#omInk").onclick = () => { P.dark = !P.dark; change(); };
-  $("#omReset").onclick = () => { Object.assign(P, {pos:OMW_DEFAULT.pos, align:OMW_DEFAULT.align, dark:OMW_DEFAULT.dark, big:OMW_DEFAULT.big, on:{...OMW_ON_DEFAULT}, last:false}); dirty = false; draw(); };
+  $("#omInk").onclick = () => { P.dark = !P.dark; P.inkAuto = false; change(); }; // 직접 고르면 그 카드에서는 자동을 끈다
+  $("#omReset").onclick = () => { Object.assign(P, {pos:OMW_DEFAULT.pos, align:OMW_DEFAULT.align, dark:OMW_DEFAULT.dark, inkAuto:true, big:OMW_DEFAULT.big, on:{...OMW_ON_DEFAULT}, last:false}); dirty = false; draw(); };
   $("#omBack").onclick = back;
   $("#omPic").onclick = () => { pickerOpen = !pickerOpen; $("#omPicker").hidden = !pickerOpen; $("#omPic").setAttribute("aria-expanded", pickerOpen); };
   const markSrc = () => document.querySelectorAll("[data-omsrc]").forEach(b => b.classList.toggle("on", (+b.dataset.omsrc === -1 ? null : cands[+b.dataset.omsrc]) === src));
@@ -3177,7 +3189,7 @@ function omwSheet(id, date, opts = {}){
   $("#omF").onchange = async ev => { const f = ev.target.files[0]; ev.target.value = ""; if (!f) return; try { src = await shrinkPhoto(f); markSrc(); redraw(); } catch(_) { toast("사진을 읽지 못했어요."); } };
   markSrc();
   $("#omShare").onclick = async () => {
-    try { localStorage.setItem(OMW_KEY, JSON.stringify({pos:P.pos, align:P.align, dark:P.dark, big:P.big, on:P.on})); } catch(_) {} // 다음엔 이 조합으로 시작
+    try { localStorage.setItem(OMW_KEY, JSON.stringify({pos:P.pos, align:P.align, big:P.big, on:P.on})); } catch(_) {} // 다음엔 이 조합으로 시작
     await drawing;
     let dataUrl; try { dataUrl = cv.toDataURL("image/jpeg", 0.92); } catch(_) { src = null; await redraw(); dataUrl = cv.toDataURL("image/jpeg", 0.92); toast("이 사진은 카드에 쓸 수 없어 배경으로 바꿨어요."); }
     const name = `omw-${date}.jpg`, blob = await (await fetch(dataUrl)).blob();
