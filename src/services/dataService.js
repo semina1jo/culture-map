@@ -533,26 +533,38 @@
     // 신청 고치기: 신청자는 대기·반려 건만(고치면 다시 대기), 관리자는 상태 유지
     updateSubmission: (id, patch, files = {}) => run(async () => {
       const data = { ...patch };
+      // 승인된 신청은 고치면 지도에 바로 반영된다(2026-11-26). 새 대표 이미지는 공개 저장소(본인 폴더)에 바로 올린다
+      const approved = (list("submissions").find(r => r.id === id) || {}).status === "승인" && !read().is_admin;
       if (configured) {
-        if (files.image) { data.image_path = await uploadPrivateImage(files.image); data.image_url = null; }
+        if (files.image && approved) data.image_url = await uploadPhoto(files.image);
+        else if (files.image) { data.image_path = await uploadPrivateImage(files.image); data.image_url = null; }
         let rows;
         try { rows = await request(`/rest/v1/culture_submissions?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(data) }); }
         catch (error) { if (/too_many_pending/.test(error?.message || "")) throw Object.assign(new Error("검사 대기 중인 신청이 5건이에요. 결과가 나온 뒤에 다시 신청해 주세요."), { code: "too_many_pending" }); throw error; }
         const saved = (await signImages(rows || []))[0]; if (!saved) throw new Error("고칠 수 없는 신청이에요. 이미 심사가 끝났을 수 있어요.");
         cache("submissions", list("submissions").map(r => r.id === id ? saved : r));
+        if (saved.status === "승인") { try { cache("culture_events", (await selectAll("culture_events")).map(global.cultureEventsData.toEvent)); } catch (_) {} }
         return saved;
       }
       if (files.image) data.image_url = files.image;
       const cur = list("submissions").find(r => r.id === id) || {};
-      const saved = { ...cur, ...data, ...(read().is_admin ? {} : { status: "대기", reject_reason: null, reject_kind: null, reviewed_at: null }) };
+      const saved = { ...cur, ...data, ...(read().is_admin || cur.status === "승인" ? {} : { status: "대기", reject_reason: null, reject_kind: null, reviewed_at: null }) };
       cache("submissions", list("submissions").map(r => r.id === id ? saved : r));
       return saved;
     }),
     reviewSubmission: (id, action, reason, checks, row) => run(async () => {
       if (action === "approve" && row?.image_path && !row.image_url) await publishImage(row);
-      const result = await request("/rest/v1/rpc/review_culture_submission", { method: "POST", body: JSON.stringify({ p_id: id, p_action: action, p_reason: reason || null, p_checks: checks || {} }) });
+      // p_seen_at: 관리자가 화면에서 본 시점. 그 뒤 신청자가 고쳤으면 서버가 승인을 거부한다
+      let result;
+      try { result = await request("/rest/v1/rpc/review_culture_submission", { method: "POST", body: JSON.stringify({ p_id: id, p_action: action, p_reason: reason || null, p_checks: checks || {}, p_seen_at: row?.applicant_updated_at || null }) }); }
+      catch (error) { if (/changed_since_view/.test(error?.message || "")) throw Object.assign(new Error("신청자가 방금 내용을 고쳤어요. 목록을 새로고침해서 다시 확인해 주세요."), { code: "changed_since_view" }); throw error; }
       try { cache("culture_events", (await selectAll("culture_events")).map(global.cultureEventsData.toEvent)); } catch (_) {}
       return result;
+    }),
+    // 관리자: 승인 후 신청자가 고친 이력
+    listSubmissionEdits: submissionId => run(async () => {
+      if (!configured) return [];
+      return (await request(`/rest/v1/culture_submission_edits?select=changes,created_at&submission_id=eq.${encodeURIComponent(submissionId)}&order=created_at.desc&limit=20`)) || [];
     }),
     // ---- 지도 정보 신고 (2026-11-19) ----
     addCultureReport: row => run(async () => {

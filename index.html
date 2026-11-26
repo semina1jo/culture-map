@@ -530,6 +530,8 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 .adm-row.my-sub .listitem{flex:1;min-width:0;border-bottom:0}
 .why-wide{width:100%;margin-top:12px;padding:10px}
 .unpub-tag{background:var(--chip);color:var(--ink2)}
+.edited-tag{background:#FFF3D6;color:#8A5A00}
+.edit-log{padding:8px 0;border-top:1px solid var(--line)}.edit-log:first-child{border-top:0}.edit-log small{color:var(--ink2)}.edit-log ul{margin:4px 0 0;padding-left:18px;font-size:13px;line-height:1.6}.edit-log a{color:inherit;text-decoration:underline}
 .sub-acts{display:flex;flex-direction:column;gap:6px;flex:none}
 .why-btn{flex:none;border-radius:12px;padding:6px 10px;font-size:12px;white-space:nowrap}
 .why-pop{position:absolute;inset:0;z-index:25;background:rgba(31,43,34,.32);display:flex;align-items:center;justify-content:center;padding:24px}
@@ -1717,12 +1719,13 @@ function partnerSheet(opts = {}){
   const acc = window.dataService.account();
   const targets = Object.keys(VENUE_TARGET);
   const ed = opts.edit || null, asAdmin = Boolean(opts.admin);
-  const headTitle = !ed ? "장소 등록 신청" : asAdmin ? "신청 내용 수정" : ed.status === "반려" ? "고쳐서 다시 신청" : "신청 수정";
-  const submitLabel = !ed ? "신청 보내기" : asAdmin ? "수정 저장" : "다시 신청하기";
+  const liveEdit = Boolean(ed && ed.status === "승인" && !asAdmin); // 승인된 신청: 고치면 지도에 바로 반영 (2026-11-26)
+  const headTitle = !ed ? "장소 등록 신청" : asAdmin ? "신청 내용 수정" : liveEdit ? "등록 정보 수정" : ed.status === "반려" ? "고쳐서 다시 신청" : "신청 수정";
+  const submitLabel = !ed ? "신청 보내기" : asAdmin ? "수정 저장" : liveEdit ? "저장하고 지도에 반영" : "다시 신청하기";
   sheet(`<div class="sh-h"><h2>${headTitle}</h2><button class="x" id="pX" aria-label="닫기">${ico.x}</button></div>
-    <ol class="flow-rail" aria-label="등록 과정"><li class="on">신청</li><li>관리자 검사</li><li>지도에 등록</li></ol>
-    <p class="note" style="margin:8px 0 0">${!ed ? "알리고 싶은 행사나 장소를 올려 주세요. 관리자가 내용을 확인한 뒤 지도에 올라가요." : asAdmin ? "관리자가 신청 내용을 고쳐요. 심사 상태는 그대로예요." : "고친 신청은 다시 검사 대기로 들어가요."}</p>
-    ${(() => { if (asAdmin || ed?.status === "대기") return ""; const n = window.dataService.getMySubmissions().filter(r => r.status === "대기" && !r.is_demo).length; return n >= 3 ? `<p class="note" style="margin:6px 0 0">검사 대기 중인 신청 ${n}/5건 · 5건이 되면 결과가 나올 때까지 더 신청할 수 없어요.</p>` : ""; })()}
+    ${liveEdit ? "" : '<ol class="flow-rail" aria-label="등록 과정"><li class="on">신청</li><li>관리자 검사</li><li>지도에 등록</li></ol>'}
+    <p class="note" style="margin:8px 0 0">${!ed ? "알리고 싶은 행사나 장소를 올려 주세요. 관리자가 내용을 확인한 뒤 지도에 올라가요." : asAdmin ? "관리자가 신청 내용을 고쳐요. 심사 상태는 그대로예요." : liveEdit ? "지도에 올라간 정보예요. 저장하면 다시 검사하지 않고 지도에 바로 반영돼요. 고친 내용은 관리자에게 기록으로 남아요." : "고친 신청은 다시 검사 대기로 들어가요."}</p>
+    ${(() => { if (asAdmin || liveEdit || ed?.status === "대기") return ""; const n = window.dataService.getMySubmissions().filter(r => r.status === "대기" && !r.is_demo).length; return n >= 3 ? `<p class="note" style="margin:6px 0 0">검사 대기 중인 신청 ${n}/5건 · 5건이 되면 결과가 나올 때까지 더 신청할 수 없어요.</p>` : ""; })()}
     ${ed?.status === "반려" && ed.reject_reason && !asAdmin ? `<p class="status" style="margin:8px 0 0">반려 사유: ${esc(ed.reject_reason)}</p>` : ""}
     <p class="note req-legend" style="margin:6px 0 0"><b class="req">*</b> 표시는 꼭 입력해야 해요.</p>
     ${S.demoMode && !ed?'<button type="button" class="out sm demo-fill" id="pDemo">예시 데이터 채우기 <span class="note">시연 모드</span></button>':""}
@@ -1859,12 +1862,12 @@ function partnerSheet(opts = {}){
       delete row.is_demo; delete row.contact_email;
       if (kind === "상설") { row.start_date = null; row.end_date = null; }
       // 신청자로서 고칠 때는 다시 '검사 대기'로 돌린다. (일반 계정은 DB 트리거가 해 주지만, 관리자 계정이 자기 신청을 고칠 때는 트리거가 건너뛰므로 직접 보낸다)
-      if (!asAdmin) Object.assign(row, { status: "대기", reject_reason: null, reject_kind: null, reviewed_at: null, reviewed_by: null, admin_checks: {}, event_id: null });
+      if (!asAdmin && !liveEdit) Object.assign(row, { status: "대기", reject_reason: null, reject_kind: null, reviewed_at: null, reviewed_by: null, admin_checks: {}, event_id: null });
       const res = await window.dataService.updateSubmission(ed.id, row, { image });
       if (!res.ok) { $("#pErr").textContent = res.error?.message || "저장하지 못했어요. 입력 내용은 그대로 있어요."; $("#pSubmit").disabled = false; $("#pSubmit").textContent = submitLabel; return; }
       closeSheet();
       if (asAdmin) { ADM.loaded = false; await loadAdminRows(); adminDetail(ed.id); toast("신청 내용을 고쳤어요."); }
-      else { renderPage(); mySubmissionsSheet(); toast(ed.status === "반려" ? "고친 신청을 다시 보냈어요. 관리자가 다시 확인해요." : "신청을 고쳤어요."); }
+      else { if (liveEdit) applyDataState(); renderPage(); mySubmissionsSheet(); toast(liveEdit ? "고친 내용을 지도에 반영했어요." : ed.status === "반려" ? "고친 신청을 다시 보냈어요. 관리자가 다시 확인해요." : "신청을 고쳤어요."); }
       return;
     }
     const result = await window.dataService.addSubmission(row, { image });
@@ -1906,7 +1909,7 @@ function mySubmissionsSheet(){
   const rows = window.dataService.getMySubmissions();
   sheet(`<div class="sh-h"><h2>내 등록 신청 <span class="note">${rows.length}건</span></h2><button class="x" id="msX" aria-label="닫기">${ico.x}</button></div>
     ${rows.map(r => { const ok = r.status === "승인" && r.event_id;
-      return `<div class="adm-row my-sub"><button class="listitem" ${ok?`data-open="culture_events_${esc(r.event_id)}"`:"disabled"}><span class="ph">${EMOJI[r.category]||"🎫"}</span><span style="min-width:0"><b>${esc(r.title)}</b><small>${r.kind==="상설"?"상설 장소":"행사"} · 신청 ${dotDate(r.created_at)}</small></span><span class="tag ${r.status==="승인"?"grn":r.status==="반려"?"red":""}">${subLabel(r)}</span></button><span class="sub-acts">${r.status==="반려"?`<button class="out sm why-btn" data-why="${esc(r.id)}">사유 보기</button>`:""}${r.status==="대기"||r.status==="반려"?`<button class="out sm why-btn" data-subedit="${esc(r.id)}">${r.status==="반려"?"고쳐서 다시 신청":"수정"}</button>`:""}</span></div>`; }).join("") || '<p class="note" style="padding:12px 0">아직 보낸 신청이 없어요.</p>'}
+      return `<div class="adm-row my-sub"><button class="listitem" ${ok?`data-open="culture_events_${esc(r.event_id)}"`:"disabled"}><span class="ph">${EMOJI[r.category]||"🎫"}</span><span style="min-width:0"><b>${esc(r.title)}</b><small>${r.kind==="상설"?"상설 장소":"행사"} · 신청 ${dotDate(r.created_at)}</small></span><span class="tag ${r.status==="승인"?"grn":r.status==="반려"?"red":""}">${subLabel(r)}</span></button><span class="sub-acts">${r.status==="반려"?`<button class="out sm why-btn" data-why="${esc(r.id)}">사유 보기</button>`:""}${r.status==="대기"||r.status==="반려"||(r.status==="승인"&&r.event_id)?`<button class="out sm why-btn" data-subedit="${esc(r.id)}">${r.status==="반려"?"고쳐서 다시 신청":"수정"}</button>`:""}</span></div>`; }).join("") || '<p class="note" style="padding:12px 0">아직 보낸 신청이 없어요.</p>'}
     <button class="blk w" id="msNew" style="width:100%;margin-top:14px">새로 신청하기</button>`);
   $("#msX").onclick = () => { closeSheet(); renderPage(); };
   $("#msNew").onclick = partnerEntry;
@@ -1956,7 +1959,7 @@ function adminPage(pg){
     ${ADM.loading && !ADM.loaded ? '<p class="note" style="padding:20px 0">신청 목록을 불러오는 중이에요.</p>' :
       rows.map(r => `<div class="adm-row"><button class="adm-item" data-adm="${esc(r.id)}">
         <span class="ph">${(r._img||r.image_url)?`<img src="${esc(r._img||r.image_url)}" alt="">`:EMOJI[r.category]||"🎫"}</span>
-        <span class="adm-main"><b>${r.is_demo?'<em class="tag demo-tag">예시</em> ':""}${isUnpub(r)?'<em class="tag demo-tag unpub-tag">지도에서 내림</em> ':""}${esc(r.title)}</b><small>${esc(r.org_name||r.place)} · ${esc(r.contact_email||"")}</small><small>${r.kind==="상설"?"상설 장소":`${esc(r.start_date)} ~ ${esc(r.end_date)}`} · ${r.price===0?"무료":won(r.price)}</small></span>
+        <span class="adm-main"><b>${r.is_demo?'<em class="tag demo-tag">예시</em> ':""}${isUnpub(r)?'<em class="tag demo-tag unpub-tag">지도에서 내림</em> ':""}${r.status==="승인"&&r.approved_edit_at?'<em class="tag demo-tag edited-tag">승인 후 수정됨</em> ':""}${esc(r.title)}</b><small>${esc(r.org_name||r.place)} · ${esc(r.contact_email||"")}</small><small>${r.kind==="상설"?"상설 장소":`${esc(r.start_date)} ~ ${esc(r.end_date)}`} · ${r.price===0?"무료":won(r.price)}</small></span>
         <span class="adm-date">${dotDate(r.created_at).slice(5)}</span></button>${r.status==="반려"?`<button class="out sm why-btn" data-why="${esc(r.id)}">사유 보기</button>`:""}</div>`).join("") || `<p class="note" style="padding:20px 0">${ADM.filter==="대기"?"검사를 기다리는 신청이 없어요.":ADM.filter==="승인"?"아직 지도에 올린 신청이 없어요.":"반려한 신청이 없어요."}</p>`}`;
   $("#admBack").onclick = () => { admRemember(null); S.tab = "me"; render(); };
   $("#admReload").onclick = () => { ADM.loaded = false; loadAdminRows(); renderPage(); };
@@ -2079,6 +2082,20 @@ function adminChecks(r){
   ];
   return { proof, info };
 }
+// 승인 후 신청자가 고친 항목: 칸 이름 → 사람이 읽는 이름
+const EDIT_FIELD = { title:"이름", category:"분야", kind:"행사·상설", org_name:"주최·운영", place:"장소 이름", place_addr:"주소", lat:"위치", lng:"위치", start_date:"시작일", end_date:"종료일", event_time:"운영 시간", price:"가격", fee_text:"요금 안내", benefit_rules:"할인 대상", benefit_note:"기타 혜택", ticket_url:"예매 링크", homepage_url:"안내 페이지", description:"소개", image_url:"대표 이미지" };
+async function renderSubmissionEdits(id){
+  const box = $("#adEdits"); if (!box) return;
+  const res = await window.dataService.listSubmissionEdits(id);
+  if (!document.body.contains(box)) return;
+  if (!res.ok) { box.innerHTML = '<p class="note">이력을 불러오지 못했어요.</p>'; return; }
+  const show = (k, v) => v == null || v === "" ? "없음" : k === "image_url" ? "사진 바뀜" : k === "benefit_rules" ? (Array.isArray(v) ? v.map(b => b.l).join(", ") || "없음" : "바뀜") : typeof v === "object" ? JSON.stringify(v) : String(v);
+  const rows = Array.isArray(res.value) ? res.value : [];
+  box.innerHTML = rows.length ? rows.map(e => {
+    const items = Object.entries(e.changes || {}).filter(([k]) => EDIT_FIELD[k] && k !== "lng").map(([k, c]) => k === "lat" ? `<li><b>위치</b> 옮김</li>` : k === "image_url" ? `<li><b>대표 이미지</b> 바뀜${/^https?:/.test(c.after||"")?` <a href="${esc(c.after)}" target="_blank" rel="noopener noreferrer">보기 ↗</a>`:""}</li>` : `<li><b>${EDIT_FIELD[k]}</b> ${esc(show(k, c.before))} → ${esc(show(k, c.after))}</li>`).join("");
+    return items ? `<div class="edit-log"><small>${dotDate(e.created_at)} ${new Date(e.created_at).toTimeString().slice(0,5)}</small><ul>${items}</ul></div>` : "";
+  }).join("") : '<p class="note">기록이 없어요.</p>';
+}
 function adminDetail(id){
   const r = ADM.rows.find(x => x.id === id); if (!r) return;
   const { proof, info } = adminChecks(r), all = [...proof, ...info];
@@ -2100,6 +2117,7 @@ function adminDetail(id){
     <div class="sec"><h3>신청 정보</h3>
       <div class="kv"><span>신청 계정</span><b>${esc(r.contact_email||"알 수 없음")}</b>${r.org_name?`<span>주최·운영</span><b>${esc(r.org_name)}</b>`:""}${r.ticket_url?`<span>예매 링크</span><b>${esc(r.ticket_url)}</b>`:""}${r.homepage_url?`<span>안내 페이지</span><b>${esc(r.homepage_url)}</b>`:""}</div>
     </div>
+    ${r.status==="승인"&&r.approved_edit_at?`<div class="sec"><h3>승인 후 수정 이력 <span class="note">마지막 ${dotDate(r.approved_edit_at)}</span></h3><div id="adEdits"><p class="note">불러오는 중이에요.</p></div></div>`:""}
     <div class="sec"><h3>정보 확인</h3>${info.map(checkRow).join("")}</div>
     ${r.status==="반려"?`<button class="out w why-btn why-wide" data-why="${esc(r.id)}">${isUnpub(r)?"내린 사유 보기":"사유 보기"}</button>`:""}
     ${r.status==="대기"?`<label for="adReason" class="flab">반려 사유 <span class="note">반려할 때만</span></label><textarea id="adReason" class="adm-reason" maxlength="200" placeholder="예: 공식 안내 페이지의 날짜와 달라요."></textarea>`:""}
@@ -2114,6 +2132,7 @@ function adminDetail(id){
     </div>`, {level:"full"});
   $("#adX").onclick = () => { admRemember({ id: null, filter: ADM.filter }); closeSheet(); };
   if ($("#adEdit")) $("#adEdit").onclick = () => partnerSheet({ edit: r, admin: true });
+  if ($("#adEdits")) renderSubmissionEdits(r.id);
   // 링크: 체크박스가 같이 눌리지 않게 막고 새 창으로 연다
   document.querySelectorAll(".sheet [data-outside]").forEach(a => a.addEventListener("click", ev => { ev.preventDefault(); ev.stopPropagation(); openOutside(a.href); }));
   // 체크 상태를 바로 기억해 둔다
