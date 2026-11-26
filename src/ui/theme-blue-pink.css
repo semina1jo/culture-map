@@ -287,3 +287,5 @@ p,small,.note,.addr,.rowi small,.cu-h small,.benok,.vf-msg,.status{text-wrap:pre
 /* 장소 상세 사진 위 원형 버튼: 40→36px */
 .dt-ic{width:36px;height:36px}
 .dt-ic svg,.dt-ic .share-icon{width:17px;height:17px}
+/* 내 위치 버튼: 구글 로고와 겹쳐서 오른쪽 버튼 묶음(찜·알림·확대) 맨 아래로 옮김. 지도 범례는 왼쪽 아래 그대로 */
+.loc-wrap .mapLegend{left:0}
