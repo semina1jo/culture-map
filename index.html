@@ -727,9 +727,11 @@ i.sp{background:var(--ink2)}i.sv{background:var(--green)}
   <div class="map" id="map" tabindex="0" aria-label="홍대입구역 주변 지도. 끌어서 이동, 휠이나 두 손가락으로 확대"><div id="gmap" class="gmap" aria-hidden="true"></div><div class="mapStatus" id="mapStatus" role="status"></div><div class="world" id="world"></div></div>
 
   <header class="head" id="head">
-    <div class="title">
-      <h1><span class="logo" aria-label="가문의 영광"><svg viewBox="20 8 80 104" aria-hidden="true"><path d="M60 108 C40 85 28 72 28 54 A32 32 0 0 1 92 54 C92 72 80 85 60 108 Z" fill="#1D2238"/><path d="M45 20 L51 28 L60 15 L69 28 L75 20 L73 33 L47 33 Z" fill="#C8372D" stroke="#C8372D" stroke-width="3" stroke-linejoin="round"/><circle cx="50" cy="54" r="4.8" fill="#FAF8F4"/><circle cx="70" cy="54" r="4.8" fill="#FAF8F4"/><path d="M51 65 Q60 72 69 65" fill="none" stroke="#FAF8F4" stroke-width="4" stroke-linecap="round"/></svg><span class="w">가문의 영광</span></span><span class="demo" id="demoModeBadge">시연 모드</span></h1>
-      <button class="round" id="searchBtn" aria-label="검색"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.6-4.6"/><path d="M8 8.6a3 3 0 0 1 2.4-1.3"/></svg></button>
+    <h1 class="sr-only">가문의 영광</h1>
+    <div class="title topbar">
+      <button class="searchbar" id="searchBtn" aria-label="장소·행사 검색"><span class="sb-logo" aria-hidden="true"><svg viewBox="20 8 80 104" aria-hidden="true"><path d="M60 108 C40 85 28 72 28 54 A32 32 0 0 1 92 54 C92 72 80 85 60 108 Z" fill="#1D2238"/><path d="M45 20 L51 28 L60 15 L69 28 L75 20 L73 33 L47 33 Z" fill="#C8372D" stroke="#C8372D" stroke-width="3" stroke-linejoin="round"/><circle cx="50" cy="54" r="4.8" fill="#FAF8F4"/><circle cx="70" cy="54" r="4.8" fill="#FAF8F4"/><path d="M51 65 Q60 72 69 65" fill="none" stroke="#FAF8F4" stroke-width="4" stroke-linecap="round"/></svg></span><span class="sb-ph">장소·행사 이름</span><span class="demo" id="demoModeBadge">시연 모드</span><svg class="sb-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.6-4.6"/></svg></button>
+      <button class="round" id="listBtn" aria-label="목록으로 보기"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="5" height="5" rx="1.6"/><rect x="3.5" y="14.5" width="5" height="5" rx="1.6"/><path d="M12 7h8.5M12 17h8.5"/></svg></button>
+      <button class="round pri" id="topFilter" aria-label="상세 필터"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
     </div>
     <div class="chips" id="chips"></div>
   </header>
@@ -742,7 +744,6 @@ i.sp{background:var(--ink2)}i.sv{background:var(--green)}
     </div>
     <div class="bottomctl" id="bottomctl">
       <div class="loc-wrap"><button class="round" id="locBtn" aria-label="내 위치로 이동"><svg viewBox="0 0 24 24"><path d="M20.5 3.5 3.8 10.4a.5.5 0 0 0 .1.9l6.6 2.2 2.2 6.6a.5.5 0 0 0 .9.1L20.5 3.5Z"/></svg></button><span class="mapLegend off" id="mapLegend"></span></div>
-      <button class="round" id="listBtn" aria-label="목록"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="5" height="5" rx="1.6"/><rect x="3.5" y="14.5" width="5" height="5" rx="1.6"/><path d="M12 7h8.5M12 17h8.5"/></svg></button>
     </div>
     <div class="peek" id="peek" hidden></div>
   </div>
@@ -1644,13 +1645,25 @@ const cmtHtml = c => `<div class="cmt">${c.r?`<b class="cmt-star">★${c.r}</b> 
 function detail(id,level){
   const e = events.find(x => x.id === id); if (!e) return; applyReviews(e);
   const rep = e.src === "사용자 제보" || e.src === "승격 제보", done = hasVisit(id) || S.verified.some(v => v.id===id), f = eff(e);
-  sheet(`<div class="${tier(f.price)}">
-    <div class="sh-h"><h2>${esc(e.name)}</h2><button class="x" id="dX" aria-label="닫기">${ico.x}</button></div>
+  // 8차 시안 레이아웃: 큰 사진 + 원형 버튼, 정보 타일 2칸, 아래 고정 가격 바 (디자인 미리보기 브랜치)
+  const dLeft = !e.end || isAlwaysOpen(e) ? null : days(TODAY, e.end);
+  const dTag = dLeft == null || dLeft < 0 ? "" : dLeft === 0 ? "오늘 종료" : `종료 D-${dLeft}`;
+  const benL = f.rule ? [f.rule.l] : [...new Set((e.ben || []).map(r => r.l))];
+  const canPlan = !e.end || isAlwaysOpen(e) || e.end >= REC_TODAY;
+  sheet(`<div class="${tier(f.price)} dt">
+    <div class="hero dt-hero" ${e.photo?`style="--hb:url('${esc(e.photo)}')"`:""}>${e.photo?`<img src="${esc(e.photo)}" alt="${e.is_public_culture?"행사 이미지":"제보 사진"}">`:EMOJI[e.genre]}<span class="badge">${e.genre} · ${e.is_public_culture?esc(e.source):rep?e.src:"예시 데이터"}</span>
+      <button class="dt-ic dt-x" id="dX" aria-label="닫기">${ico.x}</button>
+      <div class="dt-ics"><button class="dt-ic" id="dShare" aria-label="공유">${ico.share}</button><button class="dt-ic ${S.saved.has(id)?"on":""}" id="dSave" aria-label="${S.saved.has(id)?"찜함 · 묶음 고르기":"찜하기"}" aria-pressed="${S.saved.has(id)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/></svg></button></div>
+    </div>
+    <div class="dt-meta">${esc(e.genre)}${dTag?` · <b class="${soon(e)?"hot":""}">${dTag}</b>`:""}</div>
+    <div class="sh-h"><h2>${esc(e.name)}</h2></div>
     <div class="addr">${esc(e.place)} ·${topStars(e)}</div>
-    <div class="hero">${e.photo?`<img src="${esc(e.photo)}" alt="${e.is_public_culture?"행사 이미지":"제보 사진"}">`:EMOJI[e.genre]}<span class="badge">${e.genre} · ${e.is_public_culture?esc(e.source):rep?e.src:"예시 데이터"}</span><span class="price">${f.rule?`<s style="font-size:13px;color:var(--muted);font-weight:500">${won(e.price)}</s> `:lowestSeat(e)?`<small style="font-size:11px;font-weight:700;opacity:.75;margin-right:3px">최저석</small>`:""}${priceText(e,f)}</span></div>
     ${f.rule?`<div class="benok">🎟️ 내 혜택 적용: <b>${esc(f.rule.l)}</b> · 정가 ${won(e.price)} → ${won(f.price)}</div>`:""}
+    <div class="dt-tiles">
+      <div class="dt-tile">${ico.cal}<small>기간</small><b>${period(e)}</b></div>
+      ${benL.length?`<div class="dt-tile ben">${ico.tk}<small>받을 수 있는 혜택</small><b>${esc(benL.slice(0,2).join(" · "))}${benL.length>2?` 외 ${benL.length-2}`:""}</b></div>`:`<div class="dt-tile">${ico.clock}<small>오늘 운영</small><b>${(() => { const lab = window.hoursService && activeOn(e, REC_TODAY) ? window.hoursService.label(hoursOn(e, REC_TODAY)) : ""; return esc(lab || "정보 없음"); })()}</b></div>`}
+    </div>
     <div class="rows">
-      <div class="rowi">${ico.cal}<div>${period(e)} ${soon(e)?'<span class="tag red">곧 종료</span>':""}<small>기간</small></div></div>
       <div class="rowi">${ico.clock}<div>${(() => { const lab = window.hoursService && activeOn(e, REC_TODAY) ? window.hoursService.label(hoursOn(e, REC_TODAY)) : ""; const hb = hoursBadge(e); return lab ? `<b class="hrs ${hb?.c||""}">${esc(lab)}${hb && hb.t !== lab && !/휴관|운영 안 함/.test(lab) ? " · " + esc(hb.t) : ""}</b>` : ""; })()}<span class="hrs-raw">${esc(e.hours || "운영시간 정보 없음")}</span><small>운영 시간${hoursOf(e).ok || hoursOf(e).closed.length ? " · 문구에서 자동으로 읽은 오늘 기준" : ""}</small></div></div>
       <div class="rowi">${ico.tk}<div>${esc(e.entry)}<small>입장 방법</small></div></div>
       <div class="rowi">${ico.won}<div>${esc(e.is_public_culture ? (e.fee_text || "요금 안내 없음") : e.USE_FEE || e.price_label || won(e.price))}<small>원문 이용 요금</small></div></div>
@@ -1663,16 +1676,14 @@ function detail(id,level){
     ${partnerBlock(e)}
     ${reviewSection(e)}
     <div class="acts">
-      <div class="acts-row">
-        <button class="out" id="dShare">${ico.share}공유</button>
-        <button class="out ${S.saved.has(id)?"on":""}" id="dSave">${S.saved.has(id)?"♥ 찜함":"♡ 찜"}</button>
-        ${!e.end || isAlwaysOpen(e) || e.end >= REC_TODAY ? `<button class="out ${diary().plans[id]?"on":""}" id="dPlan">📅 ${diary().plans[id] ? diary().plans[id].slice(5).replace("-","/")+" 가요" : "갈 날짜"}</button>` : ""}
-      </div>
       <button class="blk w" id="dNaver">네이버 지도에서 보기</button>
       ${e.is_public_culture&&e.homepage_url?`<button class="out w" id="dHomepage">홈페이지에서 보기</button>`:""}
       <button class="out w" id="dVer">✍️ 다녀왔어요 · 리뷰 남기기</button>
     </div>
-    <button class="linkbtn" id="dReport">광고·허위 정보 신고</button></div>`,{placeId:id,level});
+    <button class="linkbtn" id="dReport">광고·허위 정보 신고</button>
+    <div class="dt-bar"><div class="dt-price"><b>${f.rule?`<s style="font-size:13px;color:var(--muted);font-weight:500">${won(e.price)}</s> `:lowestSeat(e)?`<small style="font-size:11px;font-weight:700;opacity:.75;margin-right:3px">최저석</small>`:""}${priceText(e,f)}</b><small>${f.rule?`혜택가 · ${esc(f.rule.l)}`:isCultureDay()&&benL.some(l=>/문화가 있는 날|수요일/.test(l))?"오늘 수요일 혜택":"1인 기준"}</small></div>
+      ${canPlan?`<button class="blk dt-go ${diary().plans[id]?"on":""}" id="dPlan">${diary().plans[id] ? "📅 "+diary().plans[id].slice(5).replace("-","/")+" 가요" : "갈 날짜 정하기"}</button>`:`<button class="blk dt-go" id="dVer2">리뷰 남기기</button>`}</div></div>`,{placeId:id,level});
+  $("#dVer2") && ($("#dVer2").onclick = () => reviewSheet(id));
   $("#dX").onclick = closeSheet;
   // 찜: 찜 안 한 곳이면 찜하고 컬렉션 고르기, 찜한 곳이면 컬렉션 고르기·찜 해제 (src/ui/collections.js, 2026-11-21)
   $("#dSave").onclick = ev => window.collections.onSaveButton(id, ev.currentTarget);
@@ -3622,6 +3633,7 @@ document.addEventListener("click", async ev => {
   if (d.pg){ S.prefs.genres.has(d.pg)?S.prefs.genres.delete(d.pg):S.prefs.genres.add(d.pg); t.setAttribute("aria-pressed",S.prefs.genres.has(d.pg)); persistPreferences(); return; }
   switch (t.id){
     case "cFilter": optSheet("all"); break;
+    case "topFilter": optSheet("all"); break;
     case "cBen": if (!S.profile){ profileSheet(true); toast("먼저 내 혜택 정보를 입력해 주세요."); } else { S.benefit=!S.benefit; window.dataService.update("benefit_enabled",S.benefit); closePeek(); render(); toast(S.benefit?"내 혜택을 적용한 가격으로 보여줘요.":"원래 가격으로 보여줘요. 만 원이 넘는 곳은 숨겨져요."); } break;
     case "profBtn": profileSheet(false); break;
     case "acctNick": nicknameSheet(); break;
