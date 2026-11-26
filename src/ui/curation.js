@@ -169,7 +169,7 @@
       ? `<button class="cu-gt l${lvl(counts[g])}" data-curgu="${g}" aria-label="${g} 이번 주 문화생활 보기 (행사 ${counts[g] || 0}건)"><b>${shortGu(g)}</b>${counts[g] ? `<small>${counts[g]}곳</small>` : ""}</button>`
       : `<span class="cu-gt empty" aria-hidden="true"></span>`).join("");
     const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-    return `<section class="cu-sec">
+    return `<section class="cu-sec" id="cuGu">
       <div class="cu-h"><div><h2>우리 동네 이번 주 문화생활</h2><small>동네를 누르면 그 동네의 이번 주 문화생활이 열려요</small></div><span class="cu-ratio">${active} / 25구</span></div>
       <div class="cu-gumap"><div class="cu-gugrid">${tiles}</div>
         <p class="cu-guline"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.5s-7-6.1-7-11.6A7 7 0 0 1 19 9.9c0 5.5-7 11.6-7 11.6Z"/><circle cx="12" cy="10" r="2.6"/></svg><span>${top ? `이번 주 행사가 가장 많은 동네는 <button class="cu-link" data-curgu="${top[0]}">${top[0]}</button> <b>${top[1]}건</b>` : "이번 주 행사 정보를 불러오는 중이에요"}</span></p></div>
@@ -246,14 +246,13 @@
     return { keys: [first, ...["weekend", "evening", "wday"].filter(k => k !== first)], label: `${DOW[d]}요일 ${tod}에 맞춰 골랐어요` };
   }
   function heroCard(t, i, n, label) {
-    const ph = t.items.filter(hasPhoto).slice(0, 6);
-    const tiles = (ph.length >= 3 ? ph : t.items.slice(0, 6)).map(e => { const [bg, fg] = palOf(e); return `<span style="background:${bg};color:${fg}"><b>${esc(String(e.name).replace(/^\[[^\]]*\]\s*/, ""))}</b>${hasPhoto(e) ? `<img src="${esc(e.photo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</span>`; }).join("");
-    const sub = t.key === "weekend" ? `이번 주말(${t.range}) 무료로 여는 곳 <b>${t.items.length.toLocaleString()}곳</b>`
-      : t.key === "evening" ? `오늘 저녁 8시 이후까지 여는 곳 <b>${t.items.length}곳</b>`
-      : `${isWedStr(today()) ? "오늘" : `다음 수요일(${md(t.date)})`} 무료로 들어가는 곳 <b>${t.items.length}곳</b>`;
+    const rep = t.items.find(hasPhoto) || t.items[0];
+    const sub = t.key === "weekend" ? `이번 주말(${t.range}) 무료 ${t.items.length.toLocaleString()}곳`
+      : t.key === "evening" ? `오늘 저녁 8시 이후 ${t.items.length}곳`
+      : `${isWedStr(today()) ? "오늘" : `수요일(${md(t.date)})`} 무료 ${t.items.length}곳`;
     const tag = i === 0 ? label : t.key === "weekend" ? "이번 주말" : t.key === "evening" ? "평일 저녁" : "매주 수요일";
-    return `<button class="cu-hero ${i === 0 ? "first" : ""}" data-cur="${t.key}"><span class="cu-col" aria-hidden="true">${tiles}</span><span class="cu-scrim"></span>
-      <span class="cu-hb"><i class="cu-tag">${ICO.clock}${tag}</i><b>${esc(t.title)}</b><small>${sub}</small></span><i class="cu-pg">${i + 1} / ${n}</i></button>`;
+    return `<button class="cu-hero2" data-cur="${t.key}">${visual(rep, "cu-h2ph")}</span><i class="cu-pg">${i + 1} / ${n}</i>
+      <span class="cu-h2bar"><span class="cu-h2t"><small>${esc(tag)} · ${sub}</small><b>${esc(t.title)}</b></span><span class="cu-h2go" aria-hidden="true">${ICO.chev}</span></span></button>`;
   }
 
   /* ---------- 페이지 ---------- */
@@ -271,9 +270,11 @@
     const anyDemo = [...CHIP_ORDER, ...BOTTOM].some(k => TOPICS[k].review);
     pg.dataset.cu = "1";
     pg.innerHTML = `<div class="cu">
-      <h1>큐레이션</h1><p class="cu-lead">적은 돈으로 알차게, 데이터로 골랐어요</p>
-      ${heroes.length ? `<section class="cu-sec"><div class="cu-h"><h2>오늘의 큐레이션</h2></div><div class="cu-row heroes">${heroes.map((t, i) => heroCard(t, i, heroes.length, ho.label)).join("")}</div></section>` : ""}
-      <section class="cu-sec"><div class="cu-h"><h2>주제별로 골라보기</h2></div><div class="cu-chips">${CHIP_ORDER.map(k => `<button class="cu-chip" data-cur="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${CHIP_ICON[k]}</svg><span>${TOPICS[k].chip}</span></button>`).join("")}</div></section>
+      <div class="cu-top"><button class="cu-region" data-cuscroll="1">서울 전체<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <span class="cu-acts"><button class="cu-ic" data-cuact="search" aria-label="검색"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button><button class="cu-ic" data-cuact="noti" aria-label="문화 알림"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.3 1.6a.6.6 0 0 1-.5 1H5.2a.6.6 0 0 1-.5-1L6 16.5Z"/><path d="M10 21.5h4"/></svg></button></span></div>
+      <h1 class="cu-title">이번 주, 돈 덜 드는 서울</h1><p class="sr-only">큐레이션 · 적은 돈으로 알차게, 데이터로 골랐어요</p>
+      ${heroes.length ? `<section class="cu-sec first"><div class="cu-row heroes">${heroes.map((t, i) => heroCard(t, i, heroes.length, ho.label)).join("")}</div></section>` : ""}
+      <section class="cu-sec"><div class="cu-h"><h2>상황별로 골라보기</h2></div><div class="cu-chips">${CHIP_ORDER.map((k, i) => `<button class="cu-chip t${i + 1}" data-cur="${k}"><i class="cu-ci"><svg viewBox="0 0 24 24" aria-hidden="true">${CHIP_ICON[k]}</svg></i><span>${TOPICS[k].chip}</span></button>`).join("")}</div></section>
       ${section(lc, used, "poster")}
       ${guSection()}
       ${bottom}
@@ -294,8 +295,11 @@
 
   /* 클릭: 주제 열기 · 동네 고르기 (index.html의 공통 클릭 처리보다 먼저 받는다) */
   document.addEventListener("click", ev => {
-    const b = ev.target.closest("[data-cur],[data-curgu]"); if (!b) return;
+    const b = ev.target.closest("[data-cur],[data-curgu],[data-cuact],[data-cuscroll]"); if (!b) return;
     ev.stopPropagation(); ev.preventDefault();
+    if (b.dataset.cuact === "search") { if (typeof searchSheet === "function") searchSheet(); return; }
+    if (b.dataset.cuact === "noti") { if (typeof notiSheet === "function") notiSheet(); return; }
+    if (b.dataset.cuscroll) { document.getElementById("cuGu")?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
     if (b.dataset.curgu) { guSheet(b.dataset.curgu); return; }
     topicSheet(b.dataset.cur);
   }, true);
@@ -363,7 +367,43 @@
 .cu-tk small{font-size:11px;font-weight:700;color:#FFB0C6}.cu-tk b{font-size:24px;font-weight:900;line-height:1}
 .cu-bt{flex:1;display:flex;flex-direction:column;gap:4px}.cu-bt small{font-size:12px;font-weight:800;color:#B23A62}.cu-bt b{font-size:16px;font-weight:900;line-height:1.35}
 .cu-note{display:flex;gap:6px;margin:22px 2px 0;font-size:12px;line-height:1.5;color:var(--ink2)}.cu-note svg{margin-top:3px;flex:none}
-.nav button svg .g{fill:none}.nav button[aria-current="page"] svg .g{fill:var(--accent-soft)}`;
+.nav button svg .g{fill:none}.nav button[aria-current="page"] svg .g{fill:var(--accent-soft)}
+/* ===== 8차 시안 탐색 화면 레이아웃 (디자인 미리보기 브랜치) ===== */
+.cu h2,.cu-title,.cu-h2t b{font-family:var(--f2,var(--f))}
+.cu-top{display:flex;align-items:center;justify-content:space-between;margin:2px 0 14px}
+.cu-region{display:flex;align-items:center;gap:4px;height:44px;padding:0 14px 0 16px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);font-weight:700;font-size:14px}
+.cu-region svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.cu-acts{display:flex;gap:8px}
+.cu-ic{width:44px;height:44px;border:1px solid var(--line);border-radius:50%;background:#fff;display:grid;place-items:center;padding:0;color:var(--ink)}
+.cu-ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cu .cu-title{margin:0;font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.25;display:block}
+.cu-sec.first{margin-top:16px}
+.cu-sec{margin-top:28px}
+.cu-h h2{font-size:18px;font-weight:700}
+.cu-hero2{position:relative;flex:none;width:min(340px,86vw);height:188px;border:0;border-radius:24px;overflow:hidden;padding:0;background:var(--chip);text-align:left;color:#fff}
+.cu-h2ph{position:absolute;inset:0;display:block}
+.cu-h2ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cu-h2ph .cu-fb{padding:16px 18px 80px}
+.cu-hero2 .cu-pg{z-index:2}
+.cu-h2bar{position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 12px 12px 16px;background:var(--ink)}
+.cu-h2t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cu-h2t small{font-size:12px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-h2t b{font-size:16px;font-weight:700;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:keep-all}
+.cu-h2go{flex:none;width:40px;height:40px;border-radius:50%;background:var(--pink,#FFB0C6);color:var(--ink);display:grid;place-items:center}
+.cu-h2go svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.cu-chip{min-height:56px;justify-content:flex-start;gap:6px;padding:0 6px;border:0;border-radius:18px;font-size:12.5px;font-weight:600}
+.cu-chip.t1{background:#DCE7FF}.cu-chip.t2{background:#FFF0D9}.cu-chip.t3{background:#E3F3EC}.cu-chip.t4{background:#FFE0E8}.cu-chip.t5{background:#E6E1FF}.cu-chip.t6{background:#EEF0F5}
+.cu-ci{flex:none;width:30px;height:30px;border-radius:50%;background:#fff;display:grid;place-items:center;font-style:normal}
+.cu-chip .cu-ci svg{width:16px;height:16px;stroke:var(--ink);stroke-width:2}
+.cu-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.cu-row{gap:12px}
+.cu-pc,.cu-pc.sq{width:150px;gap:4px}
+.cu-ph,.cu-ph.sq{height:108px;border-radius:18px;margin-bottom:4px}
+.cu-ph .cu-fb{padding:12px 12px 10px;justify-content:flex-end}.cu-ph .cu-fb b{font-size:13.5px;-webkit-line-clamp:3}.cu-ph .cu-fb small{display:none}
+.cu-pc .cu-tt{font-size:14px;font-weight:600;-webkit-line-clamp:1}
+.cu-pr{font-family:var(--f2,var(--f));font-size:15px;font-weight:700;color:var(--ink)}
+.cu-dd{border-radius:999px;height:22px;font-size:11px;font-weight:700;background:var(--pink,#FFB0C6);color:var(--ink)}.cu-dd.hot{background:#D9557C;color:#fff}
+.cu-gumap{border-radius:24px}`;
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
 
   window.curationPage = curationPage;
