@@ -198,3 +198,47 @@ p,small,.note,.addr,.rowi small,.cu-h small,.benok,.vf-msg,.status{text-wrap:pre
   .searchbar .demo{display:none}
   .chip{padding:0 12px;font-size:13px}
 }
+
+/* ===================== 움직임 ===================== */
+/* 기준: 들어오고 나가는 것은 ease-out, 눌림 반응 0.14초, 시트 0.3초 이하. '동작 줄이기' 기기는 기존 규칙으로 모두 꺼짐 */
+:root{--mo-out:cubic-bezier(.23,1,.32,1);--mo-sheet:cubic-bezier(.32,.72,0,1)}
+@media (prefers-reduced-motion:no-preference){
+  /* 시트: 아래에서 올라오기 + 뒤 배경 어두워지기 (같은 길이로 함께) */
+  #scrim.mo-scrim-in{animation:moFade .3s var(--mo-out) both}
+  #scrim.detail-scrim.mo-scrim-in{animation:none}
+  .sheet.mo-sheet-in{animation:moSheetUp .34s var(--mo-sheet) both}
+  .sheet.mo-sheet-swap{animation:moSwap .24s var(--mo-out) both}
+  /* 닫힐 때: 복제본만 살짝 내려가며 사라짐 */
+  .mo-ghost{position:absolute;inset:0;z-index:21;display:flex;align-items:flex-end;pointer-events:none;background:rgba(var(--sh),.38);animation:moFadeOut .22s ease-out both}
+  .mo-ghost.detail{background:none}
+  .mo-ghost .sheet{animation:moSheetDown .22s ease-out both;overflow:hidden}
+  /* 토스트 */
+  .toast:not([hidden]){animation:moToast .26s var(--mo-out) both}
+  /* 탭 이동: 새 화면이 살짝 떠오르고, 묶음이 차례로 */
+  #page.mo-page-in>*,#page.mo-page-in>.cu>*{animation:moRise .38s var(--mo-out) both}
+  #page.mo-page-in>.cu{animation:none}
+  #page.mo-page-in>:nth-child(2),#page.mo-page-in>.cu>:nth-child(2){animation-delay:.04s}
+  #page.mo-page-in>:nth-child(3),#page.mo-page-in>.cu>:nth-child(3){animation-delay:.08s}
+  #page.mo-page-in>:nth-child(4),#page.mo-page-in>.cu>:nth-child(4){animation-delay:.12s}
+  #page.mo-page-in>:nth-child(n+5),#page.mo-page-in>.cu>:nth-child(n+5){animation-delay:.16s}
+  #head.mo-fade-in,#mapUi.mo-fade-in{animation:moFade .26s var(--mo-out) both}
+  /* 눌렀을 때 살짝 들어가는 반응 + 색 바뀜은 부드럽게 */
+  .blk,.out,.chip,.round,.searchbar,.cu-chip,.cu-hero2,.cu-pc,.cu-gc,.cu-gt,.cu-more,.dt-ic,.opt button,.tabs button,.seg2 button,.cl-card,.listitem,.cu-ic{transition:transform .14s var(--mo-out),background-color .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease}
+  :is(.blk,.out,.chip,.round,.searchbar,.cu-chip,.cu-gt,.dt-ic,.opt button,.tabs button,.seg2 button,.cu-ic):active:not(:disabled){transform:scale(.96)}
+  :is(.cu-hero2,.cu-pc,.cu-gc,.cl-card,.listitem):active{transform:scale(.98)}
+  .nav button svg{transition:transform .14s var(--mo-out),background-color .2s ease,box-shadow .2s ease}
+  .nav button:active svg{transform:scale(.88)}
+  .dt-ic svg{transition:fill .18s ease,stroke .18s ease}
+  .dt-ic.on svg{animation:moPop .3s var(--mo-out)}
+  /* 지도 핀: 선택될 때 살짝 커지기 */
+  .pin .p{transition:transform .18s var(--mo-out),background-color .18s ease,border-color .18s ease}
+  .pin.sel .p{transform:scale(1.06)}
+}
+@keyframes moFade{from{opacity:0}to{opacity:1}}
+@keyframes moFadeOut{from{opacity:1}to{opacity:0}}
+@keyframes moSheetUp{from{transform:translateY(100%)}to{transform:none}}
+@keyframes moSheetDown{from{transform:none;opacity:1}to{transform:translateY(24px);opacity:0}}
+@keyframes moSwap{from{opacity:.4;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes moToast{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes moRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes moPop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
