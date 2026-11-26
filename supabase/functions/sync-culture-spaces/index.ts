@@ -8,7 +8,7 @@ import { parseFee } from "./fee.ts";
 
 const KEY = Deno.env.get("SEOUL_API_KEY") ?? "";
 const SOURCE = "상설 시설(서울시 문화공간)";
-const MAX_PRICE = 10000;
+const MAX_PRICE = 30000; // 2026-11-26: 만 원 → 3만 원 (앱 필터 최대값과 같게)
 const BASE_SUBJ = ["박물관/기념관", "미술관/갤러리", "기타"];
 const LIBRARY = "도서관";
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);

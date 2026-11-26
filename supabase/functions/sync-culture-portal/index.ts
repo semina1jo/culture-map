@@ -12,7 +12,7 @@ const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPAB
 
 const CENTER = { lat: 37.5563, lng: 126.9236 }; // 홍대입구역
 const RADIUS_KM = 5;
-const MAX_PRICE = 10000;
+const MAX_PRICE = 30000; // 2026-11-26: 만 원 → 3만 원 (앱 필터 최대값과 같게)
 // 서울시를 덮는 사각형 (검색은 사각형으로, 저장은 서울 주소만)
 const BOX = { gpsxfrom: "126.7640", gpsxto: "127.1840", gpsyfrom: "37.4280", gpsyto: "37.7020" };
 const inBox = (lat: number, lng: number) => lat >= 37.428 && lat <= 37.702 && lng >= 126.764 && lng <= 127.184;
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
         if (!it) return; // 상세 조회 실패: 다음 실행에서 다시
         if (price === null) { stats.unknownPrice++; skipRows.push({ seq: c.seq, reason: "가격 불명", checked_at: runStart }); return; }
         const minRule = rules.length ? Math.min(...rules.map(r => r.p)) : Infinity;
-        if (price > MAX_PRICE && minRule > MAX_PRICE) { stats.tooExpensive++; skipRows.push({ seq: c.seq, reason: "만 원 초과", checked_at: runStart }); return; }
+        if (price > MAX_PRICE && minRule > MAX_PRICE) { stats.tooExpensive++; skipRows.push({ seq: c.seq, reason: "가격 상한 초과", checked_at: runStart }); return; }
         const addr = unesc(tag(it, "placeAddr"));
         if (addr && !addr.includes("서울")) { stats.notSeoul++; skipRows.push({ seq: c.seq, reason: "서울 밖", checked_at: runStart }); return; }
         if (price === 0) stats.free++; else if (price <= MAX_PRICE) stats.under10k++; else stats.benefitOnly++;

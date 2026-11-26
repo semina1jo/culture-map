@@ -10,7 +10,7 @@ import { parseFee } from "./fee.ts";
 
 const SOURCE = "KOPIS 공연예술통합전산망";
 const BASE = "http://www.kopis.or.kr/openApi/restful";
-const MAX_PRICE = 10000;
+const MAX_PRICE = 30000; // 2026-11-26: 만 원 → 3만 원 (앱 필터 최대값과 같게)
 const DAYS_AHEAD = 90;
 const TIME_BUDGET_MS = 100_000;
 const FRESH_DAYS = 7, FACILITY_DAYS = 30;
@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
       const { price, rules } = parseFee(fee);
       if (price === null) { stats.unknownPrice++; skip("가격 불명"); continue; }
       const minRule = rules.length ? Math.min(...rules.map(r => r.p)) : Infinity;
-      if (price > MAX_PRICE && minRule > MAX_PRICE) { stats.tooExpensive++; skip("만 원 초과"); continue; }
+      if (price > MAX_PRICE && minRule > MAX_PRICE) { stats.tooExpensive++; skip("가격 상한 초과"); continue; }
       const fid = tag(d, "mt10id");
       let fac = facilities.get(fid);
       if (!fac && fid) {

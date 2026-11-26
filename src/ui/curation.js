@@ -42,7 +42,7 @@
     return events.filter(e => {
       if (e.hidden || e.x == null || hideDemo(e)) return false;
       if (!isAlwaysOpen(e) && (!e.end || e.end < today())) return false;
-      const p = priceOf(e); return p != null && p <= 10000;
+      const p = priceOf(e); return p != null && p <= (typeof PRICE_CAP === "number" ? PRICE_CAP : 30000);
     });
   }
   // 이용자 리뷰가 필요한 주제의 예시 수치: 장소 id로 정해지는 값이라 새로고침해도 같다

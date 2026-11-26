@@ -12,7 +12,7 @@ const supabase = createClient(
 
 const CENTER = { lat: 37.5563, lng: 126.9236 }; // 홍대입구역
 const RADIUS_KM = 5; // dry 실행의 반경별 건수 참고용. 저장은 서울 전역(2026-11-13)
-const MAX_PRICE = 10000;
+const MAX_PRICE = 30000; // 2026-11-26: 만 원 → 3만 원 (앱 필터 최대값과 같게)
 const PAGE = 1000;
 const KIDS = /영유아|유아|어린이|아동|미취학|초등|키즈/;
 
