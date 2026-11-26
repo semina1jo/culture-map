@@ -1,6 +1,5 @@
 /* 화면 움직임 (디자인 미리보기 브랜치)
    - 시트: 아래에서 올라오고, 닫을 때는 복제본만 살짝 내려가며 사라진다(실제 상태는 기존처럼 바로 정리)
-   - 탭 이동: Material 'Fade through'를 가볍게(0.2초 페이드 + 살짝 커지기)
    - '동작 줄이기'를 켠 기기에서는 아무것도 하지 않는다 */
 (function () {
   const reduce = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -49,17 +48,5 @@
     };
   }
 
-  /* ---------- 탭 이동 ---------- */
-  document.addEventListener("click", ev => {
-    const btn = ev.target.closest && ev.target.closest(".nav button[data-tab]");
-    if (!btn || reduce()) return;
-    const tab = () => (typeof S !== "undefined" ? S.tab : null);
-    const was = tab();
-    setTimeout(() => {
-      const now = tab();
-      if (!now || now === was) return;
-      if (now === "map") { once($s("#head"), "mo-fade-in", 260); once($s("#mapUi"), "mo-fade-in", 260); }
-      else once($s("#page"), "mo-page-in", 260);
-    }, 0);
-  }, true); // 캡처 단계: 탭이 바뀌기 전 값을 먼저 읽는다
+  /* 탭 이동은 애니메이션 없이 즉시 전환한다 (사용자 결정, 2026-11-27) */
 })();

@@ -225,8 +225,7 @@ p,small,.note,.addr,.rowi small,.cu-h small,.benok,.vf-msg,.status{text-wrap:pre
   .mo-ghost .sheet{animation:moSheetDown 180ms var(--ease-out-view) both;overflow:hidden}
   /* 안내 메시지: 짧게 올라오기 */
   .toast:not([hidden]){animation:moToast var(--dur-m) var(--ease-in-view) both}
-  /* 탭 이동: Fade through를 가볍게. 위로 뜨는 움직임·차례 등장은 빼고 0.2초 페이드 + 98.5%→100% */
-  #page.mo-page-in,#head.mo-fade-in,#mapUi.mo-fade-in{animation:moFadeThrough 200ms var(--ease-in-view) both;transform-origin:50% 0}
+  /* 탭 이동: 애니메이션 없이 즉시 전환 (Apple 기본 앱 방식) */
   /* 하단 메뉴: 선택 표시(연한 알약)가 가운데서 퍼지듯 나타남 (M3 active indicator) */
   .nav button svg{transition:transform var(--dur-xs) var(--ease-std),background-color var(--dur-m) var(--ease-std),box-shadow var(--dur-m) var(--ease-std)}
   .nav button[aria-current="page"] svg{animation:moPill var(--dur-m) var(--ease-in-view)}
@@ -256,6 +255,5 @@ p,small,.note,.addr,.rowi small,.cu-h small,.benok,.vf-msg,.status{text-wrap:pre
 @keyframes moSheetDown{from{transform:none;opacity:1}to{transform:translateY(20px);opacity:0}}
 @keyframes moSwap{from{opacity:.5;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes moToast{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@keyframes moFadeThrough{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:none}}
 @keyframes moPill{from{background-color:transparent;box-shadow:0 0 0 0 var(--accent-soft)}to{background-color:var(--accent-soft);box-shadow:0 0 0 5px var(--accent-soft)}}
 @keyframes moPop{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
