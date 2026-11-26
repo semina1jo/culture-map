@@ -377,7 +377,7 @@
 .cu .cu-title{margin:4px 0 0;font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.25;display:block}
 .cu-sec.first{margin-top:0}
 .cu-sec{margin-top:24px}
-.cu-h h2{font-size:18px;font-weight:700}
+.cu-h h2{font-size:18px;font-weight:700;line-height:1.3;text-wrap:balance}.cu-h small{text-wrap:pretty}.cu-h>div{min-width:0}
 .cu-hero2{position:relative;flex:none;width:min(340px,86vw);height:164px;border:0;border-radius:24px;overflow:hidden;padding:0;background:var(--chip);text-align:left;color:#fff}
 .cu-h2ph{position:absolute;inset:0;display:block}
 .cu-h2ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -393,7 +393,8 @@
 .cu-chip.t1{background:#DCE7FF}.cu-chip.t2{background:#FFF0D9}.cu-chip.t3{background:#E3F3EC}.cu-chip.t4{background:#FFE0E8}.cu-chip.t5{background:#E6E1FF}.cu-chip.t6{background:#EEF0F5}
 .cu-ci{flex:none;width:28px;height:28px;border-radius:50%;background:#fff;display:grid;place-items:center;font-style:normal}
 .cu-chip .cu-ci svg{width:16px;height:16px;stroke:var(--ink);stroke-width:2}
-.cu-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.cu-chip span{min-width:0;white-space:normal;line-height:1.2;text-align:left;word-break:keep-all}
+@media (max-width:444px){.cu-chip{gap:5px;padding:0 5px;font-size:12px;letter-spacing:-.02em}.cu-ci{width:24px;height:24px}.cu-chip .cu-ci svg{width:14px;height:14px}}
 .cu-row{gap:12px}
 .cu-pc,.cu-pc.sq{width:150px;gap:4px}
 .cu-ph,.cu-ph.sq{height:108px;border-radius:18px;margin-bottom:4px}

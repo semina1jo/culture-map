@@ -175,3 +175,26 @@ span.demo{border-color:var(--line)}
 .dt-price small{font-size:11.5px;color:var(--ink2)}
 .dt-go{flex:none;width:auto!important;min-width:150px;height:52px;margin:0!important;padding:0 20px;font-size:15.5px}
 .dt-go.on{background:var(--ink);border-color:var(--ink)}
+
+/* ===================== 글자 정렬·줄바꿈 정리 ===================== */
+/* 한국어는 단어(어절) 단위로만 줄을 바꾸고, 공백 없는 긴 주소·링크만 예외로 끊는다 */
+body{word-break:keep-all;overflow-wrap:break-word;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+/* 제목은 줄 길이를 고르게, 설명문은 마지막 줄에 한 단어만 남지 않게 */
+h1,h2,h3,.sh-h h2,.dt .sh-h h2,.cu-h h2,.card h3,.sec h3{text-wrap:balance}
+p,small,.note,.addr,.rowi small,.cu-h small,.benok,.vf-msg,.status{text-wrap:pretty}
+.kv b{word-break:keep-all;overflow-wrap:anywhere}
+/* 바뀌는 숫자·가격은 자릿수 폭을 고정해 흔들리지 않게 */
+.cu-pr,.cu-gp b,.dt-price b,.peek .sub b,.st-nums b,.rc-sum b,.dc b,.rw-n b,.cal-n,.dt-tile b{font-variant-numeric:tabular-nums}
+/* 제목 오른쪽에 붙는 작은 배지·버튼이 제목과 같은 줄 가운데에 오도록 */
+.card h3,.sec h3{align-items:center}
+.card h3>span,.card h3>.tag,.sec h3>span{flex:none;white-space:nowrap}
+
+/* 휴대폰 화면(앱 폭 420px 미만): 지도 검색창이 좁아져 글자가 잘리지 않게. 시연 모드 표시는 설정 탭에서 확인 */
+@media (max-width:444px){
+  .topbar{gap:6px}
+  .topbar .round{width:46px;height:46px}
+  .searchbar{height:46px;padding:0 12px 0 7px;gap:8px;font-size:14px}
+  .sb-logo{width:30px;height:30px}
+  .searchbar .demo{display:none}
+  .chip{padding:0 12px;font-size:13px}
+}
