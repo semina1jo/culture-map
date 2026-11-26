@@ -20,7 +20,7 @@
     event_benefits: "id,rule_key,event_id,type,value,price_after,label,auto_extracted,user_id",
     places: "id,category,subcategory,name,price,ref_price,address,lat,lng,hours,note,source,is_sample,user_id,meta,updated_at",
     user_profiles: "user_id,nickname,birth,student_type,gu,soldier,interest_genres,demo_mode,noti_settings,extra_fields,updated_at",
-    reviews: "id,target_type,target_id,user_id,nickname,rating,text,created_at,visited_at,companions,highlights,photo_url",
+    reviews: "id,target_type,target_id,user_id,nickname,rating,text,created_at,visited_at,companions,highlights,photo_url,verify_level,verify_meta,mod_status",
     reports: "id,tab,name,genre,subcategory,price,ref_price,start_date,end_date,address,lat,lng,photo_url,source_url,status,yes,ended,wrong,user_id,meta,created_at",
     report_votes: "id,report_id,user_id,vote,created_at",
     visits: "id,user_id,event_id,visit_date,verified_at,demo_mode,distance_m",
@@ -412,6 +412,14 @@
     }),
     remove: (kind, keys) => keys.length ? run(() => remove("diary_entries", `user_id=eq.${encodeURIComponent(userId())}&kind=eq.${kind}&key=in.(${quoteIn(keys)})`)) : Promise.resolve({ ok: true }),
   };
+  // 리뷰 방문 확인 칸 (2026-11-26). verify: { photo_check: "match"|"time"|"mismatch"|"none", ... }, ticket: dataURL
+  // 티켓·예매 내역 사진이 있으면 '방문 인증'(ticket), 사진 촬영 시각·위치가 행사와 맞으면 '현장 사진'(photo)
+  async function verifyFields(verify, ticket, cur = null) {
+    const meta = { ...(cur?.verify_meta || {}), ...(verify || {}) };
+    if (ticket) meta.ticket_path = configured ? await uploadPrivateImage(ticket) : "local";
+    const level = meta.ticket_path ? "ticket" : meta.photo_check === "match" ? "photo" : null;
+    return { verify_level: level, verify_meta: Object.keys(meta).length ? meta : null };
+  }
   const service = {
     diary: diaryApi,
     get mode() { return connection.mode; },
@@ -437,13 +445,15 @@
       }
       cache("event_benefits", rows); return rows;
     }),
-    getReviews: target => list("reviews").filter(r => r.target_id === target),
+    // 관리자가 숨긴 리뷰는 본인에게만 보인다 (서버도 같은 규칙, 2026-11-26)
+    getReviews: target => list("reviews").filter(r => r.target_id === target && (!["hidden","auto_hidden"].includes(r.mod_status) || r.user_id === userId())),
     // extra: { visited_at, companions[], highlights[], photo(dataURL) } — 컬처맵 리뷰 항목
     addReview: (targetId, text, targetType = "event", rating = null, extra = {}) => run(async () => {
       if (!nickname()) cache("nickname", randomNickname());
       const row = { id: uuid(), user_id: userId(), nickname: nickname(), rating: rating ? Number(rating) : null, target_type: targetType, target_id: targetId, text: String(text || "").trim() || null, created_at: now(),
         visited_at: extra.visited_at || null, companions: extra.companions && extra.companions.length ? extra.companions : null, highlights: extra.highlights && extra.highlights.length ? extra.highlights : null, photo_url: null };
       if (extra.photo) row.photo_url = configured ? await uploadPhoto(extra.photo) : extra.photo;
+      Object.assign(row, await verifyFields(extra.verify, extra.ticket));
       if (configured) await insert("reviews", row);
       cache("reviews", [row, ...list("reviews")]); return row;
     }),
@@ -455,6 +465,7 @@
         visited_at: patch.visited_at ?? cur.visited_at ?? null, companions: patch.companions ? (patch.companions.length ? patch.companions : null) : cur.companions ?? null,
         highlights: patch.highlights ? (patch.highlights.length ? patch.highlights : null) : cur.highlights ?? null, photo_url: cur.photo_url ?? null };
       if (patch.photo !== undefined) row.photo_url = patch.photo ? (configured && patch.photo.startsWith("data:") ? await uploadPhoto(patch.photo) : patch.photo) : null;
+      if (patch.verify !== undefined || patch.ticket) Object.assign(row, await verifyFields(patch.verify, patch.ticket, cur));
       if (configured) await request(`/rest/v1/reviews?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId())}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(row) });
       cache("reviews", list("reviews").map(r => r.id === id ? { ...r, ...row } : r)); return { ...cur, ...row };
     }),
@@ -590,6 +601,18 @@
       const result = await request("/rest/v1/rpc/handle_culture_report", { method: "POST", body: JSON.stringify({ p_event_key: eventKey, p_action: action, p_note: note || null }) });
       try { cache("culture_events", (await selectAll("culture_events")).map(global.cultureEventsData.toEvent)); } catch (_) {}
       return result;
+    }),
+    // 관리자: 이상 징후가 있는 리뷰 목록과 처리 (2026-11-26)
+    listReviewAlerts: () => run(async () => {
+      if (!configured) return [];
+      const rows = await request("/rest/v1/rpc/admin_review_alerts", { method: "POST", body: "{}" });
+      const signed = await signImages(rows.map(r => ({ ...r, image_path: r.verify_meta?.ticket_path && r.verify_meta.ticket_path !== "local" ? r.verify_meta.ticket_path : null })));
+      return signed.map(r => ({ ...r, ticket_img: r._img || null }));
+    }),
+    moderateReview: (id, action, reason) => run(async () => {
+      const row = await request("/rest/v1/rpc/admin_moderate_review", { method: "POST", body: JSON.stringify({ p_id: id, p_action: action, p_reason: reason || null }) });
+      cache("reviews", list("reviews").map(r => r.id === id ? { ...r, mod_status: row.mod_status } : r));
+      return row;
     }),
     // 관리자: 예시(더미) 신청 골라서 삭제. 지도에 올라간 예시도 함께 지운다
     deleteDemoSubmissions: ids => run(async () => {

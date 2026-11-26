@@ -200,7 +200,10 @@ span.demo{font-size:10.5px;color:var(--muted);margin-left:8px;font-weight:500;ve
 .rv-bar .seg2{margin:0;flex:0 0 150px}
 .rv-bar .seg2 button{padding:6px 0;font-size:12.5px}
 .rv{border-bottom:1px solid var(--line);padding:10px 0}
-.rv-h{display:flex;align-items:center;gap:8px}
+.rv-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rv-vf{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px;background:var(--accent-soft,#EDF3DC);color:#3F5419;white-space:nowrap}.rv-vf.tk{background:#1F2B22;color:#FFFAF3}.rv-vf.hid{background:#FFE5E9;color:#8A1F2E}.rv.is-hidden{opacity:.7}
+.vf-msg{font-size:12.5px;line-height:1.45;margin:6px 0 2px;padding:8px 10px;border-radius:10px;background:var(--chip,#F1F4EA);color:var(--ink2,#4A584D)}.vf-msg.ok{background:#EDF3DC;color:#3F5419}.vf-msg.warn{background:#FFF3CC;color:#6B4E00}
+.rva-sig{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 0}.rva-sig .tag{margin:0}.rva-sig .tag.red{background:#FFE5E9;color:#8A1F2E}
 .rv-h b,.rv.mini b{font-size:13.5px}
 .rv-star{color:var(--gold);letter-spacing:1px;font-size:13px}
 .rv p{margin:4px 0 2px;font-size:14px;line-height:1.5;white-space:pre-wrap}
@@ -1303,7 +1306,7 @@ const reviewType = () => "event";
 function applyReviews(it){
   const ds=window.dataService;
   if(!it.baseInit){ it.baseInit=true; if(typeof it.cnt==="number"&&it.cnt>0){ it.baseCnt=it.cnt; it.baseStar=it.star||0; } }
-  const db=ds.getReviews(it.id).map(r=>({id:r.id,user_id:r.user_id,n:ds.nicknameOf(r.user_id,r.nickname||"이름 없음"),r:r.rating||0,c:r.text||"",at:r.created_at,likes:ds.getLikes(r.id).length,liked:ds.likedByMe(r.id),flagged:ds.flaggedByMe(r.id),mine:r.user_id===ds.userId(),visited:r.visited_at,with:r.companions||[],good:r.highlights||[],photo:r.photo_url||""}));
+  const db=ds.getReviews(it.id).map(r=>({id:r.id,user_id:r.user_id,n:ds.nicknameOf(r.user_id,r.nickname||"이름 없음"),r:r.rating||0,c:r.text||"",at:r.created_at,likes:ds.getLikes(r.id).length,liked:ds.likedByMe(r.id),flagged:ds.flaggedByMe(r.id),mine:r.user_id===ds.userId(),visited:r.visited_at,with:r.companions||[],good:r.highlights||[],photo:r.photo_url||"",verify:r.verify_level||"",hidden:["hidden","auto_hidden"].includes(r.mod_status)}));
   const samples=(it.sampleComments||[]).map((c,i)=>({id:null,sample:true,n:SAMPLE_NICKS[hashNum(it.id+i)%SAMPLE_NICKS.length],r:3+hashNum(c.c)%3,c:c.c,t:c.t,likes:hashNum(c.c+it.id)%6,at:""}));
   it.reviewList=[...db,...samples];
   const rated=db.filter(r=>r.r);
@@ -1324,8 +1327,9 @@ function reviewSection(it){
     const meta = [r.visited ? `${dotDate(r.visited)} 방문` : "", (r.with||[]).map(k => REV_WITH_L[k]?.l).filter(Boolean).join("·")].filter(Boolean).join(" · ");
     const goods = (r.good||[]).map(k => REV_GOOD_L[k]).filter(Boolean).map(x => `<span class="tag">${x.e} ${x.l}</span>`).join("");
     const extra = `${meta?`<small class="rv-meta">${esc(meta)}</small>`:""}${goods?`<div class="rv-goods">${goods}</div>`:""}${r.photo?`<img class="rv-photo" src="${esc(r.photo)}" alt="리뷰 사진" loading="lazy">`:""}`;
-    if(!r.c && !extra) return `<div class="rv mini"><b>${esc(r.n)}</b><span class="rv-star">${starStr(r.r)}</span><small>${when}</small><span class="rv-acts">${acts}</span></div>`;
-    return `<div class="rv"><div class="rv-h"><b>${esc(r.n)}</b><span class="rv-star">${starStr(r.r)}</span></div>${extra}${r.c?`<p>${esc(r.c)}</p>`:""}<div class="rv-f"><small>${when}</small><span class="rv-acts">${acts}</span></div></div>`;
+    const vf = verifyBadge(r.verify) + (r.hidden ? `<span class="rv-vf hid" title="관리자 검토 중이라 다른 사람에게는 보이지 않아요">숨김 처리됨 · 나만 보여요</span>` : "");
+    if(!r.c && !extra) return `<div class="rv mini ${r.hidden?"is-hidden":""}"><b>${esc(r.n)}</b>${vf}<span class="rv-star">${starStr(r.r)}</span><small>${when}</small><span class="rv-acts">${acts}</span></div>`;
+    return `<div class="rv ${r.hidden?"is-hidden":""}"><div class="rv-h"><b>${esc(r.n)}</b>${vf}<span class="rv-star">${starStr(r.r)}</span></div>${extra}${r.c?`<p>${esc(r.c)}</p>`:""}<div class="rv-f"><small>${when}</small><span class="rv-acts">${acts}</span></div></div>`;
   };
   const full=Math.round(it.star||0);
   return `<div class="sec"><h3>리뷰</h3>
@@ -1339,6 +1343,58 @@ function reviewSection(it){
     <div class="rv-bar"><div class="seg2"><button data-rsort="new" data-target="${esc(it.id)}" aria-pressed="${sort==="new"}">최신순</button><button data-rsort="like" data-target="${esc(it.id)}" aria-pressed="${sort==="like"}">좋아요순</button></div></div>
     ${list.map(item).join("") || `<button type="button" class="rv-empty" data-rwrite="${esc(it.id)}">아직 리뷰가 없어요. <u>다녀왔다면 첫 리뷰를 남겨 주세요</u></button>`}</div>`;
 }
+/* ===== 리뷰 사진 방문 확인 (2026-11-26) =====
+   사진 파일의 촬영 정보(EXIF: 찍은 시각·위치)를 기기 안에서 읽어 행사 기간·장소와 대조한다.
+   저장하는 사진은 줄여서 다시 만들기 때문에(shrinkPhoto) 위치 정보는 올라가지 않는다. 결과만 남긴다 */
+async function readPhotoMeta(file){
+  try {
+    const v = new DataView(await file.slice(0, 256 * 1024).arrayBuffer());
+    if (v.byteLength < 4 || v.getUint16(0) !== 0xFFD8) return null; // JPEG만 (HEIC·PNG는 촬영 정보 없음으로 본다)
+    let off = 2;
+    while (off + 10 < v.byteLength) {
+      const marker = v.getUint16(off), len = v.getUint16(off + 2);
+      if ((marker & 0xFF00) !== 0xFF00) break;
+      if (marker === 0xFFE1 && v.getUint32(off + 4) === 0x45786966) return parseExif(v, off + 10);
+      off += 2 + len;
+    }
+  } catch (_) {}
+  return null;
+}
+function parseExif(v, t){
+  const le = v.getUint16(t) === 0x4949, u16 = o => v.getUint16(o, le), u32 = o => v.getUint32(o, le);
+  const ifd = o => { const m = {}; if (o + 2 > v.byteLength) return m; const n = u16(o); for (let i = 0; i < n; i++) { const e = o + 2 + i * 12; if (e + 12 > v.byteLength) break; m[u16(e)] = { type: u16(e + 2), count: u32(e + 4), at: e + 8 }; } return m; };
+  const where = (en, size) => en.count * size > 4 ? t + u32(en.at) : en.at;
+  const str = en => { if (!en) return ""; const p = where(en, 1); let out = ""; for (let i = 0; i < en.count - 1 && p + i < v.byteLength; i++) out += String.fromCharCode(v.getUint8(p + i)); return out; };
+  const deg = en => { if (!en || en.count < 3) return NaN; const p = where(en, 8), r = k => u32(p + k * 8) / (u32(p + k * 8 + 4) || 1); return r(0) + r(1) / 60 + r(2) / 3600; };
+  const ifd0 = ifd(t + u32(t + 4));
+  const exif = ifd0[0x8769] ? ifd(t + u32(ifd0[0x8769].at)) : {};
+  const gps = ifd0[0x8825] ? ifd(t + u32(ifd0[0x8825].at)) : {};
+  const m = /^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2})/.exec(str(exif[0x9003] || exif[0x9004] || ifd0[0x0132]));
+  let lat = deg(gps[2]), lng = deg(gps[4]);
+  if (str(gps[1]) === "S") lat = -lat; if (str(gps[3]) === "W") lng = -lng;
+  const okGps = Number.isFinite(lat) && Number.isFinite(lng) && (lat || lng);
+  return { date: m ? `${m[1]}-${m[2]}-${m[3]}` : "", time: m ? `${m[4]}:${m[5]}` : "", lat: okGps ? lat : null, lng: okGps ? lng : null };
+}
+const PHOTO_RADIUS_M = 300;
+// 결과: match(시각·위치 모두 맞음) · time(시각만 맞음, 위치 정보 없음) · mismatch(다름) · none(촬영 정보 없음)
+function photoCheck(it, meta){
+  if (!meta || !meta.date) return { photo_check: "none" };
+  const out = { taken_at: `${meta.date}T${meta.time || "00:00"}` };
+  const inPeriod = meta.date <= REC_TODAY && (isAlwaysOpen(it) || ((!it.start || meta.date >= it.start) && (!it.end || meta.date <= it.end)));
+  if (!inPeriod) return { ...out, photo_check: "mismatch", why: "date" };
+  if (meta.lat == null) return { ...out, photo_check: "time" };
+  const loc = locationOf(it);
+  if (!loc || !Number.isFinite(loc.lat)) return { ...out, photo_check: "time" };
+  const d = Math.round(haversineM(loc.lat, loc.lng, meta.lat, meta.lng));
+  return { ...out, distance_m: d, photo_check: d <= PHOTO_RADIUS_M ? "match" : "mismatch", why: d <= PHOTO_RADIUS_M ? undefined : "place" };
+}
+const PHOTO_MSG = {
+  match: ["ok", "📷 촬영 시각·장소가 행사와 맞아요. 리뷰에 '현장 사진' 표시가 붙어요."],
+  time: ["", "촬영 시각은 확인했지만 위치 정보가 없는 사진이에요. 표시 없이 올라가요."],
+  mismatch: ["warn", "촬영 정보가 행사 기간이나 장소와 달라요. 표시 없이 올라가요."],
+  none: ["", "촬영 정보가 없는 사진이에요. 캡처·편집한 사진은 확인이 안 돼요."],
+};
+const verifyBadge = lv => lv === "ticket" ? `<span class="rv-vf tk" title="티켓·예매 내역으로 방문을 확인했어요">🎫 방문 인증</span>` : lv === "photo" ? `<span class="rv-vf" title="사진 촬영 시각·장소가 행사와 맞아요">📷 현장 사진</span>` : "";
 function reviewSheet(id, opts = {}){
   const it=findAny(id); if(!it) return;
   if(needLogin("리뷰 작성", () => backToDetail(id))) return;
@@ -1350,6 +1406,7 @@ function reviewSheet(id, opts = {}){
   const minDay = !isAlwaysOpen(it) && it.start ? it.start : "", maxDay = REC_TODAY;
   const tm = ed && ed.visited_at ? new Date(Date.parse(ed.visited_at) + 9*3600e3).toISOString().slice(11,16) : `${String(k.getUTCHours()).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
   let rating = ed?.rating || 0, photo = undefined; // undefined = 사진 그대로, "" = 지움, dataURL = 새 사진
+  let photoVerify = undefined, ticket = null; // 사진 방문 확인 결과, 티켓·예매 내역 사진(dataURL)
   const moodKeys = REV_MOOD.map(x => x.k);
   let mood = (ed?.highlights || []).find(k => moodKeys.includes(k)) || "";
   const withSet = new Set(ed?.companions || []), goodSet = new Set((ed?.highlights || []).filter(k => !moodKeys.includes(k)));
@@ -1367,6 +1424,9 @@ function reviewSheet(id, opts = {}){
       <label>분위기는 어땠나요? <span class="note">하나만</span></label>
       <div class="sit-vote">${REV_MOOD.map(x => `<button type="button" aria-pressed="${mood===x.k}" data-rm="${x.k}">${x.e} ${x.l}</button>`).join("")}</div>
       <label for="rvP">사진 (선택)</label><input type="file" id="rvP" accept="image/*"><img id="rvPv" class="prev" alt="" ${ed?.photo_url?`src="${esc(ed.photo_url)}"`:"hidden"}>${ed?.photo_url?'<button type="button" class="linkbtn" id="rvPDel">사진 지우기</button>':""}
+      <p class="vf-msg ${ed?.verify_level==="photo"?"ok":""}" id="rvPVf" ${ed?.verify_level==="photo"?"":"hidden"}>${ed?.verify_level==="photo"?PHOTO_MSG.match[1]:""}</p>
+      <label for="rvTk">티켓·예매 내역 사진 (선택) <span class="note">올리면 '방문 인증' 표시가 붙어요 · 다른 사람에게는 보이지 않아요</span></label>
+      <input type="file" id="rvTk" accept="image/*">${ed?.verify_meta?.ticket_path?'<p class="vf-msg ok" id="rvTkOk">🎫 티켓을 올린 리뷰예요. 새로 고르면 바뀌어요.</p>':'<p class="vf-msg ok" id="rvTkOk" hidden></p>'}
       <label for="rvT">리뷰 (선택)</label><textarea id="rvT" maxlength="300" placeholder="대기 시간, 볼거리, 꿀팁을 자유롭게 남겨 주세요.">${esc(ed?.text || "")}</textarea>
       <div class="err" id="rvErr"></div>
       <div class="acts"><button class="out" type="button" id="rvC">취소</button><button class="blk" type="submit">${ed ? "수정 완료" : "등록"}</button></div>
@@ -1377,8 +1437,17 @@ function reviewSheet(id, opts = {}){
   const toggle = (attr, set) => document.querySelectorAll(`[data-${attr}]`).forEach(b => b.onclick = () => { const v = b.dataset[attr]; set.has(v) ? set.delete(v) : set.add(v); b.setAttribute("aria-pressed", set.has(v)); });
   toggle("rw", withSet); toggle("rg", goodSet);
   document.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => { mood = mood === b.dataset.rm ? "" : b.dataset.rm; document.querySelectorAll("[data-rm]").forEach(x => x.setAttribute("aria-pressed", x.dataset.rm === mood)); });
-  $("#rvPDel") && ($("#rvPDel").onclick = () => { photo = ""; $("#rvPv").hidden = true; $("#rvPDel").remove(); });
-  $("#rvP").onchange = async ev => { const f = ev.target.files[0]; if (!f) return; try { photo = await shrinkPhoto(f); $("#rvPv").src = photo; $("#rvPv").hidden = false; } catch(_) { $("#rvErr").textContent = "사진을 읽지 못했어요. 다른 사진을 골라 주세요."; } };
+  $("#rvPDel") && ($("#rvPDel").onclick = () => { photo = ""; photoVerify = { photo_check: "none" }; $("#rvPv").hidden = true; $("#rvPVf").hidden = true; $("#rvPDel").remove(); });
+  $("#rvP").onchange = async ev => { const f = ev.target.files[0]; if (!f) return;
+    try {
+      const meta = await readPhotoMeta(f); // 줄이기 전에 원본에서 촬영 정보를 읽는다
+      photo = await shrinkPhoto(f); $("#rvPv").src = photo; $("#rvPv").hidden = false;
+      photoVerify = photoCheck(it, meta);
+      const [cls, msg] = PHOTO_MSG[photoVerify.photo_check]; const box = $("#rvPVf"); box.className = `vf-msg ${cls}`; box.textContent = msg; box.hidden = false;
+      // 촬영 날짜·시각이 행사 기간 안이면 방문 일시도 그걸로 채운다
+      if (meta?.date && photoVerify.photo_check !== "mismatch" && (!minDay || meta.date >= minDay) && meta.date <= maxDay) { $("#rvD").value = meta.date; if (meta.time) $("#rvTm").value = meta.time; }
+    } catch(_) { $("#rvErr").textContent = "사진을 읽지 못했어요. 다른 사진을 골라 주세요."; } };
+  $("#rvTk").onchange = async ev => { const f = ev.target.files[0]; if (!f) return; try { ticket = await shrinkPhoto(f); const ok = $("#rvTkOk"); ok.textContent = "🎫 티켓 사진을 골랐어요. 리뷰에 '방문 인증' 표시가 붙어요."; ok.hidden = false; } catch(_) { $("#rvErr").textContent = "티켓 사진을 읽지 못했어요. 다른 사진을 골라 주세요."; } };
   $("#rvF").addEventListener("submit", async ev => {
     ev.preventDefault();
     const date = $("#rvD").value, time = $("#rvTm").value || "12:00";
@@ -1389,8 +1458,9 @@ function reviewSheet(id, opts = {}){
     ev.submitter && (ev.submitter.disabled=true);
     const visited_at = new Date(`${date}T${time}:00+09:00`).toISOString();
     const fields = {visited_at, companions:[...withSet], highlights:[...goodSet, ...(mood ? [mood] : [])]};
-    const result = ed ? await ds.updateReview(ed.id, {...fields, rating, text:$("#rvT").value, photo})
-                      : await ds.addReview(id,$("#rvT").value,reviewType(it),rating,{...fields, photo: photo || ""});
+    const verify = photoVerify ? { ...photoVerify } : undefined;
+    const result = ed ? await ds.updateReview(ed.id, {...fields, rating, text:$("#rvT").value, photo, verify, ticket})
+                      : await ds.addReview(id,$("#rvT").value,reviewType(it),rating,{...fields, photo: photo || "", verify, ticket});
     if(!result.ok){ $("#rvErr").textContent=(result.error && result.error.message) || "저장에 실패했어요. 다시 시도해 주세요."; ev.submitter && (ev.submitter.disabled=false); return; }
     // 상황 필터는 리뷰 내용을 직접 집계한다(revStats). 예전 방문 인증 투표가 있으면 리뷰로 대체되도록 지운다
     if (ds.addSituationVotes && (ds.getSituationVotes() || []).some(v => v.event_id === id && v.user_id === ds.userId())) await ds.addSituationVotes(id, []);
@@ -1400,7 +1470,8 @@ function reviewSheet(id, opts = {}){
     // 사진은 기록 탭 달력에도 (나만 보기, 이미 남긴 사진이 없을 때만)
     if (photo) { const d = diary(), key = `${date}|${id}`; if (!d.notes[key]?.photo) { d.notes[key] = {...(d.notes[key] || {}), photo}; saveDiary(d); } }
     back(); renderMap();
-    toast(ed ? "리뷰를 수정했어요." : "리뷰를 남겼어요. 상황 필터에도 반영돼요.");
+    const lv = result.value?.verify_level;
+    toast(ed ? "리뷰를 수정했어요." : lv === "ticket" ? "방문 인증 리뷰를 남겼어요." : lv === "photo" ? "현장 사진 리뷰를 남겼어요." : "리뷰를 남겼어요. 상황 필터에도 반영돼요.");
   });
 }
 function flagSheet(reviewId, target){
@@ -1916,7 +1987,7 @@ function mySubmissionsSheet(){
 }
 
 /* ----- 관리자 심사 페이지 (설정 › 관리자 › 등록 심사) ----- */
-const ADM = { section: "sub", filter: "대기", rows: [], reports: [], loaded: false, loading: false, cleanup: false, pick: new Set() };
+const ADM = { section: "sub", filter: "대기", rows: [], reports: [], alerts: [], rvFilter: "open", loaded: false, loading: false, cleanup: false, pick: new Set() };
 // 링크를 열었다가 돌아왔을 때(같은 창에서 열려 앱이 다시 시작돼도) 보던 심사 화면과 체크 상태로 돌아가기 위한 기억
 const ADM_RET = "culture-map-admin-return";
 const admRecall = () => { try { return JSON.parse(sessionStorage.getItem(ADM_RET) || "null"); } catch (_) { return null; } };
@@ -1933,8 +2004,9 @@ function admRestore(){
 function openOutside(url){ if (/^https?:\/\//i.test(url)) window.open(url, "_blank", "noopener,noreferrer"); }
 async function loadAdminRows(){
   ADM.loading = true;
-  const [r, rp] = await Promise.all([window.dataService.listSubmissions(true), window.dataService.listCultureReports(true)]);
+  const [r, rp, ra] = await Promise.all([window.dataService.listSubmissions(true), window.dataService.listCultureReports(true), window.dataService.listReviewAlerts()]);
   ADM.loading = false;
+  if (ra.ok) ADM.alerts = ra.value || [];
   if (r.ok) { ADM.rows = r.value || []; ADM.loaded = true; }
   if (rp.ok) ADM.reports = rp.value || [];
   if (S.tab === "admin") renderPage();
@@ -1944,8 +2016,9 @@ function adminPage(pg){
   if (!ADM.loaded && !ADM.loading) loadAdminRows();
   if (ADM.cleanup) { demoCleanupPage(pg); return; }
   const openReports = reportGroups().filter(g => g.open.length).length;
-  const seg = `<div class="opt seg adm-seg" role="tablist"><button role="tab" data-admsec="sub" aria-pressed="${ADM.section==="sub"}">등록 심사 <span class="seg-n">${ADM.rows.filter(r=>r.status==="대기").length}</span></button><button role="tab" data-admsec="report" aria-pressed="${ADM.section==="report"}">신고 <span class="seg-n ${openReports?"hot":""}">${openReports}</span></button></div>`;
+  const seg = `<div class="opt seg adm-seg" role="tablist"><button role="tab" data-admsec="sub" aria-pressed="${ADM.section==="sub"}">등록 심사 <span class="seg-n">${ADM.rows.filter(r=>r.status==="대기").length}</span></button><button role="tab" data-admsec="report" aria-pressed="${ADM.section==="report"}">신고 <span class="seg-n ${openReports?"hot":""}">${openReports}</span></button><button role="tab" data-admsec="review" aria-pressed="${ADM.section==="review"}">리뷰 검토 <span class="seg-n ${openAlerts().length?"hot":""}">${openAlerts().length}</span></button></div>`;
   if (ADM.section === "report") { reportAdminPage(pg, seg); return; }
+  if (ADM.section === "review") { reviewAdminPage(pg, seg); return; }
   { const cur = admRecall(); admRemember({ id: cur?.id || null, checks: cur?.checks || {}, filter: ADM.filter }); }
   const count = s => ADM.rows.filter(r => r.status === s).length;
   const rows = ADM.rows.filter(r => r.status === ADM.filter);
@@ -1964,6 +2037,69 @@ function adminPage(pg){
   $("#admBack").onclick = () => { admRemember(null); S.tab = "me"; render(); };
   $("#admReload").onclick = () => { ADM.loaded = false; loadAdminRows(); renderPage(); };
   if ($("#admCleanup")) $("#admCleanup").onclick = () => { ADM.cleanup = true; ADM.pick = new Set(); renderPage(); };
+}
+/* ----- 리뷰 검토 (관리자 › 리뷰 검토, 2026-11-26) -----
+   서버(admin_review_alerts)가 이상 징후를 찾아 준다: 신고, 같은 계정의 몰아쓰기, 같은 장소에 짧은 시간 몰린 리뷰,
+   다른 계정과 같은 문장, 가입 직후 작성, 사진 촬영 정보 불일치. 서로 다른 3명이 신고하면 자동으로 숨겨 두고 검토를 기다린다 */
+const openAlerts = () => (ADM.alerts || []).filter(a => !a.mod_status || a.mod_status === "auto_hidden");
+const RV_MOD = { ok: "문제없음", hidden: "숨김", auto_hidden: "자동 숨김 · 검토 대기" };
+function reviewAdminPage(pg, seg){
+  const open = openAlerts(), done = (ADM.alerts || []).filter(a => a.mod_status && a.mod_status !== "auto_hidden");
+  const list = ADM.rvFilter === "open" ? open : done;
+  const item = a => { const ev = findAny(a.target_id);
+    return `<button class="adm-item" data-rva="${esc(a.id)}"><span class="ph">${a.photo_url?`<img src="${esc(a.photo_url)}" alt="">`:ev?(EMOJI[ev.genre]||"🎫"):"❔"}</span>
+      <span class="adm-main"><b>${a.mod_status?`<em class="tag demo-tag ${a.mod_status==="ok"?"":"unpub-tag"}">${RV_MOD[a.mod_status]}</em> `:""}${esc(ev?ev.name:"지도에서 찾을 수 없는 장소")}</b>
+        <small>${esc(window.dataService.nicknameOf(a.user_id, a.nickname||"이름 없음"))} · ${starStr(a.rating||0)}${a.text?` · ${esc(a.text.length>24?a.text.slice(0,24)+"…":a.text)}`:""}</small>
+        <span class="rva-sig">${(a.signals||[]).map(x=>`<span class="tag ${/신고|다름|같은 문장/.test(x)?"red":""}">${esc(x)}</span>`).join("")}${verifyBadge(a.verify_level)}</span></span>
+      <span class="adm-date">${dotDate(a.created_at).slice(5)}</span></button>`; };
+  pg.innerHTML = `<div class="adm-top"><button class="linkbtn adm-back" id="admBack">← 설정</button><button class="linkbtn" id="admReload">새로고침</button></div>
+    <h1>관리자</h1>${seg}
+    <p class="note" style="margin:0 0 12px">이상 징후가 잡힌 리뷰가 여기 모여요. 신고, 같은 계정의 몰아쓰기, 같은 장소에 갑자기 몰린 리뷰, 다른 계정과 같은 문장, 가입 직후 작성, 사진 촬영 정보 불일치를 자동으로 찾아요. 서로 다른 3명이 신고한 리뷰는 먼저 숨겨 두고 검토를 기다려요.</p>
+    <ol class="flow-rail adm-rail" role="tablist">
+      <li><button role="tab" data-rvf="open" aria-selected="${ADM.rvFilter==="open"}"><b>${open.length}</b>검토할 리뷰</button></li>
+      <li><button role="tab" data-rvf="done" aria-selected="${ADM.rvFilter==="done"}"><b>${done.length}</b>처리한 리뷰</button></li>
+    </ol>
+    ${ADM.loading && !ADM.loaded ? '<p class="note" style="padding:20px 0">리뷰를 불러오는 중이에요.</p>' : list.map(item).join("") || `<p class="note" style="padding:20px 0">${ADM.rvFilter==="open"?"검토할 리뷰가 없어요.":"아직 처리한 리뷰가 없어요."}</p>`}`;
+  $("#admBack").onclick = () => { admRemember(null); S.tab = "me"; render(); };
+  $("#admReload").onclick = () => { ADM.loaded = false; loadAdminRows(); renderPage(); };
+  pg.querySelectorAll("[data-rvf]").forEach(b => b.onclick = () => { ADM.rvFilter = b.dataset.rvf; renderPage(); });
+}
+function reviewAlertDetail(id){
+  const a = (ADM.alerts || []).find(x => x.id === id); if (!a) return;
+  const ev = findAny(a.target_id), m = a.verify_meta || {};
+  const pc = { match: "촬영 시각·장소가 행사와 맞음", time: "촬영 시각만 확인 (위치 정보 없음)", mismatch: `촬영 정보가 행사와 다름${m.why==="place"&&m.distance_m?` (행사장에서 ${m.distance_m}m)`:m.why==="date"?" (행사 기간 밖)":""}`, none: "촬영 정보 없음" }[m.photo_check] || "사진 없음";
+  const others = (ADM.alerts || []).filter(x => x.user_id === a.user_id && x.id !== a.id).length;
+  sheet(`<div class="sh-h"><h2>리뷰 검토</h2><button class="x" id="raX" aria-label="닫기">${ico.x}</button></div>
+    <div class="addr">${esc(ev ? ev.name : "지도에서 찾을 수 없는 장소")}${a.mod_status?` · ${RV_MOD[a.mod_status]}`:""}</div>
+    <div class="sec"><h3>잡힌 이상 징후</h3><div class="rva-sig">${(a.signals||[]).map(x=>`<span class="tag ${/신고|다름|같은 문장/.test(x)?"red":""}">${esc(x)}</span>`).join("") || '<span class="note">없음 (처리 기록만 남은 리뷰)</span>'}</div>
+      ${a.flag_count ? `<p class="note" style="margin:8px 0 0">신고 사유: ${esc((a.flag_reasons||[]).join(", "))}</p>` : ""}
+      ${others ? `<p class="note" style="margin:4px 0 0">같은 계정의 다른 검토 대상 리뷰 ${others}개</p>` : ""}
+      ${a.mod_reason ? `<p class="note" style="margin:4px 0 0">처리 메모: ${esc(a.mod_reason)}</p>` : ""}</div>
+    <div class="sec"><h3>리뷰 내용</h3>
+      <div class="rv"><div class="rv-h"><b>${esc(window.dataService.nicknameOf(a.user_id, a.nickname||"이름 없음"))}</b>${verifyBadge(a.verify_level)}<span class="rv-star">${starStr(a.rating||0)}</span></div>
+        <small class="rv-meta">작성 ${dotDate(a.created_at)}${a.visited_at?` · 방문 ${dotDate(a.visited_at)}`:""}</small>
+        ${a.photo_url?`<img class="rv-photo" src="${esc(a.photo_url)}" alt="리뷰 사진">`:""}${a.text?`<p>${esc(a.text)}</p>`:""}</div></div>
+    <div class="sec"><h3>방문 확인</h3>
+      <div class="kv"><span>사진</span><b>${esc(pc)}</b>${m.taken_at?`<span>촬영 시각</span><b>${esc(m.taken_at.replace("T"," "))}</b>`:""}<span>티켓·예매 내역</span><b>${m.ticket_path?"올림":"없음"}</b></div>
+      ${a.ticket_img?`<img class="rv-photo" src="${esc(a.ticket_img)}" alt="티켓·예매 내역 사진">`:""}</div>
+    <label for="raNote" class="flab">처리 메모 <span class="note">숨길 때는 꼭 적어 주세요</span></label>
+    <textarea id="raNote" class="adm-reason" maxlength="200" placeholder="예: 다른 계정과 같은 문장을 반복해 올린 광고성 리뷰예요."></textarea>
+    <div class="err" id="raErr" role="alert"></div>
+    <div class="acts">${a.mod_status==="hidden"||a.mod_status==="auto_hidden"?'<button class="out" id="raOk">다시 보이기 (문제없음)</button>':'<button class="out" id="raOk">문제없음</button>'}${a.mod_status==="hidden"?"":'<button class="blk danger" id="raHide">숨기기</button>'}</div>
+    ${ev ? '<button class="out w" id="raOpen" style="width:100%;margin-top:8px">장소에서 보기</button>' : ""}`, {level:"full"});
+  $("#raX").onclick = closeSheet;
+  if ($("#raOpen")) $("#raOpen").onclick = () => { closeSheet(); S.tab = "map"; admRemember(null); render(); centerOn(ev.x, ev.y); backToDetail(a.target_id); };
+  const act = async (action, btn) => {
+    const note = $("#raNote").value.trim();
+    if (action === "hide" && !note) { $("#raErr").textContent = "숨기는 이유를 적어 주세요."; $("#raNote").focus(); return; }
+    btn.disabled = true;
+    const res = await window.dataService.moderateReview(a.id, action, note);
+    if (!res.ok) { btn.disabled = false; $("#raErr").textContent = res.error?.message || "처리하지 못했어요."; return; }
+    revIdx = null; closeSheet(); ADM.loaded = false; await loadAdminRows();
+    toast(action === "hide" ? "리뷰를 숨겼어요. 작성자에게만 보여요." : "문제없음으로 처리했어요.");
+  };
+  $("#raOk").onclick = e2 => act("ok", e2.currentTarget);
+  if ($("#raHide")) $("#raHide").onclick = e2 => act("hide", e2.currentTarget);
 }
 /* ----- 신고 처리 (관리자 › 신고) ----- */
 // 같은 정보에 대한 신고를 묶는다. open = 아직 처리 안 한 신고
@@ -2171,7 +2307,7 @@ function renderPage(){
       </div>
       <div class="card"><h3>내 활동</h3><div class="acts" style="margin-top:4px"><button class="out w" id="myReviews">내 리뷰 ${window.dataService.getMyReviews().length}</button></div></div>
       <div class="card"><h3>장소 등록</h3><p class="note" style="margin:0">지도에 없는 행사나 장소를 등록 신청할 수 있어요. 관리자가 확인한 뒤 지도에 올라가요.</p><div class="acts" style="margin-top:10px"><button class="blk" id="partnerNew">등록 신청</button><button class="out" id="partnerMine">내 신청 ${window.dataService.getMySubmissions().length}</button></div></div>
-      ${window.dataService.isAdmin()?`<div class="card adm-card"><h3>관리자 <span class="tag grn">관리자 계정</span></h3><p class="note" style="margin:0">등록 신청을 검사해 지도에 올리고, 들어온 신고를 처리해요.</p><button class="blk w" id="adminOpen" style="width:100%;margin-top:10px">관리자 페이지 (등록 심사·신고)</button><button class="out w" id="adminCleanup" style="width:100%;margin-top:8px">예시 신청 정리</button></div>`:""}
+      ${window.dataService.isAdmin()?`<div class="card adm-card"><h3>관리자 <span class="tag grn">관리자 계정</span></h3><p class="note" style="margin:0">등록 신청을 검사해 지도에 올리고, 들어온 신고와 이상 징후가 잡힌 리뷰를 처리해요.</p><button class="blk w" id="adminOpen" style="width:100%;margin-top:10px">관리자 페이지 (등록 심사·신고·리뷰 검토)</button><button class="out w" id="adminCleanup" style="width:100%;margin-top:8px">예시 신청 정리</button></div>`:""}
       <div class="card"><h3>내 혜택 정보 <button class="out sm" id="profBtn">${S.profile?"수정":"입력하기"}</button></h3>
         ${S.profile?profileSummary():'<p class="note" style="margin:0">나이·거주지 같은 정보를 넣으면 무료·할인 대상인 문화생활을 골라서 보여줘요.</p>'}
         <label class="sw" for="benSw" style="border-bottom:0;padding-bottom:0"><span>문화 탭에서 내 혜택 적용해서 보기</span><input type="checkbox" id="benSw" ${S.benefit?"checked":""}></label>
@@ -2834,6 +2970,7 @@ document.addEventListener("click", async ev => {
   if (d.admf){ ADM.filter=d.admf; renderPage(); return; }
   if (d.admsec){ ADM.section=d.admsec; renderPage(); return; }
   if (d.rpg){ reportDetail(d.rpg); return; }
+  if (d.rva){ reviewAlertDetail(d.rva); return; }
   if (d.adm){ adminDetail(d.adm); return; }
   if (d.tab){ admRemember(null); S.tab=d.tab; closePeek(); closeSheet(); render(); return; }
   if (d.peek){ peek(d.peek); return; }
