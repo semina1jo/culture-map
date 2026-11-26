@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#FFFAF3"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="가문의 영광"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#FFFFFF"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="가문의 영광"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>가문의 영광 · 가성비 문화생활 지도</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&text=%EC%BB%AC%EC%B2%98%EB%A7%B5&display=swap">
@@ -722,6 +722,7 @@ i.sp{background:var(--ink2)}i.sv{background:var(--green)}
 .partner-desc{margin:8px 0 0;font-size:13.5px;line-height:1.55;color:var(--ink2);white-space:pre-line}
 @media (max-width:360px){.proof-pick{grid-template-columns:1fr}}
 </style>
+<link rel="stylesheet" href="/src/ui/theme-blue-pink.css">
 <div class="app" id="app">
   <div class="map" id="map" tabindex="0" aria-label="홍대입구역 주변 지도. 끌어서 이동, 휠이나 두 손가락으로 확대"><div id="gmap" class="gmap" aria-hidden="true"></div><div class="mapStatus" id="mapStatus" role="status"></div><div class="world" id="world"></div></div>
 
@@ -1905,7 +1906,7 @@ const DEMO_FILLS = [
 // 예시 대표 이미지: 분야 색과 이름으로 간단한 포스터를 그린다
 function demoPoster(d){
   const c = document.createElement("canvas"); c.width = 600; c.height = 800; const g = c.getContext("2d");
-  const bg = {전시:"#E9EFD8",공연:"#F3E3D3",체험:"#E0ECEA",축제:"#F6E7B8",팝업:"#F1DDE4","무료 공간":"#E4E8F1"}[d.genre] || "#EEE";
+  const bg = {전시:"#E3ECFF",공연:"#F3E3D3",체험:"#E0ECEA",축제:"#F6E7B8",팝업:"#F1DDE4","무료 공간":"#E4E8F1"}[d.genre] || "#EEE";
   g.fillStyle = bg; g.fillRect(0, 0, 600, 800);
   g.fillStyle = "#1F2B22"; g.font = "120px sans-serif"; g.textAlign = "center"; g.fillText(EMOJI[d.genre] || "🎫", 300, 300);
   g.font = "bold 40px sans-serif"; const t = d.title.replace("[예시] ", "");
@@ -2853,6 +2854,11 @@ async function syncDiaryFromServer(){
     signDiaryPhotos(true);
   } catch(_) { /* 다음 접속 때 다시 */ } finally { diarySyncing = false; }
 }
+// 디자인 미리보기(Vercel 브랜치 배포): 상단에 표시하고, 저장을 시도하면 안내한다
+if((window.__ENV__||{}).readOnly){
+  const rb=document.createElement("div"); rb.className="pv-ribbon"; rb.setAttribute("role","status"); rb.textContent="디자인 미리보기 · 저장되지 않아요"; document.body.appendChild(rb);
+  window.addEventListener("geojimap:preview-readonly",()=>toast("디자인 미리보기에서는 저장되지 않아요. 원본 데이터는 그대로예요."));
+}
 window.addEventListener("geojimap:account-change", () => syncDiaryFromServer());
 window.addEventListener("geojimap:data-ready", () => syncDiaryFromServer());
 const ymOf = d => d.slice(0,7);
@@ -3696,6 +3702,7 @@ function applyDataState(){
 window.addEventListener("geojimap:data-error",ev=>{
   const messages={anonymous_provider_disabled:"Supabase 익명 로그인을 켜 주세요.","23505":"이미 저장된 정보예요. 새로고침해 확인해 주세요.","42501":"서버 저장 권한을 확인해 주세요."};
   if(String(ev.detail.code||"").startsWith("auth_")) return; // 계정 오류는 가입·로그인 시트 안에 표시
+  if(ev.detail.code==="preview_readonly") return; // 미리보기 저장 차단은 아래에서 따로 안내
   toast(messages[ev.detail.code]||"Supabase 저장·조회에 실패했어요. 연결 상태를 확인해 주세요.");
 });
 window.addEventListener("geojimap:account-change",()=>{ S.subLoaded=false; window.dataService.checkAdmin(); loadMyResults(); if(S.tab==="me") renderPage(); });

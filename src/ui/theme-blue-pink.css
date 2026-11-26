@@ -1,0 +1,111 @@
+/* 디자인 미리보기: 8차 시안 '3. 블루 & 핑크' (h3)
+   범위 A: 색·버튼 모양·폰트·카드 스타일만 바꾼다. 배치·크기·기능은 그대로.
+   이 파일을 index.html에서 빼면 원래 디자인으로 돌아간다.
+   역할 비율(대략): 흰색 60 : 주색(블루) 25 : 강조색(핑크·혜택) 15 */
+
+@font-face{font-family:"Wanted Sans";src:url(/fonts/WantedSansVariable.woff2) format("woff2");font-weight:400 1000;font-display:swap}
+
+:root{
+  /* 기본 */
+  --ink:#16213A; --ink2:#566079; --muted:#8C94A8; --line:#E3E8F2; --chip:#F5F8FF; --white:#fff; --outer:#EEF2F9;
+  --paper:#FFFFFF; --bg:#FFFFFF;
+  /* 주색 = 블루 */
+  --accent:#2563D9; --accent-soft:#E3ECFF;
+  /* 강조색 = 핑크(혜택) */
+  --pink:#FFB0C6; --pink-ink:#16213A; --pink-deep:#D9557C; --pink-soft:#FFE0E8;
+  /* 가격 단계·문화 종류: 시안의 연한 톤 */
+  --grn:#D9557C; /* 아낀 금액 등 혜택 숫자 */
+  --green:#3E9A6B; --green-soft:#E3F3EC;
+  --gold:#D9A15A; --gold-soft:#FFF0D9;
+  --blue:#7C6CF0; --blue-soft:#E6E1FF;
+  --red:#E06C8E; --red-soft:#FFE0E8;
+  --map-land:#F0F1EE; --map-park:#DCE6D6; --map-water:#D6E0EA;
+  --f2:"Wanted Sans","Pretendard","Noto Sans KR","Apple SD Gothic Neo",sans-serif;
+  --sh:22,33,58; /* 그림자 색(잉크 기반) */
+}
+
+/* 바탕: 올리브 그라데이션 → 아주 연한 블루 */
+body{background:radial-gradient(circle at 20% 10%,#E6EEFF,transparent 50%),radial-gradient(circle at 85% 90%,#FCE8EF,transparent 45%),var(--outer)}
+.head{background:linear-gradient(var(--paper) 72%,rgba(255,255,255,0))}
+.cl-bar{background:linear-gradient(rgba(255,255,255,0),var(--bg) 30%)}
+
+/* 글꼴: 제목·숫자·버튼만 Wanted Sans, 본문은 Pretendard 유지 */
+h1,h2,h3,b,strong,.blk,.out,.chip,.peek .nm,.peek .sub b,.hero .price,.rc-sum b,.st-nums b{font-family:var(--f2)}
+
+/* 그림자: 숲색 → 잉크 네이비 */
+.round{box-shadow:0 3px 10px rgba(var(--sh),.10),0 0 0 1px rgba(var(--sh),.04)}
+.chip{box-shadow:0 2px 8px rgba(var(--sh),.08),0 0 0 1px rgba(var(--sh),.04)}
+.pin .p{box-shadow:0 3px 8px rgba(var(--sh),.16)}
+.pin .e .gb,.listitem .ph .gb{box-shadow:0 0 0 1px rgba(var(--sh),.15)}
+.pdot{box-shadow:0 1px 3px rgba(var(--sh),.3)}
+.plus-wrap span{box-shadow:0 1px 6px rgba(var(--sh),.14)}
+.legend{box-shadow:0 1px 6px rgba(var(--sh),.12)}
+.scrim{background:rgba(var(--sh),.38)}
+.why-pop{background:rgba(var(--sh),.32)}
+.why-card{box-shadow:0 12px 32px rgba(var(--sh),.22)}
+.om-bot{box-shadow:0 -8px 12px -10px rgba(var(--sh),.18)}
+.grab{background:#D5DBE8}
+
+/* 주색이 들어가는 요소 */
+.chip.on{background:var(--accent);color:#fff;box-shadow:0 3px 10px rgba(37,99,217,.28)}
+.more{background:var(--accent);box-shadow:0 3px 10px rgba(37,99,217,.28)}
+.pin.sel .p{background:var(--accent);border-color:var(--accent);box-shadow:0 4px 12px rgba(37,99,217,.4)}
+.plus{background:var(--accent);box-shadow:0 6px 16px rgba(37,99,217,.38)}
+.blk{background:var(--accent);border-color:var(--accent);border-radius:999px;box-shadow:0 3px 10px rgba(37,99,217,.24)}
+.blk.danger{background:var(--red);border-color:var(--red);box-shadow:none}
+.om-share{background:var(--accent);border-radius:999px}
+.om-chips button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:#fff}
+.om-lb2 button{color:var(--accent)}
+:focus-visible{outline-color:var(--accent)}
+form input:focus,form select:focus,form textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.bar i{background:var(--accent)}
+.cal-n.sat{color:#2563D9}
+i.p{background:var(--accent)}
+
+/* 하단 메뉴: 위치는 그대로, 선택 탭만 블루 + 연한 블루 아이콘 배경 */
+.nav{background:rgba(255,255,255,.97);box-shadow:0 -4px 18px rgba(var(--sh),.06)}
+.nav button[aria-current="page"]{color:var(--accent)}
+.nav button[aria-current="page"] svg{background:var(--accent-soft);border-radius:12px;box-shadow:0 0 0 5px var(--accent-soft)}
+.nav button[aria-current="page"] svg .f{fill:none}
+
+/* 카드·시트 모양: 시안처럼 더 둥글게 */
+.card{border-radius:24px;box-shadow:0 2px 12px rgba(var(--sh),.05)}
+.peek{border-radius:24px;box-shadow:0 8px 24px rgba(var(--sh),.14)}
+.peek .ph,.listitem .ph,.hero{border-radius:18px}
+.sheet{border-radius:28px 28px 0 0}
+.why-card{border-radius:24px}
+
+/* 강조색(핑크) = 혜택 */
+.chip.wday{background:var(--pink);color:var(--pink-ink)}
+.chip.ben .mini.on{background:var(--pink-deep)}
+.dc .pct{color:var(--pink-deep)}
+.new{background:var(--pink-deep)}
+.dot,.noti i{background:var(--pink-deep)}
+.benok{background:var(--pink-soft);color:#8A2D4B}
+.benrow.ok b{color:#B23A62}
+.cal-g button.wed:not(.on){color:var(--pink-deep)}
+i.e{background:var(--pink-deep)} /* 기록 달력 범례: 마감 */
+
+/* 별점·영수증 등 따뜻한 톤은 유지하되 바탕을 정리 */
+.rv-sum{background:linear-gradient(135deg,var(--gold-soft),#FFF8EC)}
+.receipt{background:#fff;border-color:var(--line);box-shadow:0 6px 18px rgba(var(--sh),.07)}
+.receipt::after{background:radial-gradient(circle at 6px 0,transparent 6px,#fff 6.5px) 0 0/12px 8px repeat-x}
+.rc-rule{border-top-color:#CBD3E3}
+.dr-b.priv{background:#F7F9FE}
+
+/* 올리브·숲색으로 박혀 있던 값 */
+.rv-vf{background:var(--accent-soft);color:#1E4FB0}
+.rv-vf.tk{background:var(--ink);color:#fff}
+.rv-vf.hid{background:var(--red-soft);color:#9A2F52}
+.vf-msg{background:var(--chip);color:var(--ink2)}
+.vf-msg.ok{background:var(--accent-soft);color:#1E4FB0}
+.status,.tag.grn{background:var(--green-soft);color:#24724D}
+.rva-sig .tag.red{background:var(--red-soft);color:#9A2F52}
+span.demo{border-color:var(--line)}
+.wallet{background:linear-gradient(135deg,#16213A 0%,#1E4FB0 60%,#2563D9 100%);box-shadow:0 8px 22px rgba(var(--sh),.24)}
+.rp-story{background:linear-gradient(160deg,#16213A,#2563D9)}
+.om-card canvas{background:#E3ECFF}
+.cal-c.sel{outline-color:var(--accent)}
+
+/* 미리보기 표시 (Vercel 미리보기 주소에서만 보임) */
+.pv-ribbon{position:fixed;left:50%;top:0;transform:translateX(-50%);z-index:9999;padding:2px 10px 3px;border-radius:0 0 10px 10px;background:var(--ink);color:#fff;font:600 10.5px/1.4 var(--f);opacity:.92;pointer-events:none;white-space:nowrap}

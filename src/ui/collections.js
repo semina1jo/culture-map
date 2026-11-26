@@ -13,7 +13,7 @@
   const savedItems = () => [...S.saved].map(visible).filter(Boolean).reverse();
   const colItems = c => c.items.filter(id => S.saved.has(id)).map(visible).filter(Boolean);
   const hasPhoto = e => Boolean(e.photo && /^https?:/.test(e.photo));
-  const PAL = [["#3D5414", "#EEF6DC"], ["#B4532A", "#FFF4E8"], ["#24395C", "#E6EEFB"], ["#C99A1E", "#2A1E00"], ["#5A3A5E", "#F6EAF7"], ["#2F6B5E", "#E3F5F0"]];
+  const PAL = [["#1E4FB0", "#E3ECFF"], ["#B4532A", "#FFF4E8"], ["#24395C", "#E6EEFB"], ["#C99A1E", "#2A1E00"], ["#5A3A5E", "#F6EAF7"], ["#2F6B5E", "#E3F5F0"]];
   const cleanName = e => String(e.name || "").replace(/^\[[^\]]*\]\s*/, "");
   function thumb(e, cls) {
     const [bg, fg] = PAL[hashNum(e.id) % PAL.length];
@@ -128,7 +128,7 @@
 .cl-pick{display:flex;align-items:center;gap:12px;border:0;border-bottom:1px solid var(--line);background:none;padding:10px 2px;text-align:left;color:var(--ink);min-height:64px}
 .cl-pick .cl-cover{width:46px;height:46px;border-radius:10px;flex:none}
 .cl-pn{flex:1;min-width:0}.cl-pn b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cl-pn small{color:var(--ink2);font-size:12px}
-.cl-check{flex:none;width:26px;height:26px;border-radius:50%;border:2px solid #C9D0C1;display:grid;place-items:center}
+.cl-check{flex:none;width:26px;height:26px;border-radius:50%;border:2px solid #C9D1E0;display:grid;place-items:center}
 .cl-check svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0}
 .cl-pick[aria-pressed="true"] .cl-check{background:var(--accent);border-color:var(--accent)}.cl-pick[aria-pressed="true"] .cl-check svg{opacity:1}
 .cl-new{display:flex;gap:8px;margin-top:14px}.cl-new input{flex:1;min-width:0;height:44px;border:1px solid var(--line);border-radius:12px;padding:0 12px;background:#fff;font-size:15px}
@@ -141,8 +141,8 @@
 .cl-cover.n1{grid-template-columns:1fr}.cl-cover.n2{grid-template-columns:1fr 1fr}.cl-cover.n3,.cl-cover.n4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
 .cl-cover.n3 .cl-ct:first-child{grid-row:span 2}
 .cl-ct{position:relative;display:block;overflow:hidden;min-height:0}
-.cl-cover.empty,.cl-cover.cl-plus{display:grid;place-items:center}.cl-cover svg{width:30px;height:30px;fill:none;stroke:#9AA592;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
-.cl-card.add .cl-cover{background:none;border:1.5px dashed #C9D0C1}.cl-card.add .cl-cover svg{stroke:var(--accent)}
+.cl-cover.empty,.cl-cover.cl-plus{display:grid;place-items:center}.cl-cover svg{width:30px;height:30px;fill:none;stroke:#98A2B8;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.cl-card.add .cl-cover{background:none;border:1.5px dashed #C9D1E0}.cl-card.add .cl-cover svg{stroke:var(--accent)}
 .cl-back{flex:none;width:40px;height:40px;margin:-6px 2px -6px -10px;border:0;background:none;display:grid;place-items:center}
 .cl-back svg{width:22px;height:22px;fill:none;stroke:var(--ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .sh-h:has(.cl-back) h2{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -152,8 +152,8 @@
 .cl-gc{width:100%;border:0;background:none;padding:0;text-align:left;display:flex;flex-direction:column;gap:3px;color:var(--ink)}
 .cl-gph{position:relative;display:block;aspect-ratio:3/4;border-radius:14px;overflow:hidden;margin-bottom:5px}.cl-gph .cl-fb{padding:12px;font-size:15px;font-weight:900;line-height:1.25}
 .cl-tt{font-size:14px;font-weight:700;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:keep-all}
-.cl-mt{font-size:12px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cl-pr{font-size:13px;font-weight:800;color:#3D5414}
-.cl-rm{position:absolute;right:6px;top:6px;width:32px;height:32px;border:0;border-radius:50%;background:rgba(31,43,34,.72);display:grid;place-items:center}
+.cl-mt{font-size:12px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cl-pr{font-size:13px;font-weight:800;color:#1E4FB0}
+.cl-rm{position:absolute;right:6px;top:6px;width:32px;height:32px;border:0;border-radius:50%;background:rgba(22,33,58,.72);display:grid;place-items:center}
 .cl-rm svg{width:15px;height:15px;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round}`;
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
 

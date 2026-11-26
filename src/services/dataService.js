@@ -84,7 +84,30 @@
     if (session?.access_token) result.Authorization = `Bearer ${session.access_token}`;
     return result;
   }
+  // 미리보기 배포(ENV.readOnly)에서는 원본 데이터를 바꾸는 요청을 서버로 보내지 않는다.
+  // 읽기 전용 함수(rpc)와 로그인 관련 요청(/auth/v1), 파일 주소 발급(sign)은 그대로 보낸다
+  const READ_RPCS = new Set(["public_nicknames", "is_app_admin", "admin_review_alerts", "find_account"]);
+  let readOnlyNoticeAt = 0;
+  function blockedInPreview(path, method) {
+    if (!ENV.readOnly) return false;
+    const m = String(method || "GET").toUpperCase();
+    if (m === "GET" || m === "HEAD") return false;
+    if (path.startsWith("/auth/v1/")) return false;
+    if (path.startsWith("/storage/v1/object/sign/")) return false;
+    const rpc = path.match(/^\/rest\/v1\/rpc\/([a-z_]+)/);
+    if (rpc && READ_RPCS.has(rpc[1])) return false;
+    return path.startsWith("/rest/v1/") || path.startsWith("/storage/v1/");
+  }
+  function previewBlocked() {
+    if (Date.now() - readOnlyNoticeAt > 4000) { readOnlyNoticeAt = Date.now(); announce("geojimap:preview-readonly", {}); }
+    return Object.assign(new Error("디자인 미리보기에서는 저장되지 않아요. 원본 데이터는 그대로예요."), { code: "preview_readonly", status: 0 });
+  }
+  async function storageUpload(path, init) {
+    if (blockedInPreview(path, init.method)) throw previewBlocked();
+    return fetch(`${base}${path}`, init);
+  }
   async function request(path, options = {}) {
+    if (blockedInPreview(path, options.method)) throw previewBlocked();
     let response;
     try { response = await fetch(`${base}${path}`, { ...options, headers: apiHeaders(options.headers) }); }
     catch (_) { throw Object.assign(new Error("네트워크 연결을 확인해 주세요."), { code: "network_error" }); }
@@ -327,7 +350,7 @@
     const existing = read();
     try {
       await authenticate();
-      if (!existing.remote_imported) {
+      if (!existing.remote_imported && !ENV.readOnly) {
         await importLocal(existing);
         cache("remote_imported", true);
       }
@@ -351,7 +374,7 @@
     if (!["image/jpeg","image/png","image/webp","image/gif"].includes(blob.type)) throw new Error("JPG, PNG, WebP, GIF 사진을 사용해 주세요.");
     const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" }[blob.type];
     const path = `${userId()}/${uuid()}.${extension}`;
-    const response = await fetch(`${base}/storage/v1/object/report-photos/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type }), body: blob });
+    const response = await storageUpload(`/storage/v1/object/report-photos/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type }), body: blob });
     if (!response.ok) throw new Error("사진 업로드에 실패했어요.");
     return `${base}/storage/v1/object/public/report-photos/${path}`;
   }
@@ -363,7 +386,7 @@
     const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" }[blob.type];
     if (!extension) throw new Error("JPG, PNG, WebP, GIF 사진을 사용해 주세요.");
     const path = `${userId()}/${uuid()}.${extension}`;
-    const response = await fetch(`${base}/storage/v1/object/diary-private/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type }), body: blob });
+    const response = await storageUpload(`/storage/v1/object/diary-private/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type }), body: blob });
     if (!response.ok) throw new Error("사진 업로드에 실패했어요.");
     return `dp:${path}`;
   }
@@ -375,7 +398,7 @@
     const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" }[blob.type];
     if (!extension) throw new Error("JPG, PNG, WebP, GIF 사진을 사용해 주세요.");
     const path = `${userId()}/${uuid()}.${extension}`;
-    const response = await fetch(`${base}/storage/v1/object/partner-proofs/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type }), body: blob });
+    const response = await storageUpload(`/storage/v1/object/partner-proofs/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type }), body: blob });
     if (!response.ok) throw new Error("사진 업로드에 실패했어요.");
     return path;
   }
@@ -395,7 +418,7 @@
     const signed = await request(`/storage/v1/object/sign/partner-proofs/${row.image_path}`, { method: "POST", body: JSON.stringify({ expiresIn: 120 }) });
     const blob = await (await fetch(`${base}/storage/v1${signed.signedURL || signed.signedUrl}`)).blob();
     const path = `${userId()}/${uuid()}.${(row.image_path.split(".").pop() || "jpg")}`;
-    const up = await fetch(`${base}/storage/v1/object/report-photos/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type || "image/jpeg" }), body: blob });
+    const up = await storageUpload(`/storage/v1/object/report-photos/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type || "image/jpeg" }), body: blob });
     if (!up.ok) throw new Error("대표 이미지를 공개하지 못했어요.");
     const url = `${base}/storage/v1/object/public/report-photos/${path}`;
     await request(`/rest/v1/culture_submissions?id=eq.${encodeURIComponent(row.id)}`, { method: "PATCH", body: JSON.stringify({ image_url: url }) });

@@ -11,7 +11,8 @@ const env = {
     ? `${process.env.MANUS_API_URL}/v1/maps/proxy/maps/api/js?key=${encodeURIComponent(process.env.MANUS_API_BROWSER_KEY || process.env.GOOGLE_MAPS_API_KEY)}&libraries=geometry`
     : "",
   SUPABASE_URL: process.env.SUPABASE_URL || "",
-  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || ""
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || "",
+  readOnly: process.env.PREVIEW_READONLY === "1"
 };
 const server = createServer(async (req, res) => {
   try {
