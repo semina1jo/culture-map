@@ -289,3 +289,9 @@ p,small,.note,.addr,.rowi small,.cu-h small,.benok,.vf-msg,.status{text-wrap:pre
 .dt-ic svg,.dt-ic .share-icon{width:17px;height:17px}
 /* 내 위치 버튼: 구글 로고와 겹쳐서 오른쪽 버튼 묶음(찜·알림·확대) 맨 아래로 옮김. 지도 범례는 왼쪽 아래 그대로 */
 .loc-wrap .mapLegend{left:0}
+/* 오른쪽 버튼 묶음을 아래로: 맨 위 '찜'이 예전 '+' 자리쯤 오도록 */
+.stack{top:280px}
+@media (max-height:700px){.stack{top:200px}}
+/* 시트 위 일자 바: 잡고 내리기 쉽게 터치 영역을 넓힘(보이는 막대 크기는 그대로) */
+.sheet .grab{position:relative;touch-action:none;cursor:grab}
+.sheet .grab::before{content:"";position:absolute;left:-60px;right:-60px;top:-14px;bottom:-14px}

@@ -26,12 +26,13 @@
     };
   }
 
+  let skipGhost = false;
   /* ---------- 시트 닫기 ---------- */
   if (typeof window.closeSheet === "function") {
     const close = window.closeSheet;
     window.closeSheet = function () {
       const scrim = $s("#scrim"), panel = scrim && scrim.querySelector(".sheet");
-      if (!reduce() && scrim && !scrim.hidden && panel) {
+      if (!skipGhost && !reduce() && scrim && !scrim.hidden && panel) {
         const ghost = document.createElement("div");
         ghost.className = "mo-ghost" + (scrim.classList.contains("detail-scrim") ? " detail" : "");
         ghost.setAttribute("aria-hidden", "true");
@@ -47,6 +48,56 @@
       return close.apply(this, arguments);
     };
   }
+
+
+  /* ---------- 시트 위 일자 바를 잡고 내려서 닫기 ----------
+     장소 상세 시트는 placeSheet.js가 이미 끌어내리기를 처리하므로 그 외 시트만.
+     90px 넘게 내리거나 빠르게 튕기면 닫히고, 아니면 제자리로 돌아간다 */
+  let drag = null;
+  const scrimEl = () => $s("#scrim");
+  document.addEventListener("pointerdown", ev => {
+    const grab = ev.target.closest && ev.target.closest(".sheet .grab");
+    if (!grab) return;
+    const panel = grab.closest(".sheet");
+    if (!panel || panel.classList.contains("place-sheet")) return;
+    panel.classList.remove("mo-sheet-in", "mo-sheet-swap");
+    drag = { panel, id: ev.pointerId, y: ev.clientY, t: performance.now(), dy: 0, lastY: ev.clientY, lastT: performance.now(), v: 0 };
+    panel.style.transition = "none";
+    try { grab.setPointerCapture(ev.pointerId); } catch (_) {}
+    ev.preventDefault();
+  });
+  document.addEventListener("pointermove", ev => {
+    if (!drag || ev.pointerId !== drag.id) return;
+    const now = performance.now();
+    drag.v = (ev.clientY - drag.lastY) / Math.max(1, now - drag.lastT);
+    drag.lastY = ev.clientY; drag.lastT = now;
+    drag.dy = Math.max(0, ev.clientY - drag.y);
+    drag.panel.style.transform = drag.dy ? `translateY(${drag.dy}px)` : "";
+    const sc = scrimEl(); if (sc) sc.style.opacity = String(Math.max(.35, 1 - drag.dy / (drag.panel.offsetHeight || 600)));
+  });
+  const endDrag = ev => {
+    if (!drag || ev.pointerId !== drag.id) return;
+    const { panel, dy, v } = drag; drag = null;
+    const sc = scrimEl();
+    if (dy > 90 || (v > 0.6 && dy > 24)) {
+      const ms = reduce() ? 0 : 200;
+      panel.style.transition = `transform ${ms}ms cubic-bezier(.3,0,.8,.15)`;
+      panel.style.transform = "translateY(100%)";
+      if (sc) { sc.style.transition = `opacity ${ms}ms ease-out`; sc.style.opacity = "0"; }
+      setTimeout(() => {
+        skipGhost = true;
+        try { if (panel.isConnected && window.closeSheet) window.closeSheet(); } finally { skipGhost = false; }
+        if (sc) { sc.style.transition = ""; sc.style.opacity = ""; }
+      }, ms);
+    } else {
+      panel.style.transition = "transform 220ms cubic-bezier(.32,.72,0,1)";
+      panel.style.transform = "";
+      if (sc) { sc.style.transition = "opacity 220ms ease-out"; sc.style.opacity = ""; setTimeout(() => { sc.style.transition = ""; }, 240); }
+      setTimeout(() => { panel.style.transition = ""; }, 240);
+    }
+  };
+  document.addEventListener("pointerup", endDrag);
+  document.addEventListener("pointercancel", endDrag);
 
   /* 탭 이동은 애니메이션 없이 즉시 전환한다 (사용자 결정, 2026-11-27) */
 })();
