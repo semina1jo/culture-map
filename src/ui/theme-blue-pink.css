@@ -3,6 +3,7 @@
    이 파일을 index.html에서 빼면 원래 디자인으로 돌아간다.
    역할 비율(대략): 흰색 60 : 주색(블루) 25 : 강조색(핑크·혜택) 15 */
 
+@font-face{font-family:"Paperlogy";src:url(/fonts/Paperlogy-7Bold.ttf) format("truetype");font-weight:700;font-display:swap}
 @font-face{font-family:"Wanted Sans";src:url(/fonts/WantedSansVariable.woff2) format("woff2");font-weight:400 1000;font-display:swap}
 
 :root{
@@ -20,6 +21,7 @@
   --blue:#7C6CF0; --blue-soft:#E6E1FF;
   --red:#E06C8E; --red-soft:#FFE0E8;
   --map-land:#F0F1EE; --map-park:#DCE6D6; --map-water:#D6E0EA;
+  --f-title:"Paperlogy","Pretendard","Noto Sans KR",sans-serif; /* 제목 전용 */
   --f2:"Wanted Sans","Pretendard","Noto Sans KR","Apple SD Gothic Neo",sans-serif;
   --sh:22,33,58; /* 그림자 색(잉크 기반) */
 }
@@ -29,8 +31,9 @@ body{background:radial-gradient(circle at 20% 10%,#E6EEFF,transparent 50%),radia
 .head{background:linear-gradient(var(--paper) 72%,rgba(255,255,255,0))}
 .cl-bar{background:linear-gradient(rgba(255,255,255,0),var(--bg) 30%)}
 
-/* 글꼴: 제목·숫자·버튼만 Wanted Sans, 본문은 Pretendard 유지 */
-h1,h2,h3,b,strong,.blk,.out,.chip,.peek .nm,.peek .sub b,.hero .price,.rc-sum b,.st-nums b{font-family:var(--f2)}
+/* 글꼴: 제목은 페이퍼로지, 숫자·가격·버튼은 Wanted Sans, 본문은 Pretendard */
+b,strong,.blk,.out,.chip,.peek .nm,.peek .sub b,.hero .price,.rc-sum b,.st-nums b,.dt-price b{font-family:var(--f2)}
+h1,h2,h3,.page h1,.sh-h h2,.card h3,.sec h3{font-family:var(--f-title);font-weight:700;letter-spacing:-.01em}
 
 /* 그림자: 숲색 → 잉크 네이비 */
 .round{box-shadow:0 3px 10px rgba(var(--sh),.10),0 0 0 1px rgba(var(--sh),.04)}

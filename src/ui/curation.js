@@ -270,7 +270,7 @@
     const anyDemo = [...CHIP_ORDER, ...BOTTOM].some(k => TOPICS[k].review);
     pg.dataset.cu = "1";
     pg.innerHTML = `<div class="cu">
-      <div class="cu-top"><button class="cu-region" data-cuscroll="1">서울 전체<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div class="cu-top"><span></span>
         <span class="cu-acts"><button class="cu-ic" data-cuact="search" aria-label="검색"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button><button class="cu-ic" data-cuact="noti" aria-label="문화 알림"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.3 1.6a.6.6 0 0 1-.5 1H5.2a.6.6 0 0 1-.5-1L6 16.5Z"/><path d="M10 21.5h4"/></svg></button></span></div>
       <h1 class="cu-title">이번 주, 돈 덜 드는 서울</h1><p class="sr-only">큐레이션 · 적은 돈으로 알차게, 데이터로 골랐어요</p>
       ${heroes.length ? `<section class="cu-sec first"><div class="cu-row heroes">${heroes.map((t, i) => heroCard(t, i, heroes.length, ho.label)).join("")}</div></section>` : ""}
@@ -369,7 +369,7 @@
 .cu-note{display:flex;gap:6px;margin:22px 2px 0;font-size:12px;line-height:1.5;color:var(--ink2)}.cu-note svg{margin-top:3px;flex:none}
 .nav button svg .g{fill:none}.nav button[aria-current="page"] svg .g{fill:var(--accent-soft)}
 /* ===== 8차 시안 탐색 화면 레이아웃 (디자인 미리보기 브랜치) ===== */
-.cu h2,.cu-title,.cu-h2t b{font-family:var(--f2,var(--f))}
+.cu h2,.cu-title,.cu-h2t b{font-family:var(--f-title,var(--f2,var(--f)));font-weight:700;letter-spacing:-.01em}
 .cu-top{display:flex;align-items:center;justify-content:space-between;margin:2px 0 14px}
 .cu-region{display:flex;align-items:center;gap:4px;height:44px;padding:0 14px 0 16px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);font-weight:700;font-size:14px}
 .cu-region svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
