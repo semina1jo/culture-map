@@ -59,6 +59,21 @@ Deno.serve(async (req) => {
     try { o = await req.json(); } catch (_) { o = {}; }
     if (!KEY && o.key) KEY = o.key; // Secret 저장 전 한 번 시험할 때만
     if (!KEY) throw new Error("KOPIS_API_KEY Secret이 없습니다");
+    // 진단: {"ping": true} → KOPIS 응답 시간만 잰다 (2026-11-26 시간 초과 조사용)
+    if ((o as { ping?: boolean }).ping) {
+      const probe = async (label: string, url: string) => {
+        const t = Date.now();
+        try { const r = await fetch(url, { signal: AbortSignal.timeout(40000) }); const x = await r.text(); return { label, ms: Date.now() - t, status: r.status, head: x.slice(0, 160) }; }
+        catch (e) { return { label, ms: Date.now() - t, error: String((e as Error)?.message ?? e) }; }
+      };
+      const d = compact(new Date(Date.now() + 9 * 3600e3));
+      return Response.json({ ok: true, ping: [
+        await probe("http 가짜 키", `${BASE}/pblprfr?service=x&stdate=${d}&eddate=${d}&cpage=1&rows=1`),
+        await probe("https 가짜 키", `${BASE.replace("http://", "https://")}/pblprfr?service=x&stdate=${d}&eddate=${d}&cpage=1&rows=1`),
+        await probe("http 실제 키 1건", `${BASE}/pblprfr?service=${KEY}&stdate=${d}&eddate=${d}&cpage=1&rows=1&signgucode=11`),
+        await probe("https 실제 키 1건", `${BASE.replace("http://", "https://")}/pblprfr?service=${KEY}&stdate=${d}&eddate=${d}&cpage=1&rows=1&signgucode=11`),
+      ] });
+    }
     const runStart = new Date().toISOString();
     const now = new Date(Date.now() + 9 * 3600e3);
     const todayIso = now.toISOString().slice(0, 10);
