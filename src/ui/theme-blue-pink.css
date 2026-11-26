@@ -294,3 +294,29 @@ p,small,.note,.addr,.rowi small,.cu-h small,.benok,.vf-msg,.status{text-wrap:pre
 /* 시트 위 일자 바: 잡고 내리기 쉽게 터치 영역을 넓힘(보이는 막대 크기는 그대로) */
 .sheet .grab{position:relative;touch-action:none;cursor:grab}
 .sheet .grab::before{content:"";position:absolute;left:-60px;right:-60px;top:-14px;bottom:-14px}
+
+/* ===================== 지도 핀 (8차 시안) ===================== */
+/* 기본: 흰 알약 + 둥근 사진 + 굵은 가격. 가격대(무료·저가·만 원 이하)는 테두리 대신 사진 둘레의 얇은 색 고리로 */
+.pin .p{gap:6px;padding:5px 12px 5px 5px;border:0;border-radius:999px;background:#fff;color:var(--ink);font:700 13px/1 var(--f2);box-shadow:0 2px 8px rgba(var(--sh),.14),0 0 0 1px rgba(var(--sh),.04);position:relative}
+.pin .e{width:24px;height:24px;margin:0;box-shadow:0 0 0 2px #fff,0 0 0 3.5px var(--bd);font-size:12px}
+.pin .e .gb{right:-5px;bottom:-4px}
+/* 선택: 주색 알약 + 흰 글자 + 아래 꼬리 */
+.pin.sel .p{background:var(--accent);color:#fff;padding:6px 14px 6px 6px;font-size:14px;box-shadow:0 6px 16px rgba(37,99,217,.32)}
+.pin.sel .p::after{content:"";position:absolute;left:50%;bottom:-4px;width:10px;height:10px;background:var(--accent);transform:translateX(-50%) rotate(45deg);border-radius:0 0 2px 0}
+.pin.sel .e{width:28px;height:28px;box-shadow:0 0 0 2px #fff}
+/* 혜택 적용가: 강조색(핑크) 알약 */
+.pin.ben:not(.sel) .p{background:var(--pink);color:var(--pink-ink)}
+.pin.ben:not(.sel) .e{box-shadow:0 0 0 2px #fff}
+/* 꼬리표: 꼭 알아야 할 상태만, 작은 흰 알약으로 */
+.pin .s{margin-top:4px;padding:2px 7px;border:0;border-radius:999px;background:#fff;color:var(--ink2);font:600 10.5px/1.2 var(--f);box-shadow:0 1px 4px rgba(var(--sh),.14)}
+.pin.sel .s{margin-top:8px}
+.pin .s.ben{background:var(--pink-soft);color:#9A2F52}
+.pin .s.hot{background:#fff;color:var(--pink-deep)}
+/* 여러 곳 묶음 핀: 흰 알약 + 연파랑 원 안의 + */
+.pin.cluster .p{font-size:13px}
+.pin.cluster .e{background:var(--accent-soft);color:var(--accent);box-shadow:none;font-weight:800}
+.pin.cluster .s{background:var(--ink);color:#fff}
+/* 제보 핀: 점선 테두리 대신 사진 고리를 점선 느낌으로 */
+.pin.rep .p{border:0;outline:1.5px dashed var(--bd);outline-offset:1px}
+/* 상설 시설 점 */
+.pdot{width:11px;height:11px;border-width:2px;box-shadow:0 1px 4px rgba(var(--sh),.3)}

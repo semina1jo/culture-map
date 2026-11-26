@@ -1349,9 +1349,11 @@ function renderMap(){
       return `<button class="pin t-mid cluster ${c.list.every(isDemoCulture)?"demo":""}" style="left:${p.x}px;top:${p.y}px" data-lat="${loc.lat}" data-lng="${loc.lng}" data-cluster="${c.list.map(e=>e.id).join(",")}" aria-label="${n}곳 묶음 핀"><span class="p"><span class="e">＋</span>${n}곳</span><span class="s">${sub}</span></button>`;
     }
     const e = c.list[0], f = eff(e), p = c.p, loc = { lat: c.lat, lng: c.lng };
-    return `<button class="pin ${tier(f.price)} ${S.sel===e.id?"sel":""} ${e.src==="사용자 제보"?"rep":""} ${isDemoCulture(e)?"demo":""}" style="left:${p.x}px;top:${p.y}px" data-lat="${loc.lat}" data-lng="${loc.lng}" data-peek="${e.id}" aria-label="${esc(e.name)} ${priceText(e,f)}${isDemoCulture(e)?" (예시)":""}">
+    // 핀 아래 작은 꼬리표: 알아야 할 상태(혜택·할인·마감·제보·예시·최저석)만 보이고, '바로 입장'처럼 일반 정보는 상세에서 (8차 시안 핀)
+    const sk = f.rule?.t==="wday" ? ["🎬 문화가 있는 날","ben"] : f.rule ? ["🎟️ 내 혜택가","ben"] : e.src==="사용자 제보" ? ["제보",""] : lowestSeat(e) ? ["최저석",""] : discounts.some(d=>d.ref===e.id&&d.left>0) ? ["오늘 할인","ben"] : isDemoCulture(e) ? ["예시",""] : soon(e) ? ["곧 종료","hot"] : null;
+    return `<button class="pin ${tier(f.price)} ${S.sel===e.id?"sel":""} ${f.rule?"ben":""} ${e.src==="사용자 제보"?"rep":""} ${isDemoCulture(e)?"demo":""}" style="left:${p.x}px;top:${p.y}px" data-lat="${loc.lat}" data-lng="${loc.lng}" data-peek="${e.id}" aria-label="${esc(e.name)} ${priceText(e,f)}${isDemoCulture(e)?" (예시)":""}">
       <span class="p"><span class="e">${pinThumb(e)}</span>${priceText(e,f)}</span>
-      <span class="s">${f.rule?.t==="wday" ? "🎬 문화가 있는 날" : f.rule ? "🎟️ 내 혜택가" : e.src==="사용자 제보" ? "제보" : lowestSeat(e) ? "최저석" : discounts.some(d=>d.ref===e.id&&d.left>0) ? "오늘 할인" : isDemoCulture(e) ? "예시" : soon(e) ? "곧 종료" : e.is_partner ? "등록 장소" : e.is_permanent_place ? "상설" : e.is_public_culture ? "문화행사" : e.reserve ? "예약" : "바로 입장"}</span></button>`;
+      ${sk?`<span class="s ${sk[1]}">${sk[0]}</span>`:""}</button>`;
   }).join("");
   $("#world").innerHTML = mapSVG() + pins + meDotHtml();
   // 범례: 상설을 점으로 보이거나 숨길 때만 표시
