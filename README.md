@@ -33,6 +33,11 @@
 ## 로컬 실행
 `npm run dev` → http://localhost:3000
 
+## 기록 탭 저장 위치 (2026-11-27)
+- 나만의 기록 글·인용구·낸 금액: `diary_entries` (본인만)
+- 나만의 기록 사진(대표·팜플렛·추가): 비공개 저장소 `diary-private`, `dp:경로`로 저장하고 볼 때 6시간짜리 서명 주소를 받음. 본인만 읽기·올리기·지우기(관리자도 못 봄)
+- 2026-11-27 이전에 올린 메모 사진은 공개 저장소(`report-photos`) 주소 그대로 남아 있음
+
 ## 관리자 (등록 심사)
 - 관리자 계정은 Supabase `app_admins` 테이블에 있는 계정입니다. SQL Editor에서 추가합니다.
   `insert into public.app_admins(user_id, email) select id, email from auth.users where email = '관리자이메일';`

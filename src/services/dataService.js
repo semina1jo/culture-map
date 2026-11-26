@@ -355,6 +355,18 @@
     if (!response.ok) throw new Error("사진 업로드에 실패했어요.");
     return `${base}/storage/v1/object/public/report-photos/${path}`;
   }
+  // 나만의 기록 사진: 본인만 읽을 수 있는 diary-private에 올리고 'dp:경로'를 돌려준다. data:URL이 아니면 그대로(예전 공개 주소 포함)
+  async function uploadDiaryPhoto(value) {
+    if (!value || !String(value).startsWith("data:")) return value || "";
+    const blob = await (await fetch(value)).blob();
+    if (blob.size > 5 * 1024 * 1024) throw new Error("사진은 5MB 이하로 선택해 주세요.");
+    const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" }[blob.type];
+    if (!extension) throw new Error("JPG, PNG, WebP, GIF 사진을 사용해 주세요.");
+    const path = `${userId()}/${uuid()}.${extension}`;
+    const response = await fetch(`${base}/storage/v1/object/diary-private/${path}`, { method: "POST", headers: apiHeaders({ "content-type": blob.type }), body: blob });
+    if (!response.ok) throw new Error("사진 업로드에 실패했어요.");
+    return `dp:${path}`;
+  }
   // 승인 전 대표 이미지: 비공개 저장소(partner-proofs)에 올리고 경로만 돌려준다
   async function uploadPrivateImage(value) {
     if (!value || !value.startsWith("data:")) return null;
@@ -407,15 +419,27 @@
       const out = [];
       // 여러 줄을 한 번에 넣으려면 모든 줄의 칸 구성이 같아야 한다
       for (const r of rows) {
-        // 비공개 리뷰의 팜플렛·추가 사진(data.extras)도 data:URL이면 저장소에 올리고 주소로 바꾼다
+        // 나만의 기록 사진(대표·팜플렛·추가)은 비공개 저장소(diary-private)에 올리고 'dp:경로'로 저장한다 (2026-11-27)
         let data = r.data ?? null;
-        if (r.kind === "note" && data && Array.isArray(data.extras)) data = { ...data, extras: await Promise.all(data.extras.map(x => uploadPhoto(x))) };
-        out.push({ user_id: userId(), kind: r.kind, key: r.key, date: r.date ?? null, memo: r.memo ?? null, photo_url: r.photo_url ? await uploadPhoto(r.photo_url) : null, data, updated_at: now() });
+        if (r.kind === "note" && data && Array.isArray(data.extras)) data = { ...data, extras: await Promise.all(data.extras.map(x => uploadDiaryPhoto(x))) };
+        out.push({ user_id: userId(), kind: r.kind, key: r.key, date: r.date ?? null, memo: r.memo ?? null, photo_url: r.photo_url ? await uploadDiaryPhoto(r.photo_url) : null, data, updated_at: now() });
       }
       if (out.length) await request(`/rest/v1/diary_entries?on_conflict=user_id,kind,key`, { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(out) });
       return out;
     }),
     remove: (kind, keys) => keys.length ? run(() => remove("diary_entries", `user_id=eq.${encodeURIComponent(userId())}&kind=eq.${kind}&key=in.(${quoteIn(keys)})`)) : Promise.resolve({ ok: true }),
+    // 'dp:경로' → 잠깐 쓸 수 있는 주소(6시간). { "dp:…": "https://…" }
+    sign: refs => run(async () => {
+      const paths = [...new Set((refs || []).filter(r => String(r).startsWith("dp:")).map(r => r.slice(3)))];
+      if (!paths.length) return {};
+      const signed = await request("/storage/v1/object/sign/diary-private", { method: "POST", body: JSON.stringify({ expiresIn: 21600, paths }) });
+      return Object.fromEntries((signed || []).filter(x => x.signedURL && x.path).map(x => [`dp:${x.path}`, `${base}/storage/v1${x.signedURL}`]));
+    }),
+    // 기록에서 뺀 비공개 사진은 저장소에서도 지운다
+    removeFiles: refs => {
+      const prefixes = [...new Set((refs || []).filter(r => String(r).startsWith("dp:")).map(r => r.slice(3)))];
+      return prefixes.length ? run(() => request("/storage/v1/object/diary-private", { method: "DELETE", body: JSON.stringify({ prefixes }) })) : Promise.resolve({ ok: true });
+    },
   };
   // 리뷰 방문 확인 칸 (2026-11-26). verify: { photo_check: "match"|"time"|"mismatch"|"none", ... }, ticket: dataURL
   // 티켓·예매 내역 사진이 있으면 '방문 인증'(ticket), 사진 촬영 시각·위치가 행사와 맞으면 '현장 사진'(photo)
