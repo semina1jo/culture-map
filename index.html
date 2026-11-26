@@ -497,6 +497,11 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 .rw-n{margin:0 0 4px;font-size:21px;font-weight:800;letter-spacing:-.03em}.rw-n b{color:var(--accent)}
 .rw-e{display:flex;align-items:center;justify-content:center;margin:0;font-weight:700;font-size:14px}
 .rw-v{margin:6px 0 0;font-size:12.5px;color:var(--ink2)}
+.sb-near{display:flex;flex-direction:column;gap:4px;margin-top:5px}.sb-near:empty{display:none}
+.sb-st{display:flex;align-items:center;gap:4px;font-size:13px;flex-wrap:wrap}.sb-st b{font-weight:700;margin-left:2px}.sb-st>span{color:var(--muted);font-size:12px}
+.sb-b{font-style:normal;display:inline-grid;place-items:center;min-width:19px;height:19px;border-radius:999px;background:var(--lc);color:#fff;font-size:11px;font-weight:800;line-height:1;padding:0}
+.sb-b.w{padding:0 7px;font-size:10.5px}
+.sb-none{font-size:12px;color:var(--muted)}
 .rw-map{margin:10px auto 0;max-width:330px;background:var(--chip);border-radius:16px;padding:10px;display:flex;align-items:center;gap:12px;text-align:left}.rw-map .gm-grid{flex:0 0 148px;gap:2px}
 .rw-map p{margin:0;font-size:12.5px;color:var(--ink2);line-height:1.45}.rw-map .nw{white-space:nowrap;color:var(--muted);font-size:11.5px}.rw-map .gm-grid{width:148px}
 @media (max-height:700px){.rw-tt{display:none}} /* 작은 화면: 준비 중인 칭호 칸은 숨기고 세 갈래 버튼이 보이게 */.rw-map p b{color:var(--ink)}
@@ -1654,7 +1659,7 @@ function detail(id,level){
       <div class="rowi">${ico.tk}<div>${esc(e.entry)}<small>입장 방법</small></div></div>
       <div class="rowi">${ico.won}<div>${esc(e.is_public_culture ? (e.fee_text || "요금 안내 없음") : e.USE_FEE || e.price_label || won(e.price))}<small>원문 이용 요금</small></div></div>
       <div class="rowi">${ico.user}<div>${esc(e.USE_TRGT || "누구나")}<small>이용 대상</small></div></div>
-      <div class="rowi">${ico.pin}<div>${esc(e.place)}<small>위치</small></div></div>
+      <div class="rowi">${ico.pin}<div>${esc(e.place)}<div class="sb-near" id="dSubway" aria-live="polite"></div><small>위치</small></div></div>
       ${e.is_public_culture?`<div class="rowi">${ico.doc}<div>${esc(e.source)}<small>출처</small></div></div>`:""}
     </div>
     ${benefitBlock(e)}
@@ -1684,6 +1689,51 @@ function detail(id,level){
   if ($("#goProfile")) $("#goProfile").onclick = () => profileSheet(true);
 
   if ($("#dTicket")) $("#dTicket").onclick = () => { if (/^https?:\/\//i.test(e.ticket_url)) window.open(e.ticket_url, "_blank", "noopener,noreferrer"); };
+  fillNearStation(e);
+}
+
+/* ---------- 가까운 지하철역 (2026-11-27) ----------
+   서울시 역사마스터 정보 → Supabase subway_stations (sync-subway-stations 함수). 30일 캐시
+   데이터의 노선 이름은 철도 구간 이름(경부선·과천선…)이라 승객이 아는 이름으로 바꾼다 */
+const SUBWAY_KEY = "culturemap-subway-v1";
+const SUBWAY_LINE = {"경부선":"1호선","경원선":"1호선","경인선":"1호선","장항선":"1호선","일산선":"3호선","과천선":"4호선","안산선":"4호선","진접선":"4호선","7호선(인천)":"7호선","별내선":"8호선","9호선(연장)":"9호선","분당선":"수인분당선","수인선":"수인분당선","중앙선":"경의중앙선","신분당선(연장)":"신분당선","신분당선(연장2)":"신분당선","공항철도1호선":"공항철도","수도권 광역급행철도":"GTX-A","에버라인선":"에버라인","의정부선":"의정부경전철"};
+// 노선 공식 색 · 배지 글자 · 정렬 순서
+const SUBWAY_STYLE = [
+  ["1호선","#0052A4","1"],["2호선","#00A84D","2"],["3호선","#EF7C1C","3"],["4호선","#00A5DE","4"],["5호선","#996CAC","5"],["6호선","#CD7C2F","6"],["7호선","#747F00","7"],["8호선","#E6186C","8"],["9호선","#BDB092","9"],
+  ["경의중앙선","#77C4A3","경의중앙"],["공항철도","#0090D2","공항"],["수인분당선","#FABE00","수인분당"],["신분당선","#D4003B","신분당"],["경춘선","#0C8E72","경춘"],["우이신설선","#B0CE18","우이신설"],["신림선","#6789CA","신림"],["서해선","#8FC31F","서해"],["경강선","#0054A6","경강"],["GTX-A","#9A6292","GTX-A"],["김포골드라인","#AD8605","김포골드"],["인천1호선","#7CA8D5","인천1"],["인천2호선","#ED8B00","인천2"],["에버라인","#509F22","에버라인"],["의정부경전철","#FDA600","의정부"]
+];
+const subwayStyle = line => { const i = SUBWAY_STYLE.findIndex(x => x[0] === line); return i < 0 ? {c:"#8A8F88", t:line.replace(/선$/, ""), o:99} : {c:SUBWAY_STYLE[i][1], t:SUBWAY_STYLE[i][2], o:i}; };
+let subwayLoad = null;
+function loadSubway(){
+  if (subwayLoad) return subwayLoad;
+  subwayLoad = (async () => {
+    try { const c = JSON.parse(localStorage.getItem(SUBWAY_KEY) || "null"); if (c && Date.now() - c.at < 30 * 864e5 && c.rows?.length) return c.rows; } catch(_) {}
+    const env = window.__ENV__ || {}, url = env.SUPABASE_URL, key = env.SUPABASE_ANON_KEY;
+    if (!url || !key) return [];
+    const res = await fetch(`${url}/rest/v1/subway_stations?select=name,line,lat,lng&limit=2000`, {headers:{apikey:key, Authorization:`Bearer ${key}`}});
+    if (!res.ok) throw new Error("subway");
+    const rows = (await res.json()).map(r => [r.name, SUBWAY_LINE[r.line] || r.line, +r.lat.toFixed(6), +r.lng.toFixed(6)]);
+    try { localStorage.setItem(SUBWAY_KEY, JSON.stringify({at:Date.now(), rows})); } catch(_) {}
+    return rows;
+  })().catch(() => { subwayLoad = null; return []; });
+  return subwayLoad;
+}
+function geoDistM(a, b){ const r = v => v * Math.PI / 180, dLat = r(b.lat - a.lat), dLng = r(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLng / 2) ** 2; return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h)); }
+/* 1.2km 안 가장 가까운 역(이름이 같은 승강장은 한 역으로 묶어 환승 노선을 모두) + 600m 안 다른 역 하나 */
+function nearStations(rows, at){
+  const norm = n => n.replace(/\(.*?\)/g, "").replace(/역$/, "").trim();
+  const groups = new Map();
+  rows.forEach(([name, line, lat, lng]) => { const d = geoDistM(at, {lat, lng}); if (d > 1200) return; const k = norm(name), g = groups.get(k) || {name:k, d, lines:new Set()}; g.d = Math.min(g.d, d); g.lines.add(line); groups.set(k, g); });
+  const list = [...groups.values()].sort((a, b) => a.d - b.d);
+  return list.filter((g, i) => i === 0 || (i === 1 && g.d <= 600)).map(g => ({...g, lines:[...g.lines].map(subwayStyle).sort((a, b) => a.o - b.o), min:Math.max(1, Math.round(g.d * 1.3 / 67))}));
+}
+async function fillNearStation(e){
+  const box = $("#dSubway"), at = locationOf(e); if (!box || !at || !Number.isFinite(at.lat)) return;
+  const rows = await loadSubway(); if (!rows.length || !document.body.contains(box)) return;
+  const near = nearStations(rows, at);
+  box.innerHTML = near.length ? near.map(g => `<span class="sb-st">${g.lines.map(l => `<i class="sb-b${l.t.length > 1 ? " w" : ""}" style="--lc:${l.c}">${esc(l.t)}</i>`).join("")}<b>${esc(g.name)}역</b><span>도보 약 ${g.min}분</span></span>`).join("")
+    : '<span class="sb-none">1.2km 안에 지하철역이 없어요</span>';
 }
 
 /* 등록 신청으로 올라온 정보: 주최·소개·예매 링크 */
