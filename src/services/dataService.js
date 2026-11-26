@@ -406,7 +406,12 @@
     push: rows => run(async () => {
       const out = [];
       // 여러 줄을 한 번에 넣으려면 모든 줄의 칸 구성이 같아야 한다
-      for (const r of rows) out.push({ user_id: userId(), kind: r.kind, key: r.key, date: r.date ?? null, memo: r.memo ?? null, photo_url: r.photo_url ? await uploadPhoto(r.photo_url) : null, data: r.data ?? null, updated_at: now() });
+      for (const r of rows) {
+        // 비공개 리뷰의 팜플렛·추가 사진(data.extras)도 data:URL이면 저장소에 올리고 주소로 바꾼다
+        let data = r.data ?? null;
+        if (r.kind === "note" && data && Array.isArray(data.extras)) data = { ...data, extras: await Promise.all(data.extras.map(x => uploadPhoto(x))) };
+        out.push({ user_id: userId(), kind: r.kind, key: r.key, date: r.date ?? null, memo: r.memo ?? null, photo_url: r.photo_url ? await uploadPhoto(r.photo_url) : null, data, updated_at: now() });
+      }
       if (out.length) await request(`/rest/v1/diary_entries?on_conflict=user_id,kind,key`, { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(out) });
       return out;
     }),
