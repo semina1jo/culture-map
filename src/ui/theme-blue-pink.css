@@ -3,8 +3,8 @@
    이 파일을 index.html에서 빼면 원래 디자인으로 돌아간다.
    역할 비율(대략): 흰색 60 : 주색(블루) 25 : 강조색(핑크·혜택) 15 */
 
-/* 제목: 학교안심 둥근미소 Bold (KERIS, OFL) */
-@font-face{font-family:"Hakgyoansim Dunggeunmiso";src:url(/fonts/HakgyoansimDunggeunmiso-B.ttf) format("truetype");font-weight:400;font-display:swap}
+/* 제목: 주아체(배달의민족). 이 글꼴은 ○·‘’ 같은 기호가 빈 글자라 한글·영문·숫자·기본 기호만 쓰고 나머지는 Pretendard로 */
+@font-face{font-family:"BM JUA";src:url(/fonts/BMJUA.ttf) format("truetype");font-weight:400;font-display:swap;unicode-range:U+0020-007E,U+1100-11FF,U+3130-318F,U+AC00-D7A3,U+201C-201D}
 @font-face{font-family:"Wanted Sans";src:url(/fonts/WantedSansVariable.woff2) format("woff2");font-weight:400 1000;font-display:swap}
 
 :root{
@@ -22,7 +22,7 @@
   --blue:#7C6CF0; --blue-soft:#E6E1FF;
   --red:#E06C8E; --red-soft:#FFE0E8;
   --map-land:#F0F1EE; --map-park:#DCE6D6; --map-water:#D6E0EA;
-  --f-title:"Hakgyoansim Dunggeunmiso","Pretendard","Noto Sans KR",sans-serif; /* 제목 전용 */
+  --f-title:"BM JUA","Pretendard","Noto Sans KR",sans-serif; /* 제목 전용 */
   --f2:"Wanted Sans","Pretendard","Noto Sans KR","Apple SD Gothic Neo",sans-serif;
   --sh:22,33,58; /* 그림자 색(잉크 기반) */
 }
@@ -32,7 +32,7 @@ body{background:radial-gradient(circle at 20% 10%,#E6EEFF,transparent 50%),radia
 .head{background:linear-gradient(var(--paper) 72%,rgba(255,255,255,0))}
 .cl-bar{background:linear-gradient(rgba(255,255,255,0),var(--bg) 30%)}
 
-/* 글꼴: 제목은 학교안심 둥근미소, 숫자·가격·버튼은 Wanted Sans, 본문은 Pretendard */
+/* 글꼴: 제목은 주아체, 숫자·가격·버튼은 Wanted Sans, 본문은 Pretendard */
 b,strong,.blk,.out,.chip,.peek .nm,.peek .sub b,.hero .price,.rc-sum b,.st-nums b,.dt-price b{font-family:var(--f2)}
 h1,h2,h3,.page h1,.sh-h h2,.card h3,.sec h3{font-family:var(--f-title);font-weight:400;font-synthesis:none;letter-spacing:0}
 /* 탭 제목: 세 탭 모두 작은 탭 이름 한 줄(20px)로 통일 */
