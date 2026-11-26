@@ -405,6 +405,32 @@
 .cu-gumap{border-radius:24px}`;
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
 
+  /* ---------- 오늘의 큐레이션 카드 자동 넘김 (2026-11-27) ----------
+     4.5초마다 다음 카드로, 마지막 다음엔 처음으로. 손으로 만지거나 마우스를 올리면 잠시 멈추고,
+     다른 탭·화면이 꺼져 있을 때·'동작 줄이기' 기기에서는 넘기지 않는다 */
+  const HERO_MS = 4500, HERO_PAUSE_MS = 8000;
+  let heroHold = 0;
+  const heroRow = () => document.querySelector("#page .cu-row.heroes");
+  const reduced = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const holdHero = ms => { heroHold = Math.max(heroHold, Date.now() + ms); };
+  ["pointerdown", "touchstart", "wheel", "keydown", "focusin"].forEach(type => document.addEventListener(type, ev => {
+    if (ev.target.closest && ev.target.closest(".cu-row.heroes")) holdHero(HERO_PAUSE_MS);
+  }, { passive: true }));
+  document.addEventListener("pointerover", ev => {
+    if (ev.pointerType === "mouse" && ev.target.closest && ev.target.closest(".cu-row.heroes")) holdHero(2500);
+  });
+  setInterval(() => {
+    const row = heroRow();
+    if (!row || document.hidden || S.tab !== "cur" || Date.now() < heroHold || reduced()) return;
+    if (!document.getElementById("scrim")?.hidden) return; // 시트가 열려 있으면 멈춤
+    const cards = [...row.children];
+    if (cards.length < 2) return;
+    const base = cards[0].offsetLeft;
+    const at = cards.reduce((best, c, i) => Math.abs(c.offsetLeft - base - row.scrollLeft) < Math.abs(cards[best].offsetLeft - base - row.scrollLeft) ? i : best, 0);
+    const next = cards[(at + 1) % cards.length];
+    row.scrollTo({ left: next.offsetLeft - base, behavior: "smooth" });
+  }, HERO_MS);
+
   window.curationPage = curationPage;
   if (S.tab === "cur") renderPage();
 })();
