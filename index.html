@@ -509,7 +509,7 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 .tt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px}
 .tt-slot{border:1.5px dashed var(--line);border-radius:14px;padding:8px 4px;text-align:center;color:var(--muted)}.tt-slot b{display:block;font-size:18px}.tt-slot small{font-size:10.5px}
 .tt-slot.on{border-style:solid;border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
-.rw-acts{position:sticky;bottom:0;background:#fff;padding:12px 0 4px;margin-top:10px;border-top:1px solid var(--line);display:grid;gap:8px}
+.rw-acts{position:sticky;bottom:-22px;background:#fff;padding:12px 0 22px;margin-bottom:-22px;margin-top:10px;border-top:1px solid var(--line);display:grid;gap:8px}
 .rw-acts .blk small{display:block;font-weight:500;font-size:11px;opacity:.85;margin-top:1px}
 .rw-acts .linkbtn{justify-self:center;color:var(--muted);padding:8px}
 /* 비공개 리뷰 */
@@ -519,15 +519,39 @@ i.p{background:var(--blue)}i.e{background:var(--accent)}
 .pv-ph span{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.55);color:#fff;font-size:9.5px;font-weight:700;border-radius:6px;padding:1px 5px}
 .pv-ph .x{position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.55);border:0;display:grid;place-items:center;padding:0}.pv-ph .x svg{width:12px;height:12px;stroke:#fff}
 .pv-add{aspect-ratio:1;border:1.5px dashed var(--line);border-radius:12px;display:grid;place-content:center;text-align:center;cursor:pointer;color:var(--muted);margin:0}.pv-add b{font-size:22px;line-height:1}.pv-add small{font-size:10.5px}
-/* 오문완 */
-.om-prev{display:flex;justify-content:center;background:var(--chip);border-radius:16px;padding:10px;margin-top:8px}
-.om-prev canvas{width:auto;height:min(52vh,420px);aspect-ratio:9/16;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.15)}
-.om-sec{margin-top:12px}.om-sec>b,.om-two b{display:block;font-size:13px;margin-bottom:6px}
-.om-h{display:flex;align-items:baseline;gap:6px;margin-bottom:6px}.om-h b{font-size:13px}.om-h small{color:var(--muted);font-size:11.5px}.om-h .linkbtn{margin-left:auto;font-size:12px}
-.om-phs{display:flex;gap:6px;overflow-x:auto}
-.om-ph{flex:none;width:56px;height:56px;border-radius:12px;border:2px solid transparent;padding:0;overflow:hidden;background:var(--chip)}.om-ph img{width:100%;height:100%;object-fit:cover;display:block}
-.om-ph.on{border-color:var(--accent)}.om-ph.add{display:grid;place-content:center;text-align:center;border:1.5px dashed var(--line);color:var(--muted);font-size:18px;line-height:1;cursor:pointer;margin:0}.om-ph.add small{font-size:10px}
-.om-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.om-two .seg2{margin:0}
+/* 오문완 (시안 '3. 오문완 카드 · 위치·정렬 조절') */
+.om{margin:-4px -2px 0;color:var(--ink)}
+.om-top{display:flex;align-items:center;justify-content:space-between;height:48px}.om-top h2{margin:0;font-size:17px;font-weight:600}
+.om-ib{width:44px;height:44px;border:0;background:transparent;display:grid;place-items:center;padding:0;margin:0 -8px}.om-ib svg{width:22px;height:22px;fill:none;stroke:var(--ink);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.om-picker{display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;justify-content:center}
+.om-ph{flex:none;width:52px;height:52px;border-radius:12px;border:2px solid transparent;padding:0;overflow:hidden;background:var(--chip)}.om-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.om-ph.on{border-color:var(--ink)}.om-ph.add{display:grid;place-content:center;text-align:center;border:1.5px dashed var(--line);color:var(--muted);font-size:18px;line-height:1;cursor:pointer;margin:0}.om-ph.add small{font-size:10px}
+.om-ph.none{font-size:10.5px;font-weight:700;color:var(--ink2);line-height:1.2}
+.om-card{display:flex;justify-content:center;margin-top:4px}
+.om-card canvas{width:216px;height:384px;border-radius:16px;background:#DCE5E8;display:block}
+.om-ctl{display:flex;align-items:center;gap:8px;margin-top:12px}
+.om-grp{display:grid;gap:4px;background:var(--chip);border-radius:14px;padding:4px}
+.om-grp button{border:0;border-radius:10px;background:transparent;padding:0;height:44px;position:relative;color:var(--ink)}
+.om-grp button[aria-pressed="true"]{background:#fff}
+.om-grp.pos{grid-template-columns:repeat(4,minmax(0,1fr));flex:1.5}
+.om-grp.pos i{position:absolute;width:12px;height:9px;border-radius:2px;background:#B5BDB4}
+.om-grp.pos button[aria-pressed="true"] i{background:var(--ink)}
+.om-grp.pos i.tl,.om-grp.pos i.tr{top:7px}.om-grp.pos i.bl,.om-grp.pos i.br{bottom:7px}.om-grp.pos i.tl,.om-grp.pos i.bl{left:8px}.om-grp.pos i.tr,.om-grp.pos i.br{right:8px}
+.om-grp.al{grid-template-columns:repeat(2,minmax(0,1fr));flex:1}
+.om-grp.al button{display:grid;place-items:center}.om-grp.al svg{width:18px;height:18px;fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round}
+.om-ink{width:52px;height:52px;border-radius:14px;border:0;background:var(--chip);display:grid;place-items:center;padding:0;flex:none}
+.om-ink span{width:22px;height:22px;border-radius:999px;border:2px solid var(--ink);background:var(--ink)}.om-ink.light span{background:#fff}
+.om-sec{margin-top:14px;display:flex;flex-direction:column;gap:6px}
+.om-lb{font-size:13px;font-weight:600;color:var(--ink2)}
+.om-grp.big{grid-template-columns:repeat(4,minmax(0,1fr))}.om-grp.big button{height:36px;font-size:13px;font-weight:500}.om-grp.big button[aria-pressed="true"]{font-weight:600}
+.om-lb2{display:flex;justify-content:space-between;align-items:center;height:18px;font-size:13px;font-weight:600;color:var(--ink2)}.om-lb2 small{font-weight:500;font-size:12px}
+.om-lb2 button{height:32px;margin:-7px -8px -7px 0;padding:0 8px;border:0;background:transparent;font-size:12px;font-weight:600;color:#55702A}
+.om-chips{display:flex;flex-wrap:wrap;gap:6px}
+.om-chips button{height:34px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:500;border:1px solid var(--line);background:#fff;color:var(--ink2)}
+.om-chips button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#FFFAF3;font-weight:600}
+.om-chips button:disabled{opacity:.4}
+.om-bot{position:sticky;bottom:-22px;background:#fff;padding:12px 0 22px;margin:10px 0 -22px;box-shadow:0 -8px 12px -10px rgba(31,43,34,.18)}
+.om-share{width:100%;height:52px;border-radius:14px;border:0;background:#6F8F2E;color:#fff;font-size:17px;font-weight:700}
 /* 기록 탭 */
 .seg2.seg3{grid-template-columns:repeat(3,1fr)}
 .seg2 button{border:0;background:none;border-radius:10px;padding:8px 0;font-weight:700;color:var(--ink2)}.seg2 button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.08)}
@@ -2991,94 +3015,170 @@ function privateSheet(date, id, opts = {}){
 const memoSheet = (date, id) => privateSheet(date, id); // 예전 이름
 
 /* ---------- 오문완 카드 (오늘 문화생활 완료) ----------
-   사진 위에 작은 위젯. 들어갈 항목·위치·정렬은 유저가 고르고, 마지막으로 공유한 조합을 기억한다 */
-const OMW_KEY = "culturemap-omw-v1";
-const OMW_ITEMS = [
-  {k:"date", l:"날짜"}, {k:"name", l:"행사명"}, {k:"place", l:"다녀온 곳"}, {k:"genre", l:"장르"},
-  {k:"rating", l:"별점"}, {k:"nth", l:"이번 달 n번째"}, {k:"saved", l:"아낀 금액"}, {k:"logo", l:"로고"}
-];
-const OMW_DEFAULT = {items:["date","name","place","genre","rating","nth","logo"], v:"bottom", h:"left"}; // 아낀 금액은 선택(기본 꺼짐)
-function omwPrefs(){ try { const p = JSON.parse(localStorage.getItem(OMW_KEY)); if (p && Array.isArray(p.items)) return {...OMW_DEFAULT, ...p, last:true}; } catch(_) {} return {...OMW_DEFAULT, items:[...OMW_DEFAULT.items], last:false}; }
+   기록 흐름 시안 '3. 오문완 카드 · 위치·정렬 조절' 기준 (2026-11-26)
+   - 사진 위 작은 위젯(폭 104/216). 위치 4곳 · 왼쪽/오른쪽 정렬 · 글자 어둡게/밝게
+   - 크게 보일 숫자 1개(아낀 돈/낸 돈/n번째/없음) + 함께 넣을 항목 칩. 크게 고른 항목은 칩에서 빠진다
+   - 처음엔 기본 조합, 다음부터는 마지막으로 공유한 조합 · '기본값으로'로 되돌리기
+   미리보기와 저장 이미지는 같은 캔버스 그리기를 쓴다(1080×1920 = 시안 216×384의 5배) */
+const OMW_KEY = "culturemap-omw-v2";
+const OMW_ON_DEFAULT = {date:true, title:true, place:true, genre:true, rating:true, paid:false, saved:false, nth:true, badge:false, memo:false, logo:true};
+const OMW_DEFAULT = {pos:"tr", align:"left", dark:true, big:"saved", on:OMW_ON_DEFAULT};
+const OMW_CHIPS = [["date","날짜"],["title","행사명"],["place","다녀온 곳"],["genre","장르"],["rating","별점"],["paid","낸 돈"],["saved","아낀 돈"],["nth","이번 달 n번째"],["badge","대표 칭호"],["memo","한 줄 메모"],["logo","로고"]];
+const OMW_BIG = [["saved","아낀 돈"],["paid","낸 돈"],["nth","n번째"],["none","없음"]];
+const OMW_POS = [["tl","왼쪽 위"],["tr","오른쪽 위"],["bl","왼쪽 아래"],["br","오른쪽 아래"]];
+function omwPrefs(){
+  try { const p = JSON.parse(localStorage.getItem(OMW_KEY)); if (p && p.on) return {...OMW_DEFAULT, ...p, on:{...OMW_ON_DEFAULT, ...p.on}, last:true}; } catch(_) {}
+  return {...OMW_DEFAULT, on:{...OMW_ON_DEFAULT}, last:false};
+}
+const DOW_KO = ["일","월","화","수","목","금","토"];
 function omwData(id, date){
   const it = findAny(id), rev = myReviewOn(id, date), month = date.slice(0,7);
   const rows = receiptEntries(month), me = rows.find(r => r.id === id);
+  const [y, m, d] = date.split("-").map(Number), n = noteOf(date, id);
+  const gu = it ? eventGu(it) : null;
+  const memoSrc = (n.memo || rev?.text || "").split("\n")[0].trim();
+  const badge = repTitleBadge(); // 칭호가 생기면 대표 칭호 이름
   return {
-    it, date, rev,
+    it, date, rev, n,
+    dateText: `${y}. ${m}. ${d}. ${DOW_KO[new Date(y, m - 1, d).getDay()]}`,
     nth: Math.max(1, rows.findIndex(r => r.id === id) + 1),
-    m: Number(month.slice(5)),
-    saved: me ? Math.max(0, me.price - me.paid) : 0,
-    place: [it.place || it.PLACE, eventGu(it)].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" · "),
+    paid: me ? me.paid : 0, saved: me ? Math.max(0, me.price - me.paid) : 0,
+    place: gu ? shortGuName(gu) : (it?.place || it?.PLACE || ""),
+    memo: memoSrc.length > 28 ? memoSrc.slice(0, 27) + "…" : memoSrc,
+    badge: typeof badge === "string" ? badge.replace(/<[^>]+>/g, "").trim() : "",
   };
 }
-function loadImg(src){ return new Promise(ok => { if (!src) return ok(null); const im = new Image(); if (/^https?:/.test(src)) im.crossOrigin = "anonymous"; im.onload = () => ok(im); im.onerror = () => ok(null); im.src = src; }); }
-async function drawOmw(c, D, P, src){
-  const W = 1080, H = 1920; c.width = W; c.height = H; const g = c.getContext("2d");
-  const font = (w, px) => `${w} ${px}px Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
-  const im = await loadImg(src);
-  if (im) { const k = Math.max(W / im.width, H / im.height); g.drawImage(im, (W - im.width * k) / 2, (H - im.height * k) / 2, im.width * k, im.height * k); }
-  else { const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, "#FFFAF3"); bg.addColorStop(1, genreCol(D.it.genre)); g.fillStyle = bg; g.fillRect(0, 0, W, H); }
-  const on = k => P.items.includes(k), top = P.v === "top", right = P.h === "right";
-  // 글자 쪽만 살짝 어둡게(사진을 크게 가리지 않게)
-  const sh = g.createLinearGradient(0, top ? 0 : H, 0, top ? 760 : H - 760);
-  sh.addColorStop(0, "rgba(0,0,0,.55)"); sh.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = sh; g.fillRect(0, top ? 0 : H - 760, W, 760);
-  const lines = [];
-  if (on("logo")) lines.push({t:"가문의 영광", f:font(800, 34), a:.85, gap:26});
-  if (on("date")) lines.push({t:D.date.replaceAll("-", "."), f:font(600, 40), a:.9, gap:14});
-  if (on("name")) { const words = D.it.name; let a = words, b = ""; g.font = font(800, 76); if (g.measureText(a).width > W - 200) { let cut = a.length; while (cut > 1 && g.measureText(a.slice(0, cut)).width > W - 200) cut--; b = a.slice(cut); a = a.slice(0, cut); if (g.measureText(b).width > W - 200) { while (b.length > 1 && g.measureText(b + "…").width > W - 200) b = b.slice(0, -1); b += "…"; } }
-    lines.push({t:a, f:font(800, 76), a:1, gap:b ? 4 : 18}); if (b) lines.push({t:b, f:font(800, 76), a:1, gap:18}); }
-  if (on("place") && D.place) lines.push({t:`📍 ${D.place}`, f:font(600, 40), a:.95, gap:24});
-  const chips = [on("genre") && D.it.genre, on("rating") && D.rev?.rating && `★ ${D.rev.rating}`, on("nth") && `${D.m}월 ${D.nth}번째`].filter(Boolean);
-  if (chips.length) lines.push({chips, f:font(700, 38), gap:24});
-  if (on("saved") && D.saved) lines.push({t:`${D.saved.toLocaleString()}원 아꼈어요`, f:font(800, 58), a:1, gap:0});
-  const hOf = l => (l.chips ? 70 : parseInt(l.f.match(/(\d+)px/)[1], 10) * 1.2) + l.gap;
-  const total = lines.reduce((s, l) => s + hOf(l), 0), x = right ? W - 90 : 90;
-  let y = top ? 140 : H - 140 - total;
-  g.textBaseline = "top"; g.shadowColor = "rgba(0,0,0,.35)"; g.shadowBlur = 12;
-  lines.forEach(l => {
-    if (l.chips) {
-      g.font = l.f; let cx = right ? x : x; const ws = l.chips.map(t => g.measureText(t).width + 44);
-      if (right) cx = x - ws.reduce((s, w) => s + w + 12, -12);
-      l.chips.forEach((t, i) => { g.shadowBlur = 0; g.fillStyle = "rgba(255,255,255,.22)"; g.beginPath(); g.roundRect(cx, y, ws[i], 62, 31); g.fill(); g.fillStyle = "#fff"; g.textAlign = "left"; g.fillText(t, cx + 22, y + 12); cx += ws[i] + 12; });
-      g.shadowBlur = 12;
-    } else { g.font = l.f; g.fillStyle = `rgba(255,255,255,${l.a})`; g.textAlign = right ? "right" : "left"; g.fillText(l.t, x, y); }
-    y += hOf(l);
-  });
-  g.shadowBlur = 0;
+/* 이 기록에서 값이 없는 항목은 칩을 눌러도 넣을 게 없다 */
+function omwAvail(D, k){
+  if (k === "rating") return Boolean(D.rev?.rating);
+  if (k === "place") return Boolean(D.place);
+  if (k === "memo") return Boolean(D.memo);
+  if (k === "badge") return Boolean(D.badge);
+  return true;
 }
+const omwImgCache = new Map();
+function omwImg(src){
+  if (!src) return Promise.resolve(null);
+  if (omwImgCache.has(src)) return omwImgCache.get(src);
+  const p = new Promise(ok => { const im = new Image(); if (/^https?:/.test(src)) im.crossOrigin = "anonymous"; im.onload = () => ok(im); im.onerror = () => ok(null); im.src = src; });
+  omwImgCache.set(src, p); return p;
+}
+async function drawOmw(c, D, P, src){
+  const K = 5, W = 216 * K, H = 384 * K; c.width = W; c.height = H; const g = c.getContext("2d");
+  const font = (w, px) => `${w} ${px * K}px Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
+  const im = await omwImg(src);
+  if (im) { const k = Math.max(W / im.width, H / im.height); g.drawImage(im, (W - im.width * k) / 2, (H - im.height * k) / 2, im.width * k, im.height * k); }
+  else { const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, "#FFFAF3"); bg.addColorStop(1, genreCol(D.it.genre) + "66"); g.fillStyle = "#FFFAF3"; g.fillRect(0, 0, W, H); g.fillStyle = bg; g.fillRect(0, 0, W, H); }
+  const on = k => P.on[k] && omwAvail(D, k), right = P.align === "right";
+  const ink = P.dark ? "#1F2B22" : "#FFFFFF", BW = 104 * K, GAP = 4 * K;
+  const fmt = n => Math.round(n || 0).toLocaleString();
+  const wrap = (t, f, max) => { g.font = f; const out = []; let line = "";
+    // 띄어쓰기 단위로 줄을 나누고, 한 단어가 폭보다 길 때만 글자 단위로 자른다
+    const toks = t.split(/(\s+)/).filter(Boolean).flatMap(w => g.measureText(w).width > BW ? [...w] : [w]);
+    let cut = false;
+    for (const ch of toks) { if (cut) break; if (g.measureText((line + ch).trimEnd()).width > BW && line.trim()) { out.push(line.trimEnd()); line = ch.trimStart(); if (out.length === max) cut = true; } else line += ch; }
+    if (!cut && line.trim()) out.push(line.trimEnd());
+    if (cut) { let l = out[max - 1]; while (l && g.measureText(l + "…").width > BW) l = l.slice(0, -1); out[max - 1] = l + "…"; }
+    return out; };
+  // 그릴 블록: {h, draw(x, y)}
+  const blocks = [];
+  const textBlock = (t, w, px, lh, alpha, max = 1) => { const f = font(w, px), lines = wrap(t, f, max);
+    blocks.push({h: lines.length * px * lh * K, draw:(x, y) => { g.font = f; g.globalAlpha = alpha; lines.forEach((l, i) => g.fillText(l, x, y + i * px * lh * K + (px * lh * K - px * K) / 2)); g.globalAlpha = 1; }}); };
+  if (on("date")) textBlock(D.dateText, 500, 8, 1.25, .8);
+  if (on("title")) textBlock(D.it.name, 700, 10, 1.3, 1, 3);
+  const bigDefs = {saved:[fmt(D.saved), "원 아낌"], paid:[fmt(D.paid), "원 냄"], nth:[String(D.nth), "번째 문화생활"]};
+  if (P.big !== "none" && bigDefs[P.big]) {
+    const [num, unit] = bigDefs[P.big];
+    blocks.push({h: (26 + 4) * K, draw:(x, y) => {
+      g.font = font(800, 26); const nw = g.measureText(num).width; g.font = font(600, 9); const uw = g.measureText(unit).width;
+      const total = nw + 2 * K + uw, sx = right ? x - total : x, base = y + 2 * K + 26 * K * .9;
+      g.textAlign = "left"; g.textBaseline = "alphabetic";
+      g.font = font(800, 26); g.fillText(num, sx, base); g.font = font(600, 9); g.fillText(unit, sx + nw + 2 * K, base);
+      g.textAlign = right ? "right" : "left"; g.textBaseline = "top";
+    }});
+  }
+  const statDefs = [["place","다녀온 곳",D.place],["genre","장르",D.it.genre],["rating","별점",D.rev?.rating ? Number(D.rev.rating).toFixed(1) : ""],["paid","낸 돈",fmt(D.paid)],["saved","아낀 돈",fmt(D.saved)],["nth","이번 달",`${D.nth}번째`],["badge","칭호",D.badge]];
+  const stats = statDefs.filter(s => on(s[0]) && s[0] !== P.big);
+  if (stats.length) {
+    const cw = (BW - 2 * GAP) / 3, rowH = (7 * 1.25 + 9.5 * 1.3) * K, rows = Math.ceil(stats.length / 3);
+    blocks.push({h: rows * rowH + (rows - 1) * GAP, draw:(x, y) => {
+      stats.forEach((s, i) => { const r = Math.floor(i / 3), inRow = Math.min(3, stats.length - r * 3), col = right ? 3 - inRow + (i % 3) : i % 3, cx = (right ? x - BW : x) + col * (cw + GAP), cy = y + r * (rowH + GAP), tx = right ? cx + cw : cx;
+        g.font = font(400, 7); g.globalAlpha = .8; g.fillText(s[1], tx, cy); g.globalAlpha = 1;
+        g.font = font(700, 9.5); let v = String(s[2]); while (v.length > 1 && g.measureText(v).width > cw) v = v.slice(0, -1); g.fillText(v === String(s[2]) ? v : v.slice(0, -1) + "…", tx, cy + 7 * 1.25 * K); });
+    }});
+  }
+  if (on("memo")) textBlock(`“${D.memo}”`, 500, 9, 1.4, 1, 2);
+  if (on("logo")) blocks.push({h: 11 * K + K, draw:(x, y) => {
+    g.font = font(700, 8); const tw = g.measureText("가문의 영광").width, iw = 9 * K, total = iw + 3 * K + tw, sx = right ? x - total : x, yy = y + K;
+    g.save(); g.translate(sx, yy); g.scale(iw / 24, 11 * K / 30); g.fillStyle = ink;
+    g.fill(new Path2D("M12 1C6 1 1.5 5.5 1.5 11.3 1.5 19 12 29 12 29s10.5-10 10.5-17.7C22.5 5.5 18 1 12 1z")); g.restore();
+    g.textAlign = "left"; g.fillText("가문의 영광", sx + iw + 3 * K, yy + (11 * K - 8 * K) / 2); g.textAlign = right ? "right" : "left";
+  }});
+  if (!blocks.length) return;
+  const total = blocks.reduce((s, b) => s + b.h, 0) + GAP * (blocks.length - 1);
+  const left = P.pos[1] === "l" ? 14 * K : W - 14 * K - BW;
+  let y = P.pos[0] === "t" ? 18 * K : H - 18 * K - total;
+  const x = right ? left + BW : left;
+  g.fillStyle = ink; g.textAlign = right ? "right" : "left"; g.textBaseline = "top";
+  if (!P.dark) { g.shadowColor = "rgba(0,0,0,.35)"; g.shadowBlur = 5 * K; g.shadowOffsetY = K; }
+  blocks.forEach(b => { g.fillStyle = ink; b.draw(x, y); y += b.h + GAP; });
+  g.shadowColor = "transparent";
+}
+const OMW_ICO = {
+  back:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+  photo:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>',
+  left:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/></svg>',
+  right:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M10 12h10M7 18h13"/></svg>'
+};
 function omwSheet(id, date, opts = {}){
   const D = omwData(id, date); if (!D.it) return;
-  const P = omwPrefs(), n = noteOf(date, id);
-  const cands = [...new Set([n.photo, ...(n.extras || []), D.rev?.photo_url].filter(Boolean))];
-  let src = cands[0] || null;
+  const P = omwPrefs();
+  // 아낀 돈이 0원인데 처음 여는 카드면, 큰 숫자를 n번째로 시작한다
+  if (!P.last && P.big === "saved" && !D.saved) P.big = "nth";
+  const cands = [...new Set([D.n.photo, ...(D.n.extras || []), D.rev?.photo_url].filter(Boolean))];
+  let src = cands[0] || null, pickerOpen = false;
   const back = opts.back || (() => { closeSheet(); renderPage(); });
-  sheet(`<div class="sh-h"><h2>오문완 카드</h2><button class="x" id="omX" aria-label="닫기">${ico.x}</button></div>
-    <p class="note">오늘 문화생활 완료! 사진 위에 기록을 얹어 인스타 스토리로 공유해요.</p>
-    <div class="om-prev"><canvas id="omC" aria-label="오문완 카드 미리보기"></canvas></div>
-    <div class="om-sec"><b>사진</b><div class="om-phs">${cands.map((p, i) => `<button type="button" class="om-ph${i === 0 ? " on" : ""}" data-omsrc="${i}" aria-label="사진 ${i + 1}"><img src="${esc(p)}" alt=""></button>`).join("")}
-      <label class="om-ph add" for="omF">＋<small>사진</small></label><input type="file" id="omF" accept="image/*" hidden></div></div>
-    <div class="om-sec"><div class="om-h"><b>함께 넣을 항목</b><small>${P.last ? "· 지난번 조합" : "· 기본 조합"}</small><button type="button" class="linkbtn" id="omReset">기본값으로</button></div>
-      <div class="sit-vote" id="omItems">${OMW_ITEMS.map(x => `<button type="button" data-omk="${x.k}" aria-pressed="${P.items.includes(x.k)}">${x.l}${x.k === "saved" ? (D.saved ? ` ${won(D.saved)}` : " (없음)") : ""}</button>`).join("")}</div></div>
-    <div class="om-sec om-two"><div><b>위치</b><div class="seg2"><button type="button" data-omv="top" aria-pressed="${P.v === "top"}">위</button><button type="button" data-omv="bottom" aria-pressed="${P.v === "bottom"}">아래</button></div></div>
-      <div><b>정렬</b><div class="seg2"><button type="button" data-omh="left" aria-pressed="${P.h === "left"}">왼쪽</button><button type="button" data-omh="right" aria-pressed="${P.h === "right"}">오른쪽</button></div></div></div>
-    <div class="acts"><button class="out" type="button" id="omC2">${opts.back ? "뒤로" : "닫기"}</button><button class="blk" type="button" id="omShare">공유하기</button></div>`);
-  const cv = $("#omC");
-  const redraw = () => drawOmw(cv, D, P, src);
-  const syncBtns = () => {
-    document.querySelectorAll("[data-omk]").forEach(b => b.setAttribute("aria-pressed", P.items.includes(b.dataset.omk)));
-    document.querySelectorAll("[data-omv]").forEach(b => b.setAttribute("aria-pressed", P.v === b.dataset.omv));
-    document.querySelectorAll("[data-omh]").forEach(b => b.setAttribute("aria-pressed", P.h === b.dataset.omh));
+  sheet(`<div class="om">
+    <div class="om-top"><button class="om-ib" id="omBack" aria-label="뒤로">${OMW_ICO.back}</button><h2>오문완 카드</h2><button class="om-ib" id="omPic" aria-label="사진 바꾸기" aria-expanded="false">${OMW_ICO.photo}</button></div>
+    <div class="om-picker" id="omPicker" hidden>${cands.map((p, i) => `<button type="button" class="om-ph" data-omsrc="${i}" aria-label="내 사진 ${i + 1}"><img src="${esc(p)}" alt=""></button>`).join("")}<label class="om-ph add" for="omF">＋<small>앨범</small></label><input type="file" id="omF" accept="image/*" hidden>${src ? '<button type="button" class="om-ph none" data-omsrc="-1">사진<br>없이</button>' : ""}</div>
+    <div class="om-card"><canvas id="omC" role="img" aria-label="오문완 카드 미리보기"></canvas></div>
+    <div class="om-ctl">
+      <div class="om-grp pos" role="group" aria-label="위치" id="omPos"></div>
+      <div class="om-grp al" role="group" aria-label="정렬" id="omAl"></div>
+      <button class="om-ink" id="omInk"><span></span></button>
+    </div>
+    <div class="om-sec"><div class="om-lb">크게 보일 숫자</div><div class="om-grp big" role="group" aria-label="크게 보일 숫자" id="omBig"></div></div>
+    <div class="om-sec"><div class="om-lb2"><span>함께 넣을 항목 <small id="omWhich"></small></span><button type="button" id="omReset">기본값으로</button></div><div class="om-chips" id="omChips"></div></div>
+    <div class="om-bot"><button class="om-share" id="omShare">스토리에 공유</button></div>
+  </div>`);
+  const cv = $("#omC"); let drawing = Promise.resolve(), dirty = false;
+  const redraw = () => { drawing = drawOmw(cv, D, P, src); return drawing; };
+  const draw = () => {
+    $("#omPos").innerHTML = OMW_POS.map(([k, l]) => `<button type="button" aria-label="${l}" aria-pressed="${P.pos === k}" data-ompos="${k}"><i class="${k}"></i></button>`).join("");
+    $("#omAl").innerHTML = [["left","왼쪽 정렬"],["right","오른쪽 정렬"]].map(([k, l]) => `<button type="button" aria-label="${l}" aria-pressed="${P.align === k}" data-omal="${k}">${OMW_ICO[k]}</button>`).join("");
+    const inkB = $("#omInk"); inkB.setAttribute("aria-label", P.dark ? "글자를 밝게" : "글자를 어둡게"); inkB.classList.toggle("light", !P.dark);
+    $("#omBig").innerHTML = OMW_BIG.map(([k, l]) => `<button type="button" aria-pressed="${P.big === k}" data-ombig="${k}">${l}</button>`).join("");
+    $("#omChips").innerHTML = OMW_CHIPS.filter(([k]) => k !== P.big).map(([k, l]) => { const av = omwAvail(D, k);
+      return `<button type="button" aria-pressed="${Boolean(P.on[k] && av)}" data-omk="${k}" ${av ? "" : `disabled title="이 기록에는 ${l} 정보가 없어요"`}>${l}${!av && k === "badge" ? " · 준비 중" : ""}</button>`; }).join("");
+    $("#omWhich").textContent = dirty ? "" : P.last ? "· 지난번 조합" : "· 기본 조합";
+    document.querySelectorAll("[data-ompos]").forEach(b => b.onclick = () => { P.pos = b.dataset.ompos; change(); });
+    document.querySelectorAll("[data-omal]").forEach(b => b.onclick = () => { P.align = b.dataset.omal; change(); });
+    document.querySelectorAll("[data-ombig]").forEach(b => b.onclick = () => { P.big = b.dataset.ombig; change(); });
+    document.querySelectorAll("[data-omk]").forEach(b => b.onclick = () => { const k = b.dataset.omk; P.on = {...P.on, [k]: !P.on[k]}; change(); });
+    redraw();
   };
-  $("#omX").onclick = $("#omC2").onclick = back;
-  document.querySelectorAll("[data-omk]").forEach(b => b.onclick = () => { const k = b.dataset.omk; P.items = P.items.includes(k) ? P.items.filter(x => x !== k) : [...P.items, k]; syncBtns(); redraw(); });
-  document.querySelectorAll("[data-omv]").forEach(b => b.onclick = () => { P.v = b.dataset.omv; syncBtns(); redraw(); });
-  document.querySelectorAll("[data-omh]").forEach(b => b.onclick = () => { P.h = b.dataset.omh; syncBtns(); redraw(); });
-  $("#omReset").onclick = () => { Object.assign(P, {items:[...OMW_DEFAULT.items], v:OMW_DEFAULT.v, h:OMW_DEFAULT.h}); syncBtns(); redraw(); };
-  const pick = (i) => { src = cands[i]; document.querySelectorAll("[data-omsrc]").forEach(b => b.classList.toggle("on", +b.dataset.omsrc === i)); redraw(); };
-  document.querySelectorAll("[data-omsrc]").forEach(b => b.onclick = () => pick(+b.dataset.omsrc));
-  $("#omF").onchange = async ev => { const f = ev.target.files[0]; if (!f) return; try { src = await shrinkPhoto(f); document.querySelectorAll("[data-omsrc]").forEach(b => b.classList.remove("on")); redraw(); } catch(_) { toast("사진을 읽지 못했어요."); } };
+  const change = () => { dirty = true; draw(); };
+  $("#omInk").onclick = () => { P.dark = !P.dark; change(); };
+  $("#omReset").onclick = () => { Object.assign(P, {pos:OMW_DEFAULT.pos, align:OMW_DEFAULT.align, dark:OMW_DEFAULT.dark, big:OMW_DEFAULT.big, on:{...OMW_ON_DEFAULT}, last:false}); dirty = false; draw(); };
+  $("#omBack").onclick = back;
+  $("#omPic").onclick = () => { pickerOpen = !pickerOpen; $("#omPicker").hidden = !pickerOpen; $("#omPic").setAttribute("aria-expanded", pickerOpen); };
+  const markSrc = () => document.querySelectorAll("[data-omsrc]").forEach(b => b.classList.toggle("on", (+b.dataset.omsrc === -1 ? null : cands[+b.dataset.omsrc]) === src));
+  document.querySelectorAll("[data-omsrc]").forEach(b => b.onclick = () => { src = +b.dataset.omsrc === -1 ? null : cands[+b.dataset.omsrc]; markSrc(); redraw(); });
+  $("#omF").onchange = async ev => { const f = ev.target.files[0]; ev.target.value = ""; if (!f) return; try { src = await shrinkPhoto(f); markSrc(); redraw(); } catch(_) { toast("사진을 읽지 못했어요."); } };
+  markSrc();
   $("#omShare").onclick = async () => {
-    try { localStorage.setItem(OMW_KEY, JSON.stringify({items:P.items, v:P.v, h:P.h})); } catch(_) {} // 다음엔 이 조합으로 시작
-    await redraw();
+    try { localStorage.setItem(OMW_KEY, JSON.stringify({pos:P.pos, align:P.align, dark:P.dark, big:P.big, on:P.on})); } catch(_) {} // 다음엔 이 조합으로 시작
+    await drawing;
     let dataUrl; try { dataUrl = cv.toDataURL("image/jpeg", 0.92); } catch(_) { src = null; await redraw(); dataUrl = cv.toDataURL("image/jpeg", 0.92); toast("이 사진은 카드에 쓸 수 없어 배경으로 바꿨어요."); }
     const name = `omw-${date}.jpg`, blob = await (await fetch(dataUrl)).blob();
     try { const file = new File([blob], name, {type:"image/jpeg"}); if (navigator.canShare && navigator.canShare({files:[file]})) { await navigator.share({files:[file]}); return; } } catch(e) { if (e.name === "AbortError") return; }
@@ -3088,7 +3188,7 @@ function omwSheet(id, date, opts = {}){
       <div class="acts"><a class="out w" href="${dataUrl}" download="${name}" style="text-align:center;text-decoration:none;color:var(--ink);display:block">파일로 저장</a><button class="blk w" id="omsDone">완료</button></div>`);
     $("#omsX").onclick = $("#omsDone").onclick = back;
   };
-  redraw();
+  draw();
 }
 
 /* ---------- 기록 탭 ---------- */
