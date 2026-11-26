@@ -354,10 +354,10 @@
 .cu-gugrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;max-width:360px;margin:0 auto}
 .cu-gt{aspect-ratio:1;border:0;border-radius:12px;background:#F5F8FF;color:var(--ink2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0;font:inherit;line-height:1.15}
 .cu-gt b{font-size:12.5px;font-weight:700}.cu-gt small{font-size:11px;font-weight:800}
-.cu-gt.empty{background:none}.cu-gt.l1{background:#DCE7FF;color:#1E3A7A}.cu-gt.l2{background:#9DBBF5;color:#10224F}.cu-gt.l3{background:#2563D9;color:#fff}
+.cu-gt.empty{background:none}.cu-gt.l1{background:#FFE8EF;color:#8A2D4B}.cu-gt.l2{background:#FFB0C6;color:#5C1A31}.cu-gt.l3{background:#E06C8E;color:#fff}
 .cu-gt.sel{background:var(--ink);color:#fff;box-shadow:0 0 0 2px #fff,0 0 0 4px var(--accent)}.cu-gt.sel b,.cu-gt.l3 b{font-weight:800}
 .cu-guline{display:flex;align-items:center;gap:6px;margin:12px 4px 0;font-size:13px;color:var(--ink2)}.cu-guline b{color:var(--ink)}
-.cu-guline svg{flex:none;width:16px;height:16px;fill:none;stroke:var(--accent);stroke-width:2.2;stroke-linejoin:round}
+.cu-guline svg{flex:none;width:16px;height:16px;fill:none;stroke:var(--pink-deep,#D9557C);stroke-width:2.2;stroke-linejoin:round}
 .cu-link{border:0;background:none;padding:0;font:inherit;font-weight:800;color:#1E4FB0;text-decoration:underline;text-underline-offset:2px}
 .cu-empty{font-size:13px;color:var(--ink2);margin:12px 2px 0}
 .cu-banner{width:100%;display:flex;align-items:center;gap:14px;padding:18px;border:0;border-radius:18px;background:#FFE0E8;text-align:left;color:var(--ink)}
@@ -383,7 +383,7 @@
 .cu-h2ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .cu-h2ph .cu-fb{padding:16px 18px 80px}
 .cu-hero2 .cu-pg{z-index:2}
-.cu-h2bar{position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 12px 12px 16px;background:var(--ink)}
+.cu-h2bar{position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:44px 12px 12px 16px;background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.42) 45%,rgba(0,0,0,.68) 100%);text-shadow:0 1px 2px rgba(0,0,0,.25)}
 .cu-h2t{display:flex;flex-direction:column;gap:2px;min-width:0}
 .cu-h2t small{font-size:12px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cu-h2t b{font-size:16px;font-weight:700;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:keep-all}
@@ -402,7 +402,11 @@
 .cu-pc .cu-tt{font-size:14px;font-weight:600;-webkit-line-clamp:1}
 .cu-pr{font-family:var(--f2,var(--f));font-size:15px;font-weight:700;color:var(--ink)}
 .cu-dd{border-radius:999px;height:22px;font-size:11px;font-weight:700;background:var(--pink,#FFB0C6);color:var(--ink)}.cu-dd.hot{background:#D9557C;color:#fff}
-.cu-gumap{border-radius:24px}`;
+.cu-gumap{border-radius:24px}
+.cu-ratio{color:var(--pink-deep,#D9557C)}
+.cu-guline .cu-link{color:#C2456D}
+.cu-gt{background:#F7F5F6}
+.cu-gt.sel{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--pink-deep,#D9557C)}`;
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
 
   /* ---------- 오늘의 큐레이션 카드 자동 넘김 (2026-11-27) ----------
