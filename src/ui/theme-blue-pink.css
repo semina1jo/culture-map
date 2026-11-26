@@ -261,8 +261,8 @@ p,small,.note,.addr,.rowi small,.cu-h small,.benok,.vf-msg,.status{text-wrap:pre
 /* ===================== 지도 꽉 채우기 · 아이콘 크기 정리 (2026-11-27) ===================== */
 /* 예전 하단 바(약 62px) 자리를 비워 두던 여백을 없애고 지도를 화면 끝까지 */
 .gmap{inset:0}
-/* 구글 로고·이용약관은 떠 있는 하단 메뉴에 가리지 않게 메뉴 위로 올림(구글 지도 표기 의무) */
-.gmap .gm-style div:has(> a[href*="maps.google.com/maps"]),.gmap .gm-style div:has(> .gm-style-cc){bottom:calc(80px + env(safe-area-inset-bottom,0px))!important}
+/* 구글 로고는 떠 있는 하단 메뉴 위로 올리고(구글 지도 표기 의무), 이용약관 줄은 원래 자리(맨 아래, 메뉴 아래 틈)에 둔다. 위로 올리면 '상설 무료 공간' 표시와 겹침 */
+.gmap .gm-style div:has(> a[href*="maps.google.com/maps"]){bottom:calc(72px + env(safe-area-inset-bottom,0px))!important}
 
 /* 하단 메뉴: 64→56px, 아이콘 24→21px */
 .nav{height:56px;border-radius:28px;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
