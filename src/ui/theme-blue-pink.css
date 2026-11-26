@@ -257,3 +257,33 @@ p,small,.note,.addr,.rowi small,.cu-h small,.benok,.vf-msg,.status{text-wrap:pre
 @keyframes moToast{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes moPill{from{background-color:transparent;box-shadow:0 0 0 0 var(--accent-soft)}to{background-color:var(--accent-soft);box-shadow:0 0 0 5px var(--accent-soft)}}
 @keyframes moPop{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
+
+/* ===================== 지도 꽉 채우기 · 아이콘 크기 정리 (2026-11-27) ===================== */
+/* 예전 하단 바(약 62px) 자리를 비워 두던 여백을 없애고 지도를 화면 끝까지 */
+.gmap{inset:0}
+/* 구글 로고·이용약관은 떠 있는 하단 메뉴에 가리지 않게 메뉴 위로 올림(구글 지도 표기 의무) */
+.gmap .gm-style div:has(> a[href*="maps.google.com/maps"]),.gmap .gm-style div:has(> .gm-style-cc){bottom:calc(80px + env(safe-area-inset-bottom,0px))!important}
+
+/* 하단 메뉴: 64→56px, 아이콘 24→21px */
+.nav{height:56px;border-radius:28px;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+.nav button{gap:2px;font-size:10px}
+.nav svg{width:21px;height:21px}
+.nav button[aria-current="page"] svg{border-radius:11px;box-shadow:0 0 0 4px var(--accent-soft)}
+@keyframes moPill{from{background-color:transparent;box-shadow:0 0 0 0 var(--accent-soft)}to{background-color:var(--accent-soft);box-shadow:0 0 0 4px var(--accent-soft)}}
+.page{padding-bottom:100px}
+.bottomctl{bottom:84px}
+.toast{bottom:84px}
+.fabp{bottom:84px}
+.cl-bar{bottom:80px}
+
+/* 지도 위 둥근 버튼(찜·알림·확대·내 위치): 44→40px, 아이콘 22→19px. 상단 검색줄·필터·핀은 그대로 */
+.stack .round,.bottomctl .round{width:40px;height:40px}
+.stack .round svg,.bottomctl .round svg{width:19px;height:19px}
+.zoom{border-radius:20px}
+.zoom button{width:40px;height:34px;font-size:18px}
+.stack{gap:7px}
+.dot{top:5px;right:6px;width:7px;height:7px}
+
+/* 장소 상세 사진 위 원형 버튼: 40→36px */
+.dt-ic{width:36px;height:36px}
+.dt-ic svg,.dt-ic .share-icon{width:17px;height:17px}
