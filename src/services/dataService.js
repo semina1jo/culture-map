@@ -176,7 +176,7 @@
   // 예전엔 200건씩 차례로 받아 공공데이터 1,100여 건에 6번(약 2초) 걸렸다
   async function selectAll(table, filter = "") {
     const where = ownTables.has(table) ? `&user_id=eq.${encodeURIComponent(userId())}` : "";
-    const order = table === "user_profiles" ? "user_id" : "id";
+    const order = table === "user_profiles" ? "user_id" : table === "review_benefits" ? "review_id" : "id";
     const path = (offset, limit) => `/rest/v1/${table}?select=${columns[table]}${where}${filter}&order=${order}&limit=${limit}&offset=${offset}`;
     // 한 페이지가 크면 응답이 오래 걸려서(1,000건 ≈ 1.4초), 작은 페이지 여러 개를 동시에 받는다
     const PAGE = 250;
