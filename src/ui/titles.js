@@ -7,7 +7,7 @@
    - 다른 사람 리뷰의 대표 칭호는 public_titles()로 받아 온다 (dataService.titleOf)
    - index.html 안쪽 스크립트의 전역(S, allRecordEntries, findAny, sheet 등)을 그대로 쓴다 */
 (function () {
-  const REP_KEY = "gamun-rep-title-v1", SEEN_KEY = "gamun-title-seen-v1", SHARE_KEY = "gamun-omw-shares-v1";
+  const REP_KEY = "gamun-rep-title-v1", SEEN_KEY = "gamun-title-seen-v1", SHARE_KEY = "gamun-omw-shares-v1", CEL_KEY = "gamun-title-celebrated-v1";
   const TIERS = ["입문자", "탐험가", "애호가", "전문가", "마스터"];
   const TIER_AT = { 전시: [1, 5, 15, 30, 50], 공연: [1, 3, 8, 15, 30], 체험: [1, 3, 8, 15, 25], 축제: [1, 2, 5, 10, 20], 팝업: [1, 3, 8, 15, 30], "무료 공간": [1, 3, 8, 15, 25] };
   const SOFT = { 전시: "#E6EEF9", 공연: "#F9E6EA", 체험: "#FBF0DB", 축제: "#E2F2EA", 팝업: "#EEE8F8", "무료 공간": "#EFF4E3" };
@@ -188,10 +188,12 @@
   function store() {
     const ds = window.dataService, acc = ds && ds.getMyTitles ? ds.getMyTitles() : {};
     let loc = {}; try { loc = { rep: localStorage.getItem(REP_KEY) || "", seen: JSON.parse(localStorage.getItem(SEEN_KEY)) || {}, shares: Number(localStorage.getItem(SHARE_KEY)) || 0 }; } catch (_) {}
-    return { rep: acc.rep || loc.rep || "", seen: { ...(loc.seen || {}), ...(acc.seen || {}) }, shares: Math.max(acc.shares || 0, loc.shares || 0), rep_name: acc.rep_name || "" };
+    let locCel = null; try { locCel = JSON.parse(localStorage.getItem(CEL_KEY)); } catch (_) {}
+    const cel = acc.celebrated || locCel; // 해금 화면을 이미 보여 준 칭호
+    return { rep: acc.rep || loc.rep || "", seen: { ...(loc.seen || {}), ...(acc.seen || {}) }, shares: Math.max(acc.shares || 0, loc.shares || 0), rep_name: acc.rep_name || "", celebrated: Array.isArray(cel) ? cel : null };
   }
   function save(patch) {
-    try { if (patch.rep !== undefined) localStorage.setItem(REP_KEY, patch.rep || ""); if (patch.seen) localStorage.setItem(SEEN_KEY, JSON.stringify(patch.seen)); if (patch.shares != null) localStorage.setItem(SHARE_KEY, String(patch.shares)); } catch (_) {}
+    try { if (patch.celebrated) localStorage.setItem(CEL_KEY, JSON.stringify(patch.celebrated)); if (patch.rep !== undefined) localStorage.setItem(REP_KEY, patch.rep || ""); if (patch.seen) localStorage.setItem(SEEN_KEY, JSON.stringify(patch.seen)); if (patch.shares != null) localStorage.setItem(SHARE_KEY, String(patch.shares)); } catch (_) {}
     const ds = window.dataService; if (ds && ds.setMyTitles) ds.setMyTitles(patch);
   }
   const markSeen = C => { const s = { ...C.seen }; let ch = false; C.earned.forEach(e => { if (!s[e.id]) { s[e.id] = REC_TODAY; ch = true; } }); const r = repOf(C), name = r ? r.name : ""; if (ch || name !== store().rep_name) save({ seen: s, rep_name: name }); };
@@ -284,6 +286,31 @@
       const C = compute(), fresh = C.earned.filter(e => !C.seen[e.id]).slice(-max);
       if (fresh.length) return fresh.map(e => ({ on: true, name: e.name, ic: e.t ? e.t.ic : "spark", g: e.g }));
       return C.extra.filter(t => !t.on && !t.hidden && !t.pending).sort((a, b) => b.v / b.goal - a.v / a.goal).slice(0, max).map(t => ({ on: false, name: t.label, ic: t.ic, v: fmtV(t, t.v), goal: fmtV(t, t.goal) }));
+    },
+    /* 해금 화면용: 아직 해금 화면을 보여 주지 않은 새 칭호. 처음 쓰는 기기·계정은 지금까지 모은 칭호를 '이미 본 것'으로 두고 시작한다 */
+    unseenUnlocks() {
+      const C = compute(), st = store();
+      if (!st.celebrated) { save({ celebrated: C.earned.map(e => e.id) }); return []; }
+      const done = new Set(st.celebrated);
+      return C.earned.filter(e => !done.has(e.id)).map(e => {
+        const t = e.t, theme = t ? (THEMES.find(x => x[0] === t.th) || [])[1] : "문화 종류별 칭호";
+        const desc = t ? t.cond : (() => { const [, g, i] = e.id.split(":"); return `${g} ${TIER_AT[g][Number(i)]}${g === "무료 공간" ? "곳" : "회"} 이상`; })();
+        return { id: e.id, name: e.name, ic: t ? t.ic : "spark", g: e.g || null, desc, theme, lv: t ? t.lv : Number(e.id.split(":")[2]) + 1 };
+      });
+    },
+    celebrate(ids) {
+      const st = store(), seen = { ...st.seen };
+      ids.forEach(id => { if (!seen[id]) seen[id] = REC_TODAY; });
+      save({ celebrated: [...new Set([...(st.celebrated || []), ...ids])], seen });
+    },
+    setRep(id) { setRep(id); },
+    repId() { return repId(); },
+    medal(u, size) { return u.g ? `<span class="dg-med" style="width:${size}px;height:${size}px;background:${SOFT[u.g]};--mc:${DARK[u.g]};box-shadow:inset 0 0 0 2px ${genreCol(u.g)}66">${svg("spark", Math.round(size * .46))}</span>` : `<span class="dg-med" style="width:${size}px;height:${size}px">${svg(u.ic, Math.round(size * .46))}</span>`; },
+    /* 월 결산용: 그 달에 연 칭호 (처음 확인한 날 기준. 이번 달이면 아직 확인 안 한 칭호도 넣는다) */
+    monthNew(ym) {
+      const C = compute();
+      return C.earned.filter(e => C.seen[e.id] ? C.seen[e.id].startsWith(ym) : ym === REC_TODAY.slice(0, 7))
+        .map(e => ({ id: e.id, name: e.name, ic: e.t ? e.t.ic : "spark", g: e.g || null }));
     },
     countShare() { save({ shares: (store().shares || 0) + 1 }); },
     icon: svg,
