@@ -170,7 +170,7 @@
       : `<span class="cu-gt empty" aria-hidden="true"></span>`).join("");
     const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
     return `<section class="cu-sec" id="cuGu">
-      <div class="cu-h"><div><h2>우리 동네 이번 주 문화생활</h2><small>동네를 누르면 그 동네의 이번 주 문화생활이 열려요</small></div><span class="cu-ratio">${active} / 25구</span></div>
+      <div class="cu-h"><div><h2>${withEmo("우리 동네 이번 주 문화생활", "📍")}</h2><small>동네를 누르면 그 동네의 이번 주 문화생활이 열려요</small></div><span class="cu-ratio">${active} / 25구</span></div>
       <div class="cu-gumap"><div class="cu-gugrid">${tiles}</div>
         <p class="cu-guline"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.5s-7-6.1-7-11.6A7 7 0 0 1 19 9.9c0 5.5-7 11.6-7 11.6Z"/><circle cx="12" cy="10" r="2.6"/></svg><span>${top ? `이번 주 행사가 가장 많은 동네는 <button class="cu-link" data-curgu="${top[0]}">${top[0]}</button> <b>${top[1]}건</b>` : "이번 주 행사 정보를 불러오는 중이에요"}</span></p></div>
     </section>`;
@@ -230,12 +230,23 @@
       <span class="cu-tt">${exTag(e)}${esc(e.name)}</span><span class="cu-mt ${o.stat ? "st" : ""}">${o.stat ? ICO.stat : ""}${esc(meta || "")}</span>
       <span class="cu-gp"><b>${priceText(e)}</b>${guOf(e) ? `<small>${esc(guOf(e))}</small>` : ""}</span></button>`;
   }
+  /* 주제 제목 이모지 (2026-11-27)
+     근거: 2025년 소셜 게시물에서 ✨·👉·🔥가 가장 많이 쓰였고(Buffer), 인스타그램 소개글은 📍(위치)·📸(사진)처럼
+     내용을 한 글자로 요약하는 이모지를 쓰는 패턴. 그래서 제목 끝에 뜻이 바로 읽히는 이모지 하나만 붙인다 */
+  const EMO = { evening: "🌙", quick: "⏰", rain: "☔", lastcall: "⏳", weekend: "😎", wday: "🎬", date: "💕", friend: "🙌", solo: "🎧", photo: "📸", vibe: "✨", exp: "🎨", local: "📍", freeexh: "🖼️", festival: "🎉", popup: "🔥" };
+  // 이모지가 혼자 다음 줄로 떨어지지 않게 마지막 낱말과 묶는다
+  const withEmo = (title, emo) => {
+    const t = esc(title); if (!emo) return t;
+    const i = t.lastIndexOf(" ");
+    return `${i >= 0 ? t.slice(0, i + 1) : ""}<span class="cu-nw">${i >= 0 ? t.slice(i + 1) : t}&nbsp;<span class="cu-emo" aria-hidden="true">${emo}</span></span>`;
+  };
+  const ttl = t => withEmo(t.title, EMO[t.key]);
   const demoBadge = '<span class="cu-demo">예시 데이터</span>';
   function section(t, used, kind, min = 5) {
     const list = pick(t.items, used, 10);
     if (list.length < min) return "";
     const cards = list.map(e => kind === "stat" ? statCard(e, t.meta(e)) : kind === "land" ? landCard(e, t.meta(e)) : posterCard(e, t.meta(e), t.badge && t.badge(e))).join("");
-    return `<section class="cu-sec"><div class="cu-h"><div><h2>${esc(t.title)}${t.demo ? demoBadge : ""}</h2><small>${esc(t.desc)}</small></div><button class="cu-more" data-cur="${t.key}" aria-label="${esc(t.title)} 전체 보기">${ICO.chev}</button></div><div class="cu-row">${cards}</div></section>`;
+    return `<section class="cu-sec"><div class="cu-h"><div><h2>${ttl(t)}${t.demo ? demoBadge : ""}</h2><small>${esc(t.desc)}</small></div><button class="cu-more" data-cur="${t.key}" aria-label="${esc(t.title)} 전체 보기">${ICO.chev}</button></div><div class="cu-row">${cards}</div></section>`;
   }
 
   /* ---------- 오늘의 큐레이션 (캐러셀) ---------- */
@@ -252,7 +263,7 @@
       : `${isWedStr(today()) ? "오늘" : `수요일(${md(t.date)})`} 무료 ${t.items.length}곳`;
     const tag = i === 0 ? label : t.key === "weekend" ? "이번 주말" : t.key === "evening" ? "평일 저녁" : "매주 수요일";
     return `<button class="cu-hero2" data-cur="${t.key}">${visual(rep, "cu-h2ph")}</span><i class="cu-pg">${i + 1} / ${n}</i>
-      <span class="cu-h2bar"><span class="cu-h2t"><small>${esc(tag)} · ${sub}</small><b>${esc(t.title)}</b></span><span class="cu-h2go" aria-hidden="true">${ICO.chev}</span></span></button>`;
+      <span class="cu-h2bar"><span class="cu-h2t"><small>${esc(tag)} · ${sub}</small><b>${ttl(t)}</b></span><span class="cu-h2go" aria-hidden="true">${ICO.chev}</span></span></button>`;
   }
 
   /* ---------- 페이지 ---------- */
@@ -284,7 +295,7 @@
     CUR.pool = null; CUR.pool = basePool();
     let t; try { t = runTopic(k); } finally { CUR.pool = null; }
     const items = t.items.slice(0, 60);
-    sheet(`<div class="sh-h"><h2>${esc(t.title)}</h2><button class="x" id="cuX" aria-label="닫기">${ico.x}</button></div>
+    sheet(`<div class="sh-h"><h2>${ttl(t)}</h2><button class="x" id="cuX" aria-label="닫기">${ico.x}</button></div>
       <p class="note">${esc(t.desc)} · ${t.items.length.toLocaleString()}곳${t.items.length > items.length ? ` 중 ${items.length}곳` : ""}</p>
       ${t.demo ? '<p class="note" style="margin-top:2px"><span class="tag">예시 데이터</span>이용자 리뷰가 쌓이기 전까지 시연용 예시 수치로 순위를 매겨요.</p>' : ""}
       ${items.length ? `<div class="cu-grid">${items.map((e, i) => gridCard(e, t.meta(e), { badge: t.badge && t.badge(e), rank: t.review ? i + 1 : 0, stat: t.review })).join("")}</div>` : '<p class="note" style="padding:12px 0">지금은 조건에 맞는 곳이 없어요.</p>'}`);
@@ -354,7 +365,7 @@
 .cu-gugrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;max-width:360px;margin:0 auto}
 .cu-gt{aspect-ratio:1;border:0;border-radius:12px;background:#F5F8FF;color:var(--ink2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0;font:inherit;line-height:1.15}
 .cu-gt b{font-size:12.5px;font-weight:700}.cu-gt small{font-size:11px;font-weight:800}
-.cu-gt.empty{background:none}.cu-gt.l1{background:#FFE8EF;color:#8A2D4B}.cu-gt.l2{background:#FFB0C6;color:#5C1A31}.cu-gt.l3{background:#E06C8E;color:#fff}
+.cu-gt.empty{background:none}.cu-gt.l1{background:#FFCCDA;color:#6E2140}.cu-gt.l2{background:#F590AC;color:#4A1428}.cu-gt.l3{background:#D24F78;color:#fff}
 .cu-gt.sel{background:var(--ink);color:#fff;box-shadow:0 0 0 2px #fff,0 0 0 4px var(--accent)}.cu-gt.sel b,.cu-gt.l3 b{font-weight:800}
 .cu-guline{display:flex;align-items:center;gap:6px;margin:12px 4px 0;font-size:13px;color:var(--ink2)}.cu-guline b{color:var(--ink)}
 .cu-guline svg{flex:none;width:16px;height:16px;fill:none;stroke:var(--pink-deep,#D9557C);stroke-width:2.2;stroke-linejoin:round}
@@ -387,8 +398,8 @@
 .cu-h2t{display:flex;flex-direction:column;gap:2px;min-width:0}
 .cu-h2t small{font-size:12px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cu-h2t b{font-size:16px;font-weight:700;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:keep-all}
-.cu-h2go{flex:none;width:40px;height:40px;border-radius:50%;background:var(--pink,#FFB0C6);color:var(--ink);display:grid;place-items:center}
-.cu-h2go svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.cu-h2go{flex:none;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);color:#fff;display:grid;place-items:center;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.cu-h2go svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .cu-chip{min-height:48px;justify-content:flex-start;gap:6px;padding:0 6px;border:0;border-radius:18px;font-size:12.5px;font-weight:600}
 .cu-chip.t1{background:#DCE7FF}.cu-chip.t2{background:#FFF0D9}.cu-chip.t3{background:#E3F3EC}.cu-chip.t4{background:#FFE0E8}.cu-chip.t5{background:#E6E1FF}.cu-chip.t6{background:#EEF0F5}
 .cu-ci{flex:none;width:28px;height:28px;border-radius:50%;background:#fff;display:grid;place-items:center;font-style:normal}
@@ -403,9 +414,23 @@
 .cu-pr{font-family:var(--f2,var(--f));font-size:15px;font-weight:700;color:var(--ink)}
 .cu-dd{border-radius:999px;height:22px;font-size:11px;font-weight:700;background:var(--pink,#FFB0C6);color:var(--ink)}.cu-dd.hot{background:#D9557C;color:#fff}
 .cu-gumap{border-radius:24px}
+/* 목록 격자 카드: 제목은 늘 두 줄 자리, 장소·기간 한 줄, 가격은 맨 아래 같은 높이 (글자 수와 상관없이 줄 맞춤) */
+.cu-grid{align-items:stretch}
+.cu-gc{height:100%}
+.cu-gc .cu-tt{-webkit-line-clamp:2;min-height:calc(1.35em * 2);line-height:1.35;font-size:14px;font-weight:600}
+.cu-gc .cu-mt{min-height:1.4em;line-height:1.4}
+.cu-gc .cu-gp{margin-top:auto;min-height:1.5em;align-items:center}
+.cu-gc .cu-gp b{font-family:var(--f2,var(--f));font-size:14px;font-weight:700;color:var(--ink)}
+.cu-gc .cu-gp small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 제목 이모지: 글자 높이에 맞춰 살짝 작게 */
+.cu-nw{white-space:nowrap}
+.cu-emo{font-size:.92em;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-weight:400}
+/* 작은 화살표 버튼도 손가락으로 누르기 쉽게(보이는 크기는 그대로, 누르는 영역 44px) */
+.cu-more{position:relative}
+.cu-more::after{content:"";position:absolute;inset:-8px}
 .cu-ratio{color:var(--pink-deep,#D9557C)}
 .cu-guline .cu-link{color:#C2456D}
-.cu-gt{background:#F7F5F6}
+.cu-gt{background:#FBEEF2}
 .cu-gt.sel{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--pink-deep,#D9557C)}`;
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
 

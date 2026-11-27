@@ -2629,7 +2629,8 @@ function saveRecentSearch(q){
   q = String(q || "").trim(); if (!q) return;
   try { localStorage.setItem(RECENT_KEY, JSON.stringify([q, ...recentSearches().filter(x => x !== q)].slice(0, 6))); } catch (_) {}
 }
-const searchNorm = v => String(v || "").toLowerCase().replace(/\s+/g, "");
+// 포스텔의 법칙: 띄어쓰기·대소문자·가운뎃점·하이픈·따옴표 차이는 무시하고 찾는다
+const searchNorm = v => String(v || "").toLowerCase().replace(/[\s·・\-_.,'"‘’“”()\[\]]+/g, "");
 function searchPool(){
   const culture = events.filter(e => !e.hidden && !hideDemo(e) && (isAlwaysOpen(e) || !e.end || e.end >= FILTER_TODAY) && hasCultureCoordinates(e)).filter(e => { const p = cultureFilterPrice(e); return p != null && p <= PRICE_CAP; })
     .map(e => ({ it: e, kind: "문화", emoji: EMOJI[e.genre] || "🎫", sub: [e.genre, e.place].filter(Boolean).join(" · "), price: priceText(e), price0: cultureFilterPrice(e), hay: [e.name, e.place, e.genre, e.raw_category, e.source, e.fee_text, e.place_addr].join(" ") }));
@@ -2645,6 +2646,18 @@ function searchResults(q){
   }).map(r => ({ ...r, starts: searchNorm(r.it.name).startsWith(searchNorm(tokens[0])), dist: distM(r.it, b) }))
     .sort((a, c) => (c.starts - a.starts) || (a.dist - c.dist)).slice(0, 60);
 }
+// 포스텔의 법칙: '마포전시'처럼 붙여 써서 결과가 없으면 두 낱말로 나눠 한 번 더 찾아본다
+const searchResultsStrict = searchResults;
+searchResults = function (q) {
+  const rows = searchResultsStrict(q);
+  const t = String(q || "").trim();
+  if (rows.length || /\s/.test(t) || t.length < 4) return rows;
+  for (let k = 2; k <= t.length - 2; k++) {
+    const alt = searchResultsStrict(t.slice(0, k) + " " + t.slice(k));
+    if (alt.length) return alt;
+  }
+  return rows;
+};
 function renderSearch(){
   const box = $("#srRes"); if (!box) return;
   const q = $("#srI").value.trim();

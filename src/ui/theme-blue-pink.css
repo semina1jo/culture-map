@@ -322,3 +322,14 @@ p,small,.note,.addr,.rowi small,.cu-h small,.benok,.vf-msg,.status{text-wrap:pre
 .pin.rep .p{border:0;outline:1.5px dashed var(--bd);outline-offset:1px}
 /* 상설 시설 점 */
 .pdot{width:11px;height:11px;border-width:2px;box-shadow:0 1px 4px rgba(var(--sh),.3)}
+
+/* ===================== UX 법칙 적용 (2026-11-27) ===================== */
+/* 피츠의 법칙·넉넉한 터치 영역: 보이는 크기는 그대로, 누르는 영역만 44px 이상으로 */
+.dt-ic::after,.round::after,.x::after{content:"";position:absolute;inset:-4px;border-radius:inherit}
+.sh-h .x{position:relative}
+.stack .round::after{inset:-2px}
+.linkbtn{padding:10px 4px;min-height:40px}
+/* 팔로우 스루: 선택된 핀이 살짝 넘쳤다가 자리 잡음(0.26초) */
+@media (prefers-reduced-motion:no-preference){
+  .pin .p{transition:transform 260ms cubic-bezier(.34,1.56,.64,1),background-color 150ms ease,color 150ms ease,box-shadow 150ms ease}
+}

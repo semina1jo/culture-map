@@ -71,8 +71,11 @@
     const now = performance.now();
     drag.v = (ev.clientY - drag.lastY) / Math.max(1, now - drag.lastT);
     drag.lastY = ev.clientY; drag.lastT = now;
-    drag.dy = Math.max(0, ev.clientY - drag.y);
-    drag.panel.style.transform = drag.dy ? `translateY(${drag.dy}px)` : "";
+    const raw = ev.clientY - drag.y;
+    drag.dy = Math.max(0, raw);
+    // 위로 당기면 고무줄처럼 조금만 따라오다 멈춤(최대 16px)
+    const shown = raw < 0 ? -Math.min(16, Math.sqrt(-raw) * 2) : raw;
+    drag.panel.style.transform = shown ? `translateY(${shown}px)` : "";
     const sc = scrimEl(); if (sc) sc.style.opacity = String(Math.max(.35, 1 - drag.dy / (drag.panel.offsetHeight || 600)));
   });
   const endDrag = ev => {
