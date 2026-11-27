@@ -1132,6 +1132,8 @@ const REV_GOOD_GROUPS = [
 const REV_MOOD = [{k:"quiet",e:"🤫",l:"조용해요"},{k:"lively",e:"🎉",l:"활기차요"}];
 const REV_GOOD = REV_GOOD_GROUPS.flatMap(g => g.items);
 const REV_GOOD_LEGACY = [{k:"stay",e:"🕰️",l:"오래 머물기 좋아요"},{k:"value",e:"💸",l:"가격 대비 만족해요"}]; // 이전 리뷰 표시용
+/* 리뷰의 '받은 혜택' (2026-11-28, 칭호 '혜택 활용왕'·'구민의 특권'에 쓰임) */
+const REV_BEN = [{k:"",l:"없음(정가)"},{k:"culture_day",l:"문화가 있는 날"},{k:"gu",l:"구민 할인"},{k:"student",l:"학생 할인"},{k:"age",l:"청년·경로"},{k:"soldier",l:"장병 할인"},{k:"card",l:"카드·제휴"},{k:"other",l:"기타 할인"}];
 const REV_WITH_L = Object.fromEntries(REV_WITH.map(x => [x.k, x])), REV_GOOD_L = Object.fromEntries([...REV_GOOD, ...REV_MOOD, ...REV_GOOD_LEGACY].map(x => [x.k, x]));
 const kstDate = iso => iso ? new Date(Date.parse(iso) + 9*3600e3).toISOString().slice(0,10) : "";
 const SIT_L = Object.fromEntries(SITUATIONS.map(x => [x.k, x]));
@@ -1505,7 +1507,7 @@ function reviewSection(it){
     const extra = `${meta?`<small class="rv-meta">${esc(meta)}</small>`:""}${goods?`<div class="rv-goods">${goods}</div>`:""}${r.photo?`<img class="rv-photo" src="${esc(r.photo)}" alt="리뷰 사진" loading="lazy">`:""}`;
     const vf = verifyBadge(r.verify) + (r.hidden ? `<span class="rv-vf hid" title="관리자 검토 중이라 다른 사람에게는 보이지 않아요">숨김 처리됨 · 나만 보여요</span>` : "");
     if(!r.c && !extra) return `<div class="rv mini ${r.hidden?"is-hidden":""}"><b>${esc(r.n)}</b>${vf}<span class="rv-star">${starStr(r.r)}</span><small>${when}</small><span class="rv-acts">${acts}</span></div>`;
-    return `<div class="rv ${r.hidden?"is-hidden":""}"><div class="rv-h"><b>${esc(r.n)}</b>${r.mine && repTitleBadge() ? `<span class="rv-tt">${esc(repTitleBadge())}</span>` : ""}${vf}<span class="rv-star">${starStr(r.r)}</span></div>${extra}${r.c?`<p>${esc(r.c)}</p>`:""}<div class="rv-f"><small>${when}</small><span class="rv-acts">${acts}</span></div></div>`;
+    return `<div class="rv ${r.hidden?"is-hidden":""}"><div class="rv-h"><b>${esc(r.n)}</b>${(() => { const t = r.sample ? "" : r.mine ? repTitleBadge() : (window.dataService.titleOf ? window.dataService.titleOf(r.user_id) : ""); return t ? `<span class="rv-tt" title="대표 칭호">${esc(t)}</span>` : ""; })()}${vf}<span class="rv-star">${starStr(r.r)}</span></div>${extra}${r.c?`<p>${esc(r.c)}</p>`:""}<div class="rv-f"><small>${when}</small><span class="rv-acts">${acts}</span></div></div>`;
   };
   const full=Math.round(it.star||0);
   return `<div class="sec"><h3>리뷰</h3>
@@ -1591,6 +1593,10 @@ function reviewSheet(id, opts = {}){
   const listPrice = it.price_min ?? it.price ?? 0;
   const prevRc = receiptLog()[`${day.slice(0,7)}|${id}`];
   const paid0 = prevRc && prevRc.paid != null ? prevRc.paid : Math.min(listPrice, paidPrice(it));
+  // 받은 혜택: 수정이면 저장값, 아니면 혜택가로 채워졌을 때 그 혜택 종류를 미리 고른다
+  const benOf = r => ({gu:"gu", student:"student", ageMax:"age", ageMin:"age", soldier:"soldier", culturecard:"card"})[r.t] || "other";
+  const hitRule = paid0 < listPrice && it.ben ? it.ben.filter(r => ruleOk(r) && r.p === paid0)[0] : null;
+  let ben = ed ? (ed.benefit_kind || "") : hitRule ? benOf(hitRule) : "";
   sheet(`<div class="sh-h"><h2>${ed ? "리뷰 수정" : "리뷰 남기기"}</h2><button class="x" id="rvX" aria-label="닫기">${ico.x}</button></div>
     <p class="note">${esc(it.name)} · ${esc(window.dataService.getNickname())}(으)로 남겨요</p>
     <form id="rvF" class="rv-form" novalidate>
@@ -1600,7 +1606,9 @@ function reviewSheet(id, opts = {}){
       <div class="sit-vote">${REV_WITH.map(x => chip(x, "rw")).join("")}</div>
       <label for="rvPaid">낸 금액 <span class="note">🔒 나만 보여요 · 기록 탭 지출·절약에 쓰여요</span></label>
       <div class="paid-row"><input type="number" id="rvPaid" inputmode="numeric" min="0" max="1000000" step="100" value="${paid0}"><span>원</span></div>
-      <p class="note paid-note">${listPrice ? `정가 ${won(listPrice)}${paid0 < listPrice ? ` · 받을 수 있는 혜택가로 채워 뒀어요` : ""}. 다르게 냈다면 고쳐 주세요.` : "무료로 채워 뒀어요. 돈을 냈다면 고쳐 주세요."}</p>
+      <p class="note paid-note" id="rvPaidNote">${listPrice ? `정가 ${won(listPrice)}${paid0 < listPrice ? ` · 받을 수 있는 혜택가로 채워 뒀어요` : ""}. 다르게 냈다면 고쳐 주세요.` : "무료로 채워 뒀어요. 돈을 냈다면 고쳐 주세요."}</p>
+      <label>받은 혜택 <span class="note">🔒 나만 보여요 · 칭호 계산에 쓰여요</span></label>
+      <div class="sit-vote" id="rvBen">${REV_BEN.map(x => `<button type="button" aria-pressed="${ben===x.k}" data-rb="${x.k}">${x.l}</button>`).join("")}</div>
       <label>별점 (필수)</label><div class="stars" id="rvStars" role="group" aria-label="별점">${[1,2,3,4,5].map(n=>`<button type="button" class="${n<=rating?"on":""}" data-rv="${n}" aria-label="${n}점">★</button>`).join("")}</div>
       <label>어떤 점이 좋았나요? <span class="note">여러 개 골라도 돼요</span></label>
       ${REV_GOOD_GROUPS.map(gr => `<div class="rv-gt">${gr.t}</div><div class="sit-vote">${gr.items.map(x => chip(x, "rg")).join("")}</div>`).join("")}
@@ -1619,6 +1627,7 @@ function reviewSheet(id, opts = {}){
   document.querySelectorAll("[data-rv]").forEach(b => b.onclick = () => { rating=+b.dataset.rv; document.querySelectorAll("[data-rv]").forEach(x=>x.classList.toggle("on", +x.dataset.rv<=rating)); $("#rvErr").textContent=""; });
   const toggle = (attr, set) => document.querySelectorAll(`[data-${attr}]`).forEach(b => b.onclick = () => { const v = b.dataset[attr]; set.has(v) ? set.delete(v) : set.add(v); b.setAttribute("aria-pressed", set.has(v)); });
   toggle("rw", withSet); toggle("rg", goodSet);
+  document.querySelectorAll("[data-rb]").forEach(b => b.onclick = () => { ben = b.dataset.rb; document.querySelectorAll("[data-rb]").forEach(x => x.setAttribute("aria-pressed", x.dataset.rb === ben)); });
   document.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => { mood = mood === b.dataset.rm ? "" : b.dataset.rm; document.querySelectorAll("[data-rm]").forEach(x => x.setAttribute("aria-pressed", x.dataset.rm === mood)); });
   $("#rvPDel") && ($("#rvPDel").onclick = () => { photo = ""; photoVerify = { photo_check: "none" }; $("#rvPv").hidden = true; $("#rvPVf").hidden = true; $("#rvPDel").remove(); });
   $("#rvP").onchange = async ev => { const f = ev.target.files[0]; if (!f) return;
@@ -1642,7 +1651,7 @@ function reviewSheet(id, opts = {}){
     const ds=window.dataService;
     ev.submitter && (ev.submitter.disabled=true);
     const visited_at = new Date(`${date}T${time}:00+09:00`).toISOString();
-    const fields = {visited_at, companions:[...withSet], highlights:[...goodSet, ...(mood ? [mood] : [])]};
+    const fields = {visited_at, companions:[...withSet], highlights:[...goodSet, ...(mood ? [mood] : [])], benefit_kind: ben || null, time_known: Boolean($("#rvTm").value)};
     const verify = photoVerify ? { ...photoVerify } : undefined;
     const result = ed ? await ds.updateReview(ed.id, {...fields, rating, text:$("#rvT").value, photo, verify, ticket})
                       : await ds.addReview(id,$("#rvT").value,reviewType(it),rating,{...fields, photo: photo || "", verify, ticket});

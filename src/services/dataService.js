@@ -20,7 +20,7 @@
     event_benefits: "id,rule_key,event_id,type,value,price_after,label,auto_extracted,user_id",
     places: "id,category,subcategory,name,price,ref_price,address,lat,lng,hours,note,source,is_sample,user_id,meta,updated_at",
     user_profiles: "user_id,nickname,birth,student_type,gu,soldier,interest_genres,demo_mode,noti_settings,extra_fields,updated_at",
-    reviews: "id,target_type,target_id,user_id,nickname,rating,text,created_at,visited_at,companions,highlights,photo_url,verify_level,verify_meta,mod_status",
+    reviews: "id,target_type,target_id,user_id,nickname,rating,text,created_at,visited_at,companions,highlights,photo_url,verify_level,verify_meta,mod_status,benefit_kind,time_known",
     reports: "id,tab,name,genre,subcategory,price,ref_price,start_date,end_date,address,lat,lng,photo_url,source_url,status,yes,ended,wrong,user_id,meta,created_at",
     report_votes: "id,report_id,user_id,vote,created_at",
     visits: "id,user_id,event_id,visit_date,verified_at,demo_mode,distance_m",
@@ -253,7 +253,7 @@
     return Object.assign(new Error(map[error.code] || error.message || "계정 처리에 실패했어요."), { code: `auth_${error.code || "failed"}` });
   }
   function profileRow(profile, state = read()) {
-    return { user_id: userId(), nickname: state.nickname || null, birth: profile?.birth || null, student_type: profile?.student || "none", gu: profile?.gu || null, soldier: Boolean(profile?.soldier), interest_genres: state.app_state?.prefs?.genres || [], demo_mode: state.app_state?.demoMode ?? true, noti_settings: state.app_state?.prefs || {}, extra_fields: { has_profile: Boolean(profile), profile: profile || {}, benefit_enabled: Boolean(state.benefit_enabled), app_state: state.app_state || {} }, updated_at: now() };
+    return { user_id: userId(), nickname: state.nickname || null, birth: profile?.birth || null, student_type: profile?.student || "none", gu: profile?.gu || null, soldier: Boolean(profile?.soldier), interest_genres: state.app_state?.prefs?.genres || [], demo_mode: state.app_state?.demoMode ?? true, noti_settings: state.app_state?.prefs || {}, extra_fields: { has_profile: Boolean(profile), profile: profile || {}, benefit_enabled: Boolean(state.benefit_enabled), app_state: state.app_state || {}, titles: state.titles_me || {} }, updated_at: now() };
   }
   function placeRow(p) {
     return { id: p.id, category: p.category || "기타", subcategory: p.subcategory || p.type || "기타", name: p.name, price: Number(p.price) || 0, ref_price: p.ref_price == null ? null : Number(p.ref_price), address: p.address || p.addr || "", lat: p.lat ?? null, lng: p.lng ?? null, hours: p.hours || "", note: p.note || "", source: p.source || "사용자 입력", is_sample: Boolean(p.is_sample), user_id: userId(), meta: { menu: p.menu, star: p.star || 0, cnt: p.cnt || 0, coupon: Boolean(p.coupon), comments: p.comments || [], x: p.x, y: p.y, isNew: Boolean(p.isNew), source_url: p.source_url, photo: p.photo, report_id: p.report_id, price_unit: p.price_unit }, updated_at: now() };
@@ -284,13 +284,14 @@
     }));
     const state = read();
     state.nicknames = await fetchNicknames();
+    state.public_titles = await fetchTitles();
     for (const [table, rows] of results) {
       if (rows === null && optionalTables.has(table)) continue;
       if (table === "user_profiles") {
         const p = rows[0];
         state.profile = savedProfile(p);
         state.nickname = p?.nickname || "";
-        if (p) { state.benefit_enabled = Boolean(p.extra_fields?.benefit_enabled); state.app_state = p.extra_fields?.app_state || {}; }
+        if (p) { state.benefit_enabled = Boolean(p.extra_fields?.benefit_enabled); state.app_state = p.extra_fields?.app_state || {}; state.titles_me = p.extra_fields?.titles || state.titles_me || {}; }
       } else if (table === "cultural_events") state.cultural_events = rows.map(toEvent);
       else if (table === "culture_events") {
         if (rows !== null) state.culture_events = rows;
@@ -308,6 +309,12 @@
       const rows = await request("/rest/v1/rpc/public_nicknames", { method: "POST", body: "{}" });
       return Object.fromEntries((rows || []).map(r => [r.user_id, r.nickname]));
     } catch (_) { return read().nicknames || {}; }
+  }
+  async function fetchTitles() {
+    try {
+      const rows = await request("/rest/v1/rpc/public_titles", { method: "POST", body: "{}" });
+      return Object.fromEntries((rows || []).map(r => [r.user_id, r.rep_title]));
+    } catch (_) { return read().public_titles || {}; } // 함수가 아직 없으면 조용히 넘어간다
   }
   const nickTaken = (value, map = read().nicknames || {}) => Object.entries(map).some(([uid, n]) => uid !== userId() && String(n).toLowerCase() === value.toLowerCase());
   async function importLocal(state) {
@@ -341,7 +348,7 @@
   }
   function update(key, value) {
     cache(key, value);
-    if (configured && ["benefit_enabled", "app_state"].includes(key)) run(async () => upsert("user_profiles", profileRow(read().profile), "user_id"));
+    if (configured && ["benefit_enabled", "app_state", "titles_me"].includes(key)) run(async () => upsert("user_profiles", profileRow(read().profile), "user_id"));
     return value;
   }
   async function uploadPhoto(value) {
@@ -480,7 +487,8 @@
     addReview: (targetId, text, targetType = "event", rating = null, extra = {}) => run(async () => {
       if (!nickname()) cache("nickname", randomNickname());
       const row = { id: uuid(), user_id: userId(), nickname: nickname(), rating: rating ? Number(rating) : null, target_type: targetType, target_id: targetId, text: String(text || "").trim() || null, created_at: now(),
-        visited_at: extra.visited_at || null, companions: extra.companions && extra.companions.length ? extra.companions : null, highlights: extra.highlights && extra.highlights.length ? extra.highlights : null, photo_url: null };
+        visited_at: extra.visited_at || null, companions: extra.companions && extra.companions.length ? extra.companions : null, highlights: extra.highlights && extra.highlights.length ? extra.highlights : null, photo_url: null,
+        benefit_kind: extra.benefit_kind || null, time_known: Boolean(extra.time_known) };
       if (extra.photo) row.photo_url = configured ? await uploadPhoto(extra.photo) : extra.photo;
       Object.assign(row, await verifyFields(extra.verify, extra.ticket));
       if (configured) await insert("reviews", row);
@@ -492,7 +500,8 @@
       if (!cur || cur.user_id !== userId()) throw new Error("내 리뷰만 고칠 수 있어요.");
       const row = { rating: patch.rating ? Number(patch.rating) : cur.rating, text: String(patch.text ?? cur.text ?? "").trim() || null,
         visited_at: patch.visited_at ?? cur.visited_at ?? null, companions: patch.companions ? (patch.companions.length ? patch.companions : null) : cur.companions ?? null,
-        highlights: patch.highlights ? (patch.highlights.length ? patch.highlights : null) : cur.highlights ?? null, photo_url: cur.photo_url ?? null };
+        highlights: patch.highlights ? (patch.highlights.length ? patch.highlights : null) : cur.highlights ?? null, photo_url: cur.photo_url ?? null,
+        benefit_kind: patch.benefit_kind !== undefined ? (patch.benefit_kind || null) : cur.benefit_kind ?? null, time_known: patch.time_known !== undefined ? Boolean(patch.time_known) : Boolean(cur.time_known) };
       if (patch.photo !== undefined) row.photo_url = patch.photo ? (configured && patch.photo.startsWith("data:") ? await uploadPhoto(patch.photo) : patch.photo) : null;
       if (patch.verify !== undefined || patch.ticket) Object.assign(row, await verifyFields(patch.verify, patch.ticket, cur));
       if (configured) await request(`/rest/v1/reviews?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId())}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(row) });
@@ -504,6 +513,10 @@
       if (configured) await remove("reviews", `id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId())}`);
       cache("reviews", list("reviews").filter(r => r.id !== id)); cache("review_likes", list("review_likes").filter(l => l.review_id !== id)); return cur;
     }),
+    // 칭호 (2026-11-28): 내 칭호 상태는 user_profiles.extra_fields.titles, 다른 사람 대표 칭호는 public_titles()
+    getMyTitles: () => read().titles_me || {},
+    setMyTitles: patch => { const next = { ...(read().titles_me || {}), ...patch }; update("titles_me", next); if (patch.rep_name !== undefined) cache("public_titles", { ...(read().public_titles || {}), [userId()]: patch.rep_name || "" }); return next; },
+    titleOf: uid => (read().public_titles || {})[uid] || "",
     nicknameOf: (uid, fallback = "") => (read().nicknames || {})[uid] || fallback,
     getLikes: reviewId => list("review_likes").filter(l => l.review_id === reviewId),
     likedByMe: reviewId => list("review_likes").some(l => l.review_id === reviewId && l.user_id === userId()),

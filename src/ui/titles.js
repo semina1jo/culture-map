@@ -2,7 +2,9 @@
    - 기본 칭호: 문화 종류 6개 × 5단계(입문자~마스터). 무료 공간은 서로 다른 장소 수로 센다
    - 도전 칭호 44개: 기획 문서 '가문의 영광 · 칭호 전체 목록 (검토용)' 기준
    - 판정은 기록(리뷰를 남긴 방문)으로 한다. 인증 없는 리뷰도 센다
-   - 대표 칭호와 처음 연 날짜는 이 기기(localStorage)에 저장한다
+   - 같은 곳을 다시 간 것도 리뷰마다 한 번으로 센다(기록 탭은 한 달에 한 번만 보여 준다)
+   - 대표 칭호·처음 연 날짜·오문완 공유 횟수는 계정(user_profiles.extra_fields.titles)에 저장하고, 이 기기에도 같이 둔다
+   - 다른 사람 리뷰의 대표 칭호는 public_titles()로 받아 온다 (dataService.titleOf)
    - index.html 안쪽 스크립트의 전역(S, allRecordEntries, findAny, sheet 등)을 그대로 쓴다 */
 (function () {
   const REP_KEY = "gamun-rep-title-v1", SEEN_KEY = "gamun-title-seen-v1", SHARE_KEY = "gamun-omw-shares-v1";
@@ -59,18 +61,26 @@
   /* ---------- 기록을 칭호 판정용으로 모으기 ---------- */
   function collect() {
     const ds = window.dataService, revs = ds ? ds.getMyReviews() : [];
-    const rows = allRecordEntries().map(r => {
-      const it = findAny(r.id) || {};
-      const rv = revs.find(x => x.target_id === r.id && kstDate(x.visited_at || x.created_at) === r.date) || null;
+    const log = typeof receiptLog === "function" ? receiptLog() : {};
+    const base = [], keys = new Set();
+    revs.forEach(rv => {
+      const date = kstDate(rv.visited_at || rv.created_at), it = findAny(rv.target_id); if (!date || !it) return;
+      const price = it.price_min ?? it.price ?? 0, lg = log[`${date.slice(0, 7)}|${rv.target_id}`];
+      const paid = lg && lg.paid != null ? Math.min(price, lg.paid) : Math.min(price, paidPrice(it));
+      keys.add(`${date.slice(0, 7)}|${rv.target_id}`); base.push({ id: rv.target_id, name: it.name, genre: it.genre, date, price, paid, rv });
+    });
+    allRecordEntries().forEach(r => { if (!keys.has(`${r.date.slice(0, 7)}|${r.id}`)) base.push({ ...r, rv: null }); }); // 시연용 예시 기록 등
+    const rows = base.sort((x, y) => x.date.localeCompare(y.date)).map(r => {
+      const it = findAny(r.id) || {}, rv = r.rv;
       const hr = rv && rv.visited_at ? new Date(Date.parse(rv.visited_at) + 9 * 3600e3).getUTCHours() : null;
       const price = r.price || 0, paid = r.paid == null ? price : r.paid;
-      return { ...r, it, rv, hr, price, paid, gu: recGuOf(r.id), with: (rv && rv.companions) || [], rating: (rv && rv.rating) || 0, priv: hasPrivate(noteOf(r.date, r.id)), dow: dowOf(r.date), raw: String(it.raw_category || it.CODENAME || "") };
+      const ben = rv && rv.benefit_kind !== undefined ? (rv.benefit_kind || "") : (price > 0 && paid < price ? "other" : ""); // 예전 리뷰: 정가보다 싸게 냈으면 혜택으로 본다
+      return { ...r, it, rv, hr, price, paid, ben, gu: recGuOf(r.id), with: (rv && rv.companions) || [], rating: (rv && rv.rating) || 0, priv: hasPrivate(noteOf(r.date, r.id)), dow: dowOf(r.date), raw: String(it.raw_category || it.CODENAME || "") };
     });
     const byG = {}; GENRES.forEach(g => byG[g] = []);
     rows.forEach(r => { if (byG[r.genre]) byG[r.genre].push(r); });
     const genreCount = g => g === "무료 공간" ? new Set(byG[g].map(r => r.id)).size : byG[g].length;
     const visitsBy = {}; rows.forEach(r => visitsBy[r.id] = (visitsBy[r.id] || 0) + 1);
-    revs.forEach(r => { const n = revs.filter(x => x.target_id === r.target_id).length; visitsBy[r.target_id] = Math.max(visitsBy[r.target_id] || 0, n); });
     const saved = rows.reduce((a, r) => a + Math.max(0, r.price - r.paid), 0);
     const gus = {}; rows.forEach(r => { if (r.gu) (gus[r.gu] = gus[r.gu] || new Set()).add(r.id); });
     const topGu = Object.entries(gus).sort((a, b) => b[1].size - a[1].size)[0];
@@ -80,7 +90,7 @@
     let firstRev = 0;
     if (ds && ds.getReviews) revs.forEach(r => { const all = ds.getReviews(r.target_id) || []; const first = all.slice().sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0]; if (first && first.id === r.id) firstRev++; });
     const subsOk = ds && ds.getMySubmissions ? ds.getMySubmissions().filter(s => s.status === "승인").length : 0;
-    let shares = 0; try { shares = Number(localStorage.getItem(SHARE_KEY)) || 0; } catch (_) {}
+    const shares = store().shares || 0;
     return { rows, byG, genreCount, visitsBy, saved, gus, topGu, byDay, byWeek, byMonth, firstRev, subsOk, shares };
   }
 
@@ -115,7 +125,7 @@
     { id: "save3", th: "save", name: "짠테크 마스터", ic: "stack", lv: 3, cond: "아낀 금액 누적 30만 원", p: st => [st.saved, 300000], won: true },
     { id: "eye", th: "save", name: "가성비 감별사", ic: "eye", lv: 2, cond: "5천 원 이하 + 내 별점 4.5 이상 관람 3회", p: st => [n(st.rows, r => r.paid <= 5000 && r.rating >= 4.5), 3] },
     { id: "openrun", th: "save", name: "오픈런 전문가", ic: "door", lv: 2, cond: "행사 시작 후 7일 안에 관람 3회", p: st => [n(st.rows, r => r.it.start && !isAlwaysOpen(r.it) && r.date >= r.it.start && dayNum(r.date) - dayNum(r.it.start) <= 7), 3] },
-    { id: "benefit", th: "save", name: "혜택 활용왕", ic: "tag", lv: 2, cond: "할인 혜택을 받아 정가보다 싸게 관람 3회", p: st => [n(st.rows, r => r.price > 0 && r.paid < r.price), 3] },
+    { id: "benefit", th: "save", name: "혜택 활용왕", ic: "tag", lv: 2, cond: "할인 혜택을 받아 관람 3회 (리뷰의 '받은 혜택')", p: st => [n(st.rows, r => r.ben), 3] },
     { id: "manwon", th: "save", name: "만 원의 행복", ic: "wallet", lv: 2, cond: "한 달 동안 1만 원 이하로 4회 이상 관람", p: st => [Math.max(0, ...Object.values(st.byMonth).map(rs => rs.reduce((a, r) => a + r.paid, 0) <= 10000 ? rs.length : 0)), 4] },
     { id: "nospend", th: "save", name: "무지출 주말러", ic: "sun", lv: 1, cond: "토·일 이틀 모두 0원 관람한 주말 1번", p: st => { const ok = Object.keys(st.byDay).some(d => dowOf(d) === 6 && st.byDay[d].some(r => r.paid === 0) && (st.byDay[new Date((dayNum(d) + 1) * 864e5).toISOString().slice(0, 10)] || []).some(r => r.paid === 0)); return [ok ? 1 : 0, 1]; } },
     // 장르 확장·조합
@@ -154,9 +164,9 @@
     // 가문의 영광 고유 기능
     { id: "last", th: "own", name: "막차 탑승객", ic: "clock", lv: 2, cond: "종료 3일 전 안에 관람 3회", p: st => [n(st.rows, r => r.it.end && !isAlwaysOpen(r.it) && r.date <= r.it.end && dayNum(r.it.end) - dayNum(r.date) <= 3), 3] },
     { id: "lastday", th: "own", name: "막차의 신", ic: "bolt", lv: 1, hidden: true, cond: "행사 마지막 날 관람", p: st => [n(st.rows, r => r.it.end && !isAlwaysOpen(r.it) && r.date === r.it.end) ? 1 : 0, 1] },
-    { id: "wed", th: "own", name: "수요일의 문화인", ic: "week", lv: 2, cond: "문화가 있는 날(수요일) 관람 4회", p: st => [n(st.rows, r => r.dow === 3), 4] },
+    { id: "wed", th: "own", name: "수요일의 문화인", ic: "week", lv: 2, cond: "문화가 있는 날(수요일) 관람 4회", p: st => [n(st.rows, r => r.dow === 3 || r.ben === "culture_day"), 4] },
     { id: "wedall", th: "own", name: "수요일 개근", ic: "week", lv: 3, hidden: true, cond: "한 달의 모든 수요일에 관람", p: st => [monthOfAllWeds(st) ? 1 : 0, 1] },
-    { id: "gumin", th: "own", name: "구민의 특권", ic: "gift", lv: 2, cond: "구민 할인으로 관람 2회", p: () => [0, 2], pending: "리뷰에 혜택 종류를 저장하면 집계돼요" },
+    { id: "gumin", th: "own", name: "구민의 특권", ic: "gift", lv: 2, cond: "구민 할인으로 관람 2회 (리뷰의 '받은 혜택')", p: st => [n(st.rows, r => r.ben === "gu"), 2] },
   ];
 
   /* ---------- 계산 ---------- */
@@ -170,12 +180,22 @@
     const earned = [];
     base.forEach(b => { for (let i = 0; i < b.lv; i++) earned.push({ id: `b:${b.g}:${i}`, name: `${b.g} ${TIERS[i]}`, g: b.g }); });
     extra.forEach(t => { if (t.on) earned.push({ id: t.id, name: t.label, t }); });
-    let seen = {}; try { seen = JSON.parse(localStorage.getItem(SEEN_KEY)) || {}; } catch (_) {}
+    const seen = store().seen;
     return { st, base, extra, earned, seen, total: 30 + EXTRA.length };
   }
-  const markSeen = C => { const s = { ...C.seen }; C.earned.forEach(e => { if (!s[e.id]) s[e.id] = REC_TODAY; }); try { localStorage.setItem(SEEN_KEY, JSON.stringify(s)); } catch (_) {} };
-  const repId = () => { try { return localStorage.getItem(REP_KEY) || ""; } catch (_) { return ""; } };
-  const setRep = id => { try { id ? localStorage.setItem(REP_KEY, id) : localStorage.removeItem(REP_KEY); } catch (_) {} };
+  /* 저장: 계정 값(dataService) 우선, 없으면 이 기기 값 */
+  function store() {
+    const ds = window.dataService, acc = ds && ds.getMyTitles ? ds.getMyTitles() : {};
+    let loc = {}; try { loc = { rep: localStorage.getItem(REP_KEY) || "", seen: JSON.parse(localStorage.getItem(SEEN_KEY)) || {}, shares: Number(localStorage.getItem(SHARE_KEY)) || 0 }; } catch (_) {}
+    return { rep: acc.rep || loc.rep || "", seen: { ...(loc.seen || {}), ...(acc.seen || {}) }, shares: Math.max(acc.shares || 0, loc.shares || 0), rep_name: acc.rep_name || "" };
+  }
+  function save(patch) {
+    try { if (patch.rep !== undefined) localStorage.setItem(REP_KEY, patch.rep || ""); if (patch.seen) localStorage.setItem(SEEN_KEY, JSON.stringify(patch.seen)); if (patch.shares != null) localStorage.setItem(SHARE_KEY, String(patch.shares)); } catch (_) {}
+    const ds = window.dataService; if (ds && ds.setMyTitles) ds.setMyTitles(patch);
+  }
+  const markSeen = C => { const s = { ...C.seen }; let ch = false; C.earned.forEach(e => { if (!s[e.id]) { s[e.id] = REC_TODAY; ch = true; } }); const r = repOf(C), name = r ? r.name : ""; if (ch || name !== store().rep_name) save({ seen: s, rep_name: name }); };
+  const repId = () => store().rep;
+  const setRep = id => { const C = compute(), hit = C.earned.find(e => e.id === id); save({ rep: id || "", rep_name: hit ? hit.name : "" }); };
   function repOf(C) {
     const id = repId(), hit = C.earned.find(e => e.id === id);
     if (hit) return hit;
@@ -264,7 +284,7 @@
       if (fresh.length) return fresh.map(e => ({ on: true, name: e.name, ic: e.t ? e.t.ic : "spark", g: e.g }));
       return C.extra.filter(t => !t.on && !t.hidden && !t.pending).sort((a, b) => b.v / b.goal - a.v / a.goal).slice(0, max).map(t => ({ on: false, name: t.label, ic: t.ic, v: fmtV(t, t.v), goal: fmtV(t, t.goal) }));
     },
-    countShare() { try { localStorage.setItem(SHARE_KEY, String((Number(localStorage.getItem(SHARE_KEY)) || 0) + 1)); } catch (_) {} },
+    countShare() { save({ shares: (store().shares || 0) + 1 }); },
     icon: svg,
   };
 })();
