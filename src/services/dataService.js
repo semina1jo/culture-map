@@ -20,7 +20,8 @@
     event_benefits: "id,rule_key,event_id,type,value,price_after,label,auto_extracted,user_id",
     places: "id,category,subcategory,name,price,ref_price,address,lat,lng,hours,note,source,is_sample,user_id,meta,updated_at",
     user_profiles: "user_id,nickname,birth,student_type,gu,soldier,interest_genres,demo_mode,noti_settings,extra_fields,updated_at",
-    reviews: "id,target_type,target_id,user_id,nickname,rating,text,created_at,visited_at,companions,highlights,photo_url,verify_level,verify_meta,mod_status,benefit_kind,time_known",
+    reviews: "id,target_type,target_id,user_id,nickname,rating,text,created_at,visited_at,companions,highlights,photo_url,verify_level,verify_meta,mod_status,time_known",
+    review_benefits: "review_id,user_id,benefit_kind,updated_at",
     reports: "id,tab,name,genre,subcategory,price,ref_price,start_date,end_date,address,lat,lng,photo_url,source_url,status,yes,ended,wrong,user_id,meta,created_at",
     report_votes: "id,report_id,user_id,vote,created_at",
     visits: "id,user_id,event_id,visit_date,verified_at,demo_mode,distance_m",
@@ -32,8 +33,8 @@
     situation_votes: "id,event_id,user_id,situation,created_at"
   };
   // 새로 추가된 테이블: 아직 DB에 없더라도 앱 전체가 멈추지 않게 실패를 무시한다
-  const optionalTables = new Set(["review_likes", "review_flags", "venue_benefits", "situation_votes"]);
-  const ownTables = new Set(["user_profiles", "visits", "saved", "notifications", "review_flags"]);
+  const optionalTables = new Set(["review_likes", "review_flags", "venue_benefits", "situation_votes", "review_benefits"]);
+  const ownTables = new Set(["user_profiles", "visits", "saved", "notifications", "review_flags", "review_benefits"]); // review_benefits: 리뷰의 받은 혜택은 본인만 (2026-11-28)
   const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const uuid = () => global.crypto.randomUUID();
   const now = () => new Date().toISOString();
@@ -351,6 +352,18 @@
     if (configured && ["benefit_enabled", "app_state", "titles_me"].includes(key)) run(async () => upsert("user_profiles", profileRow(read().profile), "user_id"));
     return value;
   }
+  /* 리뷰의 받은 혜택: 공개 리뷰 표가 아니라 본인만 읽는 review_benefits에 둔다 (2026-11-28) */
+  async function saveBenefit(reviewId, kind) {
+    const rest = list("review_benefits").filter(b => b.review_id !== reviewId);
+    if (kind) {
+      const row = { review_id: reviewId, user_id: userId(), benefit_kind: kind, updated_at: now() };
+      if (configured) { try { await upsert("review_benefits", row, "review_id"); } catch (_) {} }
+      cache("review_benefits", [...rest, row]);
+    } else {
+      if (configured) { try { await remove("review_benefits", `review_id=eq.${encodeURIComponent(reviewId)}&user_id=eq.${encodeURIComponent(userId())}`); } catch (_) {} }
+      cache("review_benefits", rest);
+    }
+  }
   async function uploadPhoto(value) {
     if (!value || !value.startsWith("data:")) return value || "";
     const blob = await (await fetch(value)).blob();
@@ -488,11 +501,13 @@
       if (!nickname()) cache("nickname", randomNickname());
       const row = { id: uuid(), user_id: userId(), nickname: nickname(), rating: rating ? Number(rating) : null, target_type: targetType, target_id: targetId, text: String(text || "").trim() || null, created_at: now(),
         visited_at: extra.visited_at || null, companions: extra.companions && extra.companions.length ? extra.companions : null, highlights: extra.highlights && extra.highlights.length ? extra.highlights : null, photo_url: null,
-        benefit_kind: extra.benefit_kind || null, time_known: Boolean(extra.time_known) };
+        time_known: Boolean(extra.time_known) };
       if (extra.photo) row.photo_url = configured ? await uploadPhoto(extra.photo) : extra.photo;
       Object.assign(row, await verifyFields(extra.verify, extra.ticket));
       if (configured) await insert("reviews", row);
-      cache("reviews", [row, ...list("reviews")]); return row;
+      cache("reviews", [row, ...list("reviews")]);
+      await saveBenefit(row.id, extra.benefit_kind || null);
+      return { ...row, benefit_kind: extra.benefit_kind || null };
     }),
     // 내 리뷰 수정·삭제 (설정 > 내 활동 > 내 리뷰)
     updateReview: (id, patch = {}) => run(async () => {
@@ -501,17 +516,19 @@
       const row = { rating: patch.rating ? Number(patch.rating) : cur.rating, text: String(patch.text ?? cur.text ?? "").trim() || null,
         visited_at: patch.visited_at ?? cur.visited_at ?? null, companions: patch.companions ? (patch.companions.length ? patch.companions : null) : cur.companions ?? null,
         highlights: patch.highlights ? (patch.highlights.length ? patch.highlights : null) : cur.highlights ?? null, photo_url: cur.photo_url ?? null,
-        benefit_kind: patch.benefit_kind !== undefined ? (patch.benefit_kind || null) : cur.benefit_kind ?? null, time_known: patch.time_known !== undefined ? Boolean(patch.time_known) : Boolean(cur.time_known) };
+        time_known: patch.time_known !== undefined ? Boolean(patch.time_known) : Boolean(cur.time_known) };
       if (patch.photo !== undefined) row.photo_url = patch.photo ? (configured && patch.photo.startsWith("data:") ? await uploadPhoto(patch.photo) : patch.photo) : null;
       if (patch.verify !== undefined || patch.ticket) Object.assign(row, await verifyFields(patch.verify, patch.ticket, cur));
       if (configured) await request(`/rest/v1/reviews?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId())}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(row) });
-      cache("reviews", list("reviews").map(r => r.id === id ? { ...r, ...row } : r)); return { ...cur, ...row };
+      cache("reviews", list("reviews").map(r => r.id === id ? { ...r, ...row } : r));
+      if (patch.benefit_kind !== undefined) await saveBenefit(id, patch.benefit_kind || null);
+      return { ...cur, ...row };
     }),
     deleteReview: id => run(async () => {
       const cur = list("reviews").find(r => r.id === id);
       if (!cur || cur.user_id !== userId()) throw new Error("내 리뷰만 지울 수 있어요.");
       if (configured) await remove("reviews", `id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId())}`);
-      cache("reviews", list("reviews").filter(r => r.id !== id)); cache("review_likes", list("review_likes").filter(l => l.review_id !== id)); return cur;
+      cache("reviews", list("reviews").filter(r => r.id !== id)); cache("review_likes", list("review_likes").filter(l => l.review_id !== id)); cache("review_benefits", list("review_benefits").filter(b => b.review_id !== id)); return cur;
     }),
     // 칭호 (2026-11-28): 내 칭호 상태는 user_profiles.extra_fields.titles, 다른 사람 대표 칭호는 public_titles()
     getMyTitles: () => read().titles_me || {},
@@ -665,7 +682,8 @@
       return n;
     }),
     getMyReports: () => list("reports").filter(r => r.user_id === userId()),
-    getMyReviews: () => list("reviews").filter(r => r.user_id === userId()),
+    // 내 리뷰 + 받은 혜택(본인만 보이는 review_benefits에서 붙인다)
+    getMyReviews: () => { const ben = Object.fromEntries(list("review_benefits").filter(b => b.user_id === userId()).map(b => [b.review_id, b.benefit_kind])); return list("reviews").filter(r => r.user_id === userId()).map(r => ({ ...r, benefit_kind: ben[r.id] ?? null })); },
     getReports: () => list("reports"),
     addReport: report => run(async () => {
       if (!nickname()) cache("nickname", randomNickname());

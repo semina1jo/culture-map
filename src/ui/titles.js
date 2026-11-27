@@ -74,7 +74,8 @@
       const it = findAny(r.id) || {}, rv = r.rv;
       const hr = rv && rv.visited_at ? new Date(Date.parse(rv.visited_at) + 9 * 3600e3).getUTCHours() : null;
       const price = r.price || 0, paid = r.paid == null ? price : r.paid;
-      const ben = rv && rv.benefit_kind !== undefined ? (rv.benefit_kind || "") : (price > 0 && paid < price ? "other" : ""); // 예전 리뷰: 정가보다 싸게 냈으면 혜택으로 본다
+      // '받은 혜택'은 2026-11-28부터 고른다. 그 전 리뷰(또는 예시 기록)는 정가보다 싸게 냈으면 혜택으로 본다
+      const ben = rv && rv.benefit_kind ? rv.benefit_kind : (!rv || String(rv.created_at) < "2026-11-27T15:00:00Z") && price > 0 && paid < price ? "other" : "";
       return { ...r, it, rv, hr, price, paid, ben, gu: recGuOf(r.id), with: (rv && rv.companions) || [], rating: (rv && rv.rating) || 0, priv: hasPrivate(noteOf(r.date, r.id)), dow: dowOf(r.date), raw: String(it.raw_category || it.CODENAME || "") };
     });
     const byG = {}; GENRES.forEach(g => byG[g] = []);
