@@ -268,13 +268,15 @@
   ];
 
   /* ---------- 계산 ---------- */
+  /* 설정 › 시연 기능 › 칭호 전체 해금: 화면에서만 전부 연 상태로 보여 주고, 획득일·해금 기록은 저장하지 않는다 */
+  const demoAll = () => { try { return Boolean(typeof S !== "undefined" && S.unlockAllTitles); } catch (_) { return false; } };
   function compute() {
-    const st = collect();
+    const st = collect(), all = demoAll();
     const base = GENRES.map(g => {
-      const c = st.genreCount(g), at = TIER_AT[g], lv = at.filter(x => c >= x).length;
+      const at = TIER_AT[g], c = all ? Math.max(st.genreCount(g), at[at.length - 1]) : st.genreCount(g), lv = at.filter(x => c >= x).length;
       return { g, c, lv, tier: lv ? TIERS[lv - 1] : null, next: lv < 5 ? at[lv] : null, nextTier: lv < 5 ? TIERS[lv] : null };
     });
-    const extra = EXTRA.map(t => { const [v, goal] = t.p(st); return { ...t, v, goal, on: !t.pending && v >= goal, label: t.label ? t.label(st) : t.name }; });
+    const extra = EXTRA.map(t => { const [v0, goal] = t.p(st), v = all ? Math.max(v0, goal) : v0; return { ...t, v, goal, pending: all ? false : t.pending, on: all || (!t.pending && v >= goal), label: t.label ? t.label(st) : t.name }; });
     const earned = [];
     base.forEach(b => { for (let i = 0; i < b.lv; i++) earned.push({ id: `b:${b.g}:${i}`, name: `${b.g} ${TIERS[i]}`, g: b.g }); });
     extra.forEach(t => { if (t.on) earned.push({ id: t.id, name: t.label, t }); });
@@ -293,7 +295,7 @@
     try { if (patch.celebrated) localStorage.setItem(CEL_KEY, JSON.stringify(patch.celebrated)); if (patch.rep !== undefined) localStorage.setItem(REP_KEY, patch.rep || ""); if (patch.seen) localStorage.setItem(SEEN_KEY, JSON.stringify(patch.seen)); if (patch.shares != null) localStorage.setItem(SHARE_KEY, String(patch.shares)); } catch (_) {}
     const ds = window.dataService; if (ds && ds.setMyTitles) ds.setMyTitles(patch);
   }
-  const markSeen = C => { const s = { ...C.seen }; let ch = false; C.earned.forEach(e => { if (!s[e.id]) { s[e.id] = REC_TODAY; ch = true; } }); const r = repOf(C), name = r ? r.name : ""; if (ch || name !== store().rep_name) save({ seen: s, rep_name: name }); };
+  const markSeen = C => { if (demoAll()) return; const s = { ...C.seen }; let ch = false; C.earned.forEach(e => { if (!s[e.id]) { s[e.id] = REC_TODAY; ch = true; } }); const r = repOf(C), name = r ? r.name : ""; if (ch || name !== store().rep_name) save({ seen: s, rep_name: name }); };
   const repId = () => store().rep;
   const setRep = id => { const C = compute(), hit = C.earned.find(e => e.id === id); save({ rep: id || "", rep_name: hit ? hit.name : "" }); };
   function repOf(C) {
@@ -316,7 +318,7 @@
     }
     const C = compute(), rep = repOf(C), shown = C.extra.filter(t => DG.theme === "all" || t.th === DG.theme);
     const openN = C.extra.filter(t => t.on).length;
-    const isNew = id => !C.seen[id];
+    const isNew = id => !demoAll() && !C.seen[id];
     pg.innerHTML = `<h1>칭호 도감</h1>
       <div class="card dg-rep">
         <div class="dg-rep-top">${medal(rep, 64)}
@@ -380,12 +382,13 @@
     repName() { try { const C = compute(), r = repOf(C); return r ? r.name : ""; } catch (_) { return ""; } },
     /* 저장 직후 보상 화면용: 아직 확인하지 않은 새 칭호(없으면 가장 가까운 도전 칭호) */
     slots(max) {
-      const C = compute(), fresh = C.earned.filter(e => !C.seen[e.id]).slice(-max);
+      const C = compute(), fresh = demoAll() ? [] : C.earned.filter(e => !C.seen[e.id]).slice(-max);
       if (fresh.length) return fresh.map(e => ({ on: true, id: e.id, name: e.name, ic: e.t ? e.t.ic : "spark", g: e.g, html: medal(e, 34) }));
       return C.extra.filter(t => !t.on && !t.hidden && !t.pending).sort((a, b) => b.v / b.goal - a.v / a.goal).slice(0, max).map(t => ({ on: false, id: t.id, name: t.label, ic: t.ic, v: fmtV(t, t.v), goal: fmtV(t, t.goal), html: extraBadge(t, 34, "off") }));
     },
     /* 해금 화면용: 아직 해금 화면을 보여 주지 않은 새 칭호. 처음 쓰는 기기·계정은 지금까지 모은 칭호를 '이미 본 것'으로 두고 시작한다 */
     unseenUnlocks() {
+      if (demoAll()) return [];
       const C = compute(), st = store();
       if (!st.celebrated) { save({ celebrated: C.earned.map(e => e.id) }); return []; }
       const done = new Set(st.celebrated);
@@ -397,6 +400,7 @@
       });
     },
     celebrate(ids) {
+      if (demoAll()) return;
       const st = store(), seen = { ...st.seen };
       ids.forEach(id => { if (!seen[id]) seen[id] = REC_TODAY; });
       save({ celebrated: [...new Set([...(st.celebrated || []), ...ids])], seen });
