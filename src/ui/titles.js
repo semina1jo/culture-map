@@ -45,6 +45,7 @@
     pen: '<path d="M4.5 19.5 5.5 15 15 5.5l3.5 3.5L9 18.5Z"/><path d="M13 7.5l3.5 3.5"/>',
     clock: '<circle cx="12" cy="13" r="7"/><path d="M12 9.5V13l2.5 1.5M9.5 3.5h5"/>',
     bolt: '<path d="M13 3.5 5.5 13.5H12l-1 7 7.5-10H12Z"/>',
+    gamun: '<path d="M12 21.6C8 17 5.6 14.4 5.6 10.8a6.4 6.4 0 0 1 12.8 0c0 3.6-2.4 6.2-6.4 10.8Z"/><path d="M9 4l1.2 1.6L12 3l1.8 2.6L15 4l-.4 2.6H9.4Z"/><circle cx="10" cy="10.8" r=".5"/><circle cx="14" cy="10.8" r=".5"/><path d="M10.2 13q1.8 1.4 3.6 0"/>', // 앱 로고 캐릭터(왕관 쓴 핀)
     gift: '<rect x="4" y="9" width="16" height="11" rx="2"/><path d="M4 13h16M12 9v11M12 9c-2-4-6-3-5 0M12 9c2-4 6-3 5 0"/>',
   };
   const svg = (k, size) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">${ICON[k] || ICON.spark}</svg>`;
@@ -69,6 +70,8 @@
     stamp: "M50.0 11.5Q60.5 4.1 66.7 15.3Q79.3 13.2 80.1 26.0Q92.4 29.6 87.5 41.4Q97.0 50.0 87.5 58.6Q92.4 70.4 80.1 74.0Q79.3 86.8 66.7 84.7Q60.5 95.9 50.0 88.5Q39.5 95.9 33.3 84.7Q20.7 86.8 19.9 74.0Q7.6 70.4 12.5 58.6Q3.0 50.0 12.5 41.4Q7.6 29.6 19.9 26.0Q20.7 13.2 33.3 15.3Q39.5 4.1 50.0 11.5Z",
     arch: "M14 88 V46 A36 36 0 0 1 86 46 V88 Q86 93 81 93 H19 Q14 93 14 88Z",
   };
+  /* 최고 칭호 '가문의 영광' 전용 그림: 앱 로고 캐릭터(먹색 핀 + 빨간 왕관 + 웃는 얼굴) */
+  const GAMUN_ART = '<g transform="translate(21.5 21) scale(.475)"><path d="M60 108 C40 85 28 72 28 54 A32 32 0 0 1 92 54 C92 72 80 85 60 108 Z" fill="#1D2238"/><path d="M45 20 L51 28 L60 15 L69 28 L75 20 L73 33 L47 33 Z" fill="#C8372D" stroke="#C8372D" stroke-width="3" stroke-linejoin="round"/><circle cx="50" cy="54" r="4.8" fill="#FAF8F4"/><circle cx="70" cy="54" r="4.8" fill="#FAF8F4"/><path d="M51 65 Q60 72 69 65" fill="none" stroke="#FAF8F4" stroke-width="4" stroke-linecap="round"/></g>';
   const TH_SHAPE = { save: "circle", genre: "hex", steady: "shield", space: "stamp", own: "arch" };
   const METAL = {
     pewter: { g: ["#E9E5DC", "#B3AC9E", "#8B8476"], enamel: "#F5EEE3", ink: "#8B8476" },
@@ -105,7 +108,7 @@
     s += `<g clip-path="url(#${cid})"><ellipse cx="34" cy="26" rx="26" ry="12" transform="rotate(-28 34 26)" fill="#fff" opacity=".45"/></g>`;
     if (o.metal === "gold" && (!o.lv || lv >= 5) && !o.special) s += `<defs><linearGradient id="bh${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".38" stop-color="#FFD6F0" stop-opacity="0"/><stop offset=".46" stop-color="#FFE7F5" stop-opacity=".42"/><stop offset=".52" stop-color="#D9F3FF" stop-opacity=".42"/><stop offset=".58" stop-color="#E9FFD9" stop-opacity=".29"/><stop offset=".66" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><g clip-path="url(#${cid})"><rect class="bd-sheen" x="-60" y="-10" width="220" height="120" fill="url(#bh${id})"/></g>`;
     if (lv) for (let i = 0; i < 5; i++) s += `<circle cx="${(39.6 + 5.2 * i).toFixed(1)}" cy="68" r="1.7" fill="${ink}" opacity="${i < lv ? 1 : .22}"/>`;
-    s += iconG(o.body, ink, lv ? 2 : 0);
+    s += o.art || iconG(o.body, ink, lv ? 2 : 0);
     return open + s + close;
   }
   function baseOff(g, size, label) { // 아직 없는 문화 종류: 회색 원 + 아이콘
@@ -116,6 +119,7 @@
     const shape = TH_SHAPE[t.th] || "circle", label = t.label || t.name;
     if (st === "q") return badge({ shape, state: "q", label: "숨은 칭호" }, size);
     if (st === "off") return badge({ shape, state: "off", body: ICON[t.ic] || ICON.spark, p: t.goal ? t.v / t.goal : 0, label: `${label} (잠김)` }, size);
+    if (t.id === "c100") return badge({ shape, metal: "gold", enamel: "#FFF6DC", art: GAMUN_ART, label }, size);
     return badge({ shape, metal: t.hidden ? "gold" : LV_METAL[t.lv] || "pewter", special: !!t.hidden, body: ICON[t.ic] || ICON.spark, label }, size);
   };
   /* id만으로 그리기 (기본 칭호 b:장르:단계index, 도전 칭호 id) */
@@ -217,7 +221,7 @@
     // 꾸준함·N회차
     { id: "c10", th: "steady", name: "프로 관람러", ic: "flag", lv: 1, cond: "누적 관람 10회", p: st => [st.rows.length, 10] },
     { id: "c30", th: "steady", name: "문화생활 고인물", ic: "flag", lv: 2, cond: "누적 관람 30회", p: st => [st.rows.length, 30] },
-    { id: "c100", th: "steady", name: "가문의 영광", ic: "crown", lv: 3, cond: "누적 관람 100회", p: st => [st.rows.length, 100] },
+    { id: "c100", th: "steady", name: "가문의 영광", ic: "gamun", lv: 3, cond: "누적 관람 100회", p: st => [st.rows.length, 100] },
     { id: "weekend", th: "steady", name: "주말의 예술가", ic: "week", lv: 2, cond: "4주 연속 주말마다 관람", p: st => [longestRun(st.rows.map(r => weekendKey(r.date)).filter(k => k != null), 7), 4] },
     { id: "monthly", th: "steady", name: "월간 개근", ic: "week", lv: 2, cond: "3개월 연속, 매달 4회 이상 관람", p: st => [longestRun(Object.entries(st.byMonth).filter(([, rs]) => rs.length >= 4).map(([ym]) => ymIdx(ym)), 1), 3] },
     { id: "again", th: "steady", name: "N차 관람 장인", ic: "repeat", lv: 2, cond: "같은 행사를 2회 이상 관람", p: st => [Math.max(0, ...Object.entries(st.visitsBy).filter(([id]) => { const it = findAny(id); return it && !isAlwaysOpen(it); }).map(([, v]) => v)), 2] },

@@ -677,12 +677,6 @@ i.sp{background:var(--ink2)}i.sv{background:var(--green)}
 .gv-leg{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;font-size:11.5px;color:var(--ink2);margin:10px 0 0}.gv-leg span{display:flex;align-items:center;gap:4px}.gv-leg i{width:9px;height:9px;border-radius:50%}
 .gv-list .gv-i{display:flex;align-items:center;width:100%;gap:2px;border:0;border-top:1px solid var(--line);background:none;padding:9px 0;text-align:left}.gv-i b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px}.gv-i small{color:var(--muted);font-size:11.5px}
 .rec-more .note{margin:0 0 8px}
-/* 월간 리포트(틀) */
-.rp-story{position:relative;aspect-ratio:9/14;max-height:62vh;margin:8px auto 0;background:linear-gradient(160deg,#1F2B22,#4A6B35);border-radius:18px;color:#fff;overflow:hidden}
-.rp-bars{position:absolute;top:10px;left:10px;right:10px;display:flex;gap:4px;z-index:2}.rp-bars i{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.3)}.rp-bars i.on{background:#fff}
-.rp-body{position:absolute;inset:0;display:grid;place-items:center;padding:30px 20px;text-align:center}
-.rp-empty b{font-size:22px}.rp-empty p{opacity:.85;font-size:13.5px;line-height:1.6}
-.rp-nav{position:absolute;top:0;bottom:0;width:40%;border:0;background:none;z-index:1}.rp-nav.l{left:0}.rp-nav.r{right:0}
 
 /* ===== 장소 등록 신청 · 관리자 심사 (2026-11-19) ===== */
 .flow-rail{list-style:none;display:flex;gap:0;margin:6px 0 0;padding:0;counter-reset:fr}
@@ -3026,7 +3020,7 @@ function shrinkPhoto(file){
 /* ===== 기록 흐름 (2026-11-26, 팀 기획 기준)
    리뷰(공개) 저장 → 저장 직후 보상 → 하단 세 갈래: 나만의 기록(비공개) / 오문완 카드 / 작성 끝내기
    기록 탭: 캘린더 ↔ 25구 지도 · 평점·문화 종류 필터 · 하루 기록(공개+비공개) · 달력 아래 통계(월/년/전체)
-   칭호·월간 리포트는 틀만 있다 — 내용은 TITLES / REPORT_SLIDES 에 나중에 채운다 */
+   칭호는 src/ui/titles.js. 월간 리포트는 2026-11-28에 없앰 */
 const GENRE_COL = {전시:"#5B8DD6", 공연:"#D9667F", 체험:"#E0A53A", 축제:"#3FA374", 팝업:"#8F6FD1", "무료 공간":"#8AA34A"}; // 색약 검사 통과(dataviz 검증)
 const genreCol = g => GENRE_COL[g] || "#A3A9A0";
 const REC_GU_GRID = [
@@ -3052,27 +3046,6 @@ function titleSlotsHTML(n = 4){
   return `<div class="tt-grid">${list.map(t => `<div class="tt-slot${t.on ? " on" : ""}"><span class="tt-ic">${t.html || window.titleApi.icon(t.ic, 18)}</span><small>${esc(t.name)}</small>${t.on ? "" : `<small class="tt-v">${esc(t.v)} / ${esc(t.goal)}</small>`}</div>`).join("")}</div>`;
 }
 const repTitleBadge = () => window.titleApi ? window.titleApi.repName() : ""; // 후기 닉네임 옆·오문완 카드의 대표 칭호
-
-/* ---------- 월간 리포트 (틀만) ----------
-   REPORT_SLIDES: [{id, render(R) → html}] — R = receiptData(month). 스토리처럼 한 장씩 넘긴다 */
-const REPORT_SLIDES = [];
-function reportSheet(month){
-  const R = receiptData(month);
-  const slides = REPORT_SLIDES.length ? REPORT_SLIDES.map(s => s.render(R))
-    : [`<div class="rp-empty"><b>${R.m}월 리포트</b><p>월간 리포트는 준비 중이에요.<br>기록이 쌓이면 여기서 한 장씩 넘겨 볼 수 있어요.</p></div>`];
-  let i = 0;
-  const draw = () => {
-    $("#rpBars").innerHTML = slides.map((_, k) => `<i class="${k <= i ? "on" : ""}"></i>`).join("");
-    $("#rpBody").innerHTML = slides[i];
-  };
-  sheet(`<div class="sh-h"><h2>${R.y}년 ${R.m}월 리포트</h2><button class="x" id="rpX" aria-label="닫기">${ico.x}</button></div>
-    <div class="rp-story"><div class="rp-bars" id="rpBars"></div><div class="rp-body" id="rpBody"></div>
-      <button class="rp-nav l" id="rpPrev" aria-label="이전 장"></button><button class="rp-nav r" id="rpNext" aria-label="다음 장"></button></div>`);
-  $("#rpX").onclick = closeSheet;
-  $("#rpPrev").onclick = () => { if (i > 0) { i--; draw(); } };
-  $("#rpNext").onclick = () => { if (i < slides.length - 1) { i++; draw(); } };
-  draw();
-}
 
 /* ---------- 저장 직후 보상 ---------- */
 function guMiniHTML(colors, fresh){
@@ -3526,7 +3499,6 @@ function recordPage(pg){
     ${S.recView === "map" ? `<div class="seg2 seg3 gv-p" role="tablist" aria-label="지도 기간">${[["m","이번 달"],["y","올해"],["all","전체"]].map(([k, l]) => `<button role="tab" data-recp="${k}" aria-pressed="${S.recPeriod === k}">${l}</button>`).join("")}</div>${guViewHTML()}` : calView}
     ${statsHTML()}
     ${monthTitlesHTML(month)}
-    <div class="card rec-more"><h3>월간 리포트 <span class="tag">준비 중</span></h3><p class="note">한 달을 스토리처럼 넘겨 보는 리포트 자리예요.</p><button class="out sm" id="recReport">${m}월 리포트 열기</button></div>
     <button class="blk" id="recShare" style="width:100%;margin-top:18px">📤 ${m}월 기록 이미지로 공유</button>
     <p class="note" style="margin-top:12px">🔒 나만의 기록과 낸 금액은 다른 사람에게 보이지 않아요. 로그인하면 계정에 저장돼요.</p>`;
   const re = () => recordPage(pg);
@@ -3556,7 +3528,6 @@ function recordPage(pg){
   pg.querySelectorAll("[data-rvedit2]").forEach(b => b.onclick = () => { const r = window.dataService.getMyReviews().find(x => x.id === b.dataset.rvedit2); if (r) reviewSheet(r.target_id, {edit:r, back: () => { closeSheet(); renderPage(); }}); });
   pg.querySelectorAll("[data-unplan]").forEach(b => b.onclick = () => { const d = diary(); delete d.plans[b.dataset.unplan]; saveDiary(d); toast("갈 날짜를 취소했어요."); re(); });
   $("#recReceipt") && ($("#recReceipt").onclick = () => { sheet(`<div class="sh-h"><h2>${m}월 영수증</h2><button class="x" id="rcX" aria-label="닫기">${ico.x}</button></div>${receiptHTML(month)}<div style="height:14px"></div>`); $("#rcX").onclick = closeSheet; });
-  $("#recReport").onclick = () => reportSheet(month);
   $("#recShare").onclick = () => shareMonth(month);
 }
 
