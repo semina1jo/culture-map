@@ -49,6 +49,81 @@
   };
   const svg = (k, size) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">${ICON[k] || ICON.spark}</svg>`;
 
+  /* ---------- 칭호 배지 · 시안 A '에나멜 핀' (2026-11-28) ----------
+     모양 = 테마(가성비 동전 · 장르 육각형 · 꾸준함 방패 · 공간·기록 우표 · 막차·수요일 아치, 문화 종류별 칭호는 원)
+     재질 = 등급(★ 백랍 · ★★ 은 · ★★★ 금). 문화 종류별 칭호는 1·2단계 백랍 → 3단계 은 → 4·5단계 금,
+     2단계부터 안쪽 점선, 3단계 왼쪽 월계수, 4단계 양쪽, 5단계 왕관 + 홀로그램. 아래 점 5개 = 단계
+     잠긴 칭호: 회색 점선 + 바깥 고리가 진행도 / 숨은 칭호: 모양 + '?' → 열리면 남색 특별판 */
+  const GICON = {
+    전시: '<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M7 16l3.5-4 2.5 3 2-2 2 3"/><circle cx="15.5" cy="9" r="1.2"/>',
+    공연: '<rect x="9.5" y="3.5" width="5" height="9" rx="2.5"/><path d="M6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20M9 20h6"/>',
+    체험: '<path d="M12 4a8 8 0 1 0 0 16c1.2 0 1.6-1 1-2-.7-1.3.2-2.5 1.6-2.5H17a3 3 0 0 0 3-3C20 7.6 16.4 4 12 4Z"/><circle cx="8" cy="11" r="1"/><circle cx="11" cy="7.6" r="1"/><circle cx="15" cy="8.4" r="1"/>',
+    축제: '<path d="M3 6c6 3 12 3 18 0"/><path d="M6 7.4 7.4 12.5 9.6 8.4M12 8.3l1 5.2 2.2-5M17.6 7.6l.6 5 2-4.4"/>',
+    팝업: ICON.bag,
+    "무료 공간": ICON.book,
+  };
+  const SHAPE = {
+    circle: "M50 7a43 43 0 1 1 0 86a43 43 0 1 1 0-86Z",
+    hex: "M43.9 7.5Q50.0 4.0 56.1 7.5L83.8 23.5Q89.8 27.0 89.8 34.0L89.8 66.0Q89.8 73.0 83.8 76.5L56.1 92.5Q50.0 96.0 43.9 92.5L16.2 76.5Q10.2 73.0 10.2 66.0L10.2 34.0Q10.2 27.0 16.2 23.5Z",
+    shield: "M50 6 Q52 6 54 7 L83 16 Q87 17.5 87 21.5 V47 C87 70 71 85 52 93 Q50 94 48 93 C29 85 13 70 13 47 V21.5 Q13 17.5 17 16 L46 7 Q48 6 50 6Z",
+    stamp: "M50.0 11.5Q60.5 4.1 66.7 15.3Q79.3 13.2 80.1 26.0Q92.4 29.6 87.5 41.4Q97.0 50.0 87.5 58.6Q92.4 70.4 80.1 74.0Q79.3 86.8 66.7 84.7Q60.5 95.9 50.0 88.5Q39.5 95.9 33.3 84.7Q20.7 86.8 19.9 74.0Q7.6 70.4 12.5 58.6Q3.0 50.0 12.5 41.4Q7.6 29.6 19.9 26.0Q20.7 13.2 33.3 15.3Q39.5 4.1 50.0 11.5Z",
+    arch: "M14 88 V46 A36 36 0 0 1 86 46 V88 Q86 93 81 93 H19 Q14 93 14 88Z",
+  };
+  const TH_SHAPE = { save: "circle", genre: "hex", steady: "shield", space: "stamp", own: "arch" };
+  const METAL = {
+    pewter: { g: ["#E9E5DC", "#B3AC9E", "#8B8476"], enamel: "#F5EEE3", ink: "#8B8476" },
+    silver: { g: ["#EEF3F9", "#A6B4C7", "#6E7F98"], enamel: "#DFE8F5", ink: "#5A6C86" },
+    gold: { g: ["#FFF0B8", "#D9A83C", "#9C7215"], enamel: "#FCE6A6", ink: "#8A6410" },
+  };
+  const LV_METAL = ["pewter", "pewter", "silver", "gold"];       // 도전 칭호 ★~★★★ (index = lv)
+  const BASE_METAL = ["pewter", "pewter", "pewter", "silver", "gold", "gold"]; // 문화 종류별 1~5단계
+  const LV_NAME = ["", "일반", "희귀", "영광"];
+  let uid = 0;
+  const INNER = 'transform="translate(9 9) scale(.82)"';
+  const iconG = (body, col, lift, w = 2.3, k = 1.5, at = 32) => `<g transform="translate(${at} ${at - lift}) scale(${k})" fill="none" stroke="${col}" style="stroke-width:${w};stroke-linecap:round;stroke-linejoin:round">${body}</g>`;
+  const LEAF = { "-1": [[29.7, 76, 190], [22, 67.5, 210], [17.7, 56.9, 230], [17.3, 45.4, 250], [20.9, 34.5, 270]], "1": [[70.3, 76, -10], [78, 67.5, -30], [82.3, 56.9, -50], [82.7, 45.4, -70], [79.1, 34.5, -90]] };
+  const laurel = (side, col) => LEAF[side].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="2.8" ry="6" transform="rotate(${r} ${x} ${y})" fill="${col}"/>`).join("");
+  /* o: { shape, metal, enamel, ink, body, lv(문화 종류별 단계), special, state:'on'|'off'|'q', p(0~1), label } */
+  function badge(o, size) {
+    const h = Math.round(size * 114 / 112), d = SHAPE[o.shape] || SHAPE.circle, lab = o.label ? ` role="img" aria-label="${esc(o.label)}"` : ' aria-hidden="true"';
+    const open = `<span class="dg-med" style="width:${size}px;height:${h}px"><svg viewBox="-6 -6 112 114" width="${size}" height="${h}"${lab}>`, close = "</svg></span>";
+    if (o.state === "q") return `${open}<path d="${d}" fill="#EDEBE6"/><text x="50" y="62" text-anchor="middle" fill="#A6A196" style="font:700 34px Pretendard,sans-serif">?</text>${close}`;
+    if (o.state === "off") {
+      const C = 307.9, p = Math.max(0, Math.min(1, o.p || 0));
+      return `${open}<circle cx="50" cy="50" r="49" fill="none" stroke="#ECEAE4" stroke-width="3"/>${p > 0 ? `<circle cx="50" cy="50" r="49" fill="none" stroke="#2B2F36" stroke-width="3" stroke-linecap="round" stroke-dasharray="${(p * C).toFixed(1)} ${C}" transform="rotate(-90 50 50)"/>` : ""}<path d="${d}" transform="translate(7 7) scale(.86)" fill="#F3F2EE" stroke="#DCD9D1" stroke-width="1.4" stroke-dasharray="4 3"/>${iconG(o.body, "#B3AFA6", 0, 2, 1.1667, 36)}${close}`;
+    }
+    const M = METAL[o.metal], id = ++uid, gid = `bm${id}`, cid = `bc${id}`, lv = o.lv || 0;
+    const enamel = o.special ? "#2A2E44" : o.enamel || M.enamel, ink = o.special ? "#E9C463" : o.ink || M.ink;
+    let s = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${M.g[0]}"/><stop offset=".55" stop-color="${M.g[1]}"/><stop offset="1" stop-color="${M.g[2]}"/></linearGradient><clipPath id="${cid}"><path d="${d}" ${INNER}/></clipPath></defs>`;
+    s += `<path d="${d}" fill="#000" opacity=".10" transform="translate(0 3.5)"/><path d="${d}" fill="url(#${gid})"/><path d="${d}" ${INNER} fill="${enamel}"/>`;
+    if (o.shape === "circle" && !lv) for (let i = 0; i < 26; i++) { const a = i / 26 * 2 * Math.PI; s += `<circle cx="${(50 + 34 * Math.cos(a)).toFixed(1)}" cy="${(50 + 34 * Math.sin(a)).toFixed(1)}" r="1.2" fill="${M.g[1]}"/>`; } // 동전 테두리 점
+    if (o.special) s += '<circle cx="30" cy="30" r="1.6" fill="#E9C463"/><circle cx="70" cy="26" r="1.2" fill="#E9C463"/><circle cx="74" cy="68" r="1.4" fill="#E9C463"/><circle cx="27" cy="70" r="1.1" fill="#E9C463"/><circle cx="60" cy="78" r=".9" fill="#E9C463"/>';
+    if (lv >= 2) s += `<circle cx="50" cy="50" r="31" fill="none" stroke="${ink}" opacity=".35" stroke-width="1" stroke-dasharray="1.5 2.5"/>`;
+    if (lv >= 4) s += laurel(1, M.g[1]);
+    if (lv >= 3) s += laurel(-1, M.g[1]);
+    if (lv >= 5) s += `<path d="M41 15 44 10 47.5 14 50 8.5 52.5 14 56 10 59 15Z" fill="${M.g[1]}" stroke="${M.g[2]}" stroke-width=".8" stroke-linejoin="round"/>`;
+    s += `<g clip-path="url(#${cid})"><ellipse cx="34" cy="26" rx="26" ry="12" transform="rotate(-28 34 26)" fill="#fff" opacity=".45"/></g>`;
+    if (o.metal === "gold" && (!o.lv || lv >= 5) && !o.special) s += `<defs><linearGradient id="bh${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".38" stop-color="#FFD6F0" stop-opacity="0"/><stop offset=".46" stop-color="#FFE7F5" stop-opacity=".42"/><stop offset=".52" stop-color="#D9F3FF" stop-opacity=".42"/><stop offset=".58" stop-color="#E9FFD9" stop-opacity=".29"/><stop offset=".66" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><g clip-path="url(#${cid})"><rect class="bd-sheen" x="-60" y="-10" width="220" height="120" fill="url(#bh${id})"/></g>`;
+    if (lv) for (let i = 0; i < 5; i++) s += `<circle cx="${(39.6 + 5.2 * i).toFixed(1)}" cy="68" r="1.7" fill="${ink}" opacity="${i < lv ? 1 : .22}"/>`;
+    s += iconG(o.body, ink, lv ? 2 : 0);
+    return open + s + close;
+  }
+  function baseOff(g, size, label) { // 아직 없는 문화 종류: 회색 원 + 아이콘
+    const h = Math.round(size * 114 / 112);
+    return `<span class="dg-med" style="width:${size}px;height:${h}px"><svg viewBox="-6 -6 112 114" width="${size}" height="${h}" role="img" aria-label="${esc(label || g)}"><path d="${SHAPE.circle}" fill="#EDEBE6"/>${iconG(GICON[g] || ICON.spark, "#B3AFA6", 0, 2, 1.3333, 34)}</svg></span>`;
+  }
+  const extraBadge = (t, size, st) => {
+    const shape = TH_SHAPE[t.th] || "circle", label = t.label || t.name;
+    if (st === "q") return badge({ shape, state: "q", label: "숨은 칭호" }, size);
+    if (st === "off") return badge({ shape, state: "off", body: ICON[t.ic] || ICON.spark, p: t.goal ? t.v / t.goal : 0, label: `${label} (잠김)` }, size);
+    return badge({ shape, metal: t.hidden ? "gold" : LV_METAL[t.lv] || "pewter", special: !!t.hidden, body: ICON[t.ic] || ICON.spark, label }, size);
+  };
+  /* id만으로 그리기 (기본 칭호 b:장르:단계index, 도전 칭호 id) */
+  function badgeById(id, size) {
+    if (id && id.startsWith("b:")) { const [, g, i] = id.split(":"); return badge({ shape: "circle", metal: BASE_METAL[Number(i) + 1], enamel: SOFT[g], ink: DARK[g], body: GICON[g] || ICON.spark, lv: Number(i) + 1, label: `${g} ${TIERS[Number(i)]}` }, size); }
+    const t = EXTRA.find(x => x.id === id); return t ? extraBadge(t, size, "on") : badge({ shape: "circle", metal: "pewter", body: ICON.spark }, size);
+  }
+
   /* ---------- 날짜 도우미 ---------- */
   const dayNum = d => Math.round(Date.parse(d + "T00:00:00Z") / 864e5);
   const dowOf = d => new Date(d + "T00:00:00Z").getUTCDay();
@@ -209,9 +284,9 @@
 
   /* ---------- 화면 ---------- */
   function medal(e, size) {
-    if (e && e.g) return `<span class="dg-med" style="width:${size}px;height:${size}px;background:${SOFT[e.g]};--mc:${DARK[e.g]};box-shadow:inset 0 0 0 2px ${genreCol(e.g)}66">${svg("spark", Math.round(size * .46))}</span>`;
-    const t = e && e.t ? e.t : e;
-    return `<span class="dg-med" style="width:${size}px;height:${size}px">${svg(t ? t.ic : "spark", Math.round(size * .46))}</span>`;
+    if (!e) return badge({ shape: "circle", state: "off", body: ICON.lock, label: "아직 없음" }, size);
+    if (e.g || (e.id && e.id.startsWith("b:"))) return badgeById(e.id, size);
+    const t = e.t ? e.t : e; return t.id ? badgeById(t.id, size) : badge({ shape: "circle", metal: "pewter", body: ICON[t.ic] || ICON.spark }, size);
   }
   function page(pg) {
     if (!DG.subsAsked && window.dataService && !window.dataService.account().isGuest && window.dataService.listSubmissions) {
@@ -222,21 +297,21 @@
     const isNew = id => !C.seen[id];
     pg.innerHTML = `<h1>칭호 도감</h1>
       <div class="card dg-rep">
-        <div class="dg-rep-top">${rep ? medal(rep, 60) : `<span class="dg-med off" style="width:60px;height:60px">${svg("lock", 26)}</span>`}
+        <div class="dg-rep-top">${medal(rep, 64)}
           <div class="dg-rep-t"><small>대표 칭호</small><b>${rep ? esc(rep.name) : "아직 없어요"}</b><small>${rep ? "리뷰 닉네임 옆과 오문완 카드에 보여요" : "다녀온 곳에 리뷰를 남기면 첫 칭호가 열려요"}</small></div>
           ${C.earned.length ? '<button class="out sm" id="dgRep">바꾸기</button>' : ""}</div>
         <div class="dg-prog"><div><span>모은 칭호</span><span><b>${C.earned.length}</b> / ${C.total}</span></div><i><em style="width:${C.earned.length / C.total * 100}%"></em></i></div>
       </div>
       <section class="dg-sec"><div class="dg-h"><h2>문화 종류별 칭호</h2><small>입문자 → 마스터</small></div>
         <div class="card dg-base">${C.base.map(b => `<button class="dg-row" data-dgb="${esc(b.g)}">
-          <span class="dg-gt" style="background:${SOFT[b.g]};color:${DARK[b.g]}">${esc(b.g)}</span>
-          <span class="dg-rb"><span class="dg-rl"><b${b.lv ? "" : ' class="m"'}>${b.tier || "아직 없음"}</b><small>${b.lv ? `${b.c}${b.g === "무료 공간" ? "곳" : "회"}${b.next ? ` · ${b.nextTier}까지 ${b.next - b.c}${b.g === "무료 공간" ? "곳" : "회"}` : " · 최고 단계"}` : `첫 ${b.g === "무료 공간" ? "방문" : "관람"} 시 입문자`}</small></span>
+          ${b.lv ? badgeById(`b:${b.g}:${b.lv - 1}`, 44) : baseOff(b.g, 44)}
+          <span class="dg-rb"><span class="dg-rl"><b${b.lv ? "" : ' class="m"'}>${esc(b.g)} ${b.tier || "<em>아직 없음</em>"}</b><small>${b.lv ? `${b.c}${b.g === "무료 공간" ? "곳" : "회"}${b.next ? ` · ${b.nextTier}까지 ${b.next - b.c}${b.g === "무료 공간" ? "곳" : "회"}` : " · 최고 단계"}` : `첫 ${b.g === "무료 공간" ? "방문" : "관람"} 시 입문자`}</small></span>
           <span class="dg-seg">${TIERS.map((_, i) => `<i${i < b.lv ? ` style="background:${genreCol(b.g)}"` : ""}></i>`).join("")}</span></span></button>`).join("")}</div></section>
       <section class="dg-sec"><div class="dg-h"><h2>도전 칭호</h2><small><b>${openN}</b> / ${C.extra.length} 열림</small></div>
         <div class="dg-chips" role="tablist" aria-label="칭호 분류">${THEMES.map(([k, l]) => `<button role="tab" data-dgth="${k}" aria-pressed="${DG.theme === k}">${l}</button>`).join("")}</div>
         <div class="dg-grid">${shown.map(t => {
-          if (t.hidden && !t.on) return `<button class="dg-tile" data-dgx="${t.id}"><span class="dg-med q" style="width:52px;height:52px">?</span><b class="m">숨은 칭호</b><small>조건은 열리면 공개</small></button>`;
-          return `<button class="dg-tile${t.on ? " on" : ""}" data-dgx="${t.id}">${t.on && isNew(t.id) ? '<span class="dg-new" aria-label="새 칭호"></span>' : ""}<span class="dg-med${t.on ? "" : " off"}" style="width:52px;height:52px">${svg(t.ic, 24)}</span><b>${esc(t.label)}</b>
+          if (t.hidden && !t.on) return `<button class="dg-tile" data-dgx="${t.id}">${extraBadge(t, 58, "q")}<b class="m">숨은 칭호</b><small>조건은 열리면 공개</small></button>`;
+          return `<button class="dg-tile${t.on ? " on" : ""}" data-dgx="${t.id}">${t.on && isNew(t.id) ? '<span class="dg-new" aria-label="새 칭호"></span>' : ""}${extraBadge(t, 58, t.on ? "on" : "off")}<b>${esc(t.label)}</b>
             ${t.on ? `<small>${C.seen[t.id] ? `${dotDay(C.seen[t.id])} 획득` : "오늘 획득"}</small>` : t.pending ? `<small>집계 준비 중</small>` : `<span class="dg-mini"><em style="width:${Math.min(100, t.v / t.goal * 100)}%"></em></span><small>${fmtV(t, t.v)} / ${fmtV(t, t.goal)}${t.won ? " 원" : ""}</small>`}</button>`;
         }).join("")}</div>
       </section>
@@ -252,8 +327,8 @@
     const C = compute(), t = C.extra.find(x => x.id === id); if (!t) return;
     const locked = t.hidden && !t.on, theme = (THEMES.find(x => x[0] === t.th) || [])[1];
     sheet(`<div class="sh-h"><h2>${locked ? "숨은 칭호" : esc(t.label)}</h2><button class="x" id="dgX" aria-label="닫기">${ico.x}</button></div>
-      <div class="dg-dt">${locked ? '<span class="dg-med q" style="width:72px;height:72px">?</span>' : `<span class="dg-med${t.on ? "" : " off"}" style="width:72px;height:72px">${svg(t.ic, 34)}</span>`}
-        <div><small>도전 칭호 · ${theme} · ${"★".repeat(t.lv)}</small><p>${t.on ? (C.seen[t.id] ? `${dotDay(C.seen[t.id])}에 열었어요` : "오늘 열었어요") : locked ? "조건을 채우면 이름과 조건이 공개돼요" : "아직 열지 않았어요"}</p></div></div>
+      <div class="dg-dt">${extraBadge(t, 80, locked ? "q" : t.on ? "on" : "off")}
+        <div><small>도전 칭호 · ${theme} · ${locked ? "숨은 칭호" : t.hidden ? "숨은 칭호 특별판" : `${"★".repeat(t.lv)} ${LV_NAME[t.lv]}`}</small><p>${t.on ? (C.seen[t.id] ? `${dotDay(C.seen[t.id])}에 열었어요` : "오늘 열었어요") : locked ? "조건을 채우면 이름과 조건이 공개돼요" : "아직 열지 않았어요"}</p></div></div>
       ${locked ? "" : `<div class="dg-cond"><b>조건 · ${esc(t.cond)}</b>${t.pending ? `<small>${esc(t.pending)}</small>` : `<span class="dg-mini w"><em style="width:${Math.min(100, t.v / t.goal * 100)}%"></em></span><small>${fmtV(t, t.v)} / ${fmtV(t, t.goal)}${t.won ? " 원" : ""}</small>`}</div>`}
       ${t.on ? `<button class="blk" id="dgSet" style="width:100%;margin-top:14px">${repId() === t.id ? "지금 대표 칭호예요" : "대표 칭호로 걸기"}</button>` : ""}`);
     $("#dgX").onclick = closeSheet;
@@ -263,7 +338,7 @@
     const C = compute(), b = C.base.find(x => x.g === g), unit = g === "무료 공간" ? "곳" : "회";
     sheet(`<div class="sh-h"><h2>${esc(g)} 칭호</h2><button class="x" id="dgX" aria-label="닫기">${ico.x}</button></div>
       <p class="note">${g === "무료 공간" ? "서로 다른 무료 공간을 다닐수록" : `${esc(g)}을(를) 관람할수록`} 단계가 올라가요. 지금 ${b.c}${unit}.</p>
-      <div class="dg-steps">${TIERS.map((tn, i) => { const on = i < b.lv, id = `b:${g}:${i}`; return `<div class="dg-step${on ? " on" : ""}"><span class="dg-sn" style="${on ? `background:${genreCol(g)};color:#fff` : ""}">${i + 1}</span><span><b>${esc(g)} ${tn}</b><small>${TIER_AT[g][i]}${unit} 이상${on && C.seen[id] ? ` · ${dotDay(C.seen[id])} 획득` : ""}</small></span>${on ? `<button class="out sm" data-dgset="${id}">${repId() === id ? "대표" : "걸기"}</button>` : ""}</div>`; }).join("")}</div>`);
+      <div class="dg-steps">${TIERS.map((tn, i) => { const on = i < b.lv, id = `b:${g}:${i}`; return `<div class="dg-step${on ? " on" : ""}">${on ? badgeById(id, 40) : badge({ shape: "circle", state: "off", body: GICON[g] || ICON.spark, p: i === b.lv ? b.c / TIER_AT[g][i] : 0 }, 40)}<span><b>${esc(g)} ${tn}</b><small>${TIER_AT[g][i]}${unit} 이상${on && C.seen[id] ? ` · ${dotDay(C.seen[id])} 획득` : ""}</small></span>${on ? `<button class="out sm" data-dgset="${id}">${repId() === id ? "대표" : "걸기"}</button>` : ""}</div>`; }).join("")}</div>`);
     $("#dgX").onclick = closeSheet;
     document.querySelectorAll("[data-dgset]").forEach(x => x.onclick = () => { setRep(x.dataset.dgset); closeSheet(); toast("대표 칭호를 바꿨어요."); page(pg); });
   }
@@ -271,7 +346,7 @@
     const C = compute(), cur = repOf(C);
     sheet(`<div class="sh-h"><h2>대표 칭호 고르기</h2><button class="x" id="dgX" aria-label="닫기">${ico.x}</button></div>
       <p class="note">모은 칭호 ${C.earned.length}개 중 하나를 골라요. 리뷰 닉네임 옆과 오문완 카드에 보여요.</p>
-      <div class="dg-pick">${C.earned.slice().reverse().map(e => `<label class="dg-opt"><input type="radio" name="dgrep" value="${esc(e.id)}" ${cur && cur.id === e.id ? "checked" : ""}><span class="dg-dot" style="background:${e.g ? genreCol(e.g) : "var(--accent)"}"></span>${esc(e.name)}</label>`).join("")}</div>
+      <div class="dg-pick">${C.earned.slice().reverse().map(e => `<label class="dg-opt"><input type="radio" name="dgrep" value="${esc(e.id)}" ${cur && cur.id === e.id ? "checked" : ""}>${medal(e, 26)}${esc(e.name)}</label>`).join("")}</div>
       <button class="blk" id="dgOk" style="width:100%;margin-top:14px">대표 칭호로 걸기</button>`);
     $("#dgX").onclick = closeSheet;
     $("#dgOk").onclick = () => { const v = document.querySelector('input[name="dgrep"]:checked'); if (v) setRep(v.value); closeSheet(); toast("대표 칭호를 바꿨어요."); page(pg); };
@@ -284,8 +359,8 @@
     /* 저장 직후 보상 화면용: 아직 확인하지 않은 새 칭호(없으면 가장 가까운 도전 칭호) */
     slots(max) {
       const C = compute(), fresh = C.earned.filter(e => !C.seen[e.id]).slice(-max);
-      if (fresh.length) return fresh.map(e => ({ on: true, name: e.name, ic: e.t ? e.t.ic : "spark", g: e.g }));
-      return C.extra.filter(t => !t.on && !t.hidden && !t.pending).sort((a, b) => b.v / b.goal - a.v / a.goal).slice(0, max).map(t => ({ on: false, name: t.label, ic: t.ic, v: fmtV(t, t.v), goal: fmtV(t, t.goal) }));
+      if (fresh.length) return fresh.map(e => ({ on: true, id: e.id, name: e.name, ic: e.t ? e.t.ic : "spark", g: e.g, html: medal(e, 34) }));
+      return C.extra.filter(t => !t.on && !t.hidden && !t.pending).sort((a, b) => b.v / b.goal - a.v / a.goal).slice(0, max).map(t => ({ on: false, id: t.id, name: t.label, ic: t.ic, v: fmtV(t, t.v), goal: fmtV(t, t.goal), html: extraBadge(t, 34, "off") }));
     },
     /* 해금 화면용: 아직 해금 화면을 보여 주지 않은 새 칭호. 처음 쓰는 기기·계정은 지금까지 모은 칭호를 '이미 본 것'으로 두고 시작한다 */
     unseenUnlocks() {
@@ -295,7 +370,8 @@
       return C.earned.filter(e => !done.has(e.id)).map(e => {
         const t = e.t, theme = t ? (THEMES.find(x => x[0] === t.th) || [])[1] : "문화 종류별 칭호";
         const desc = t ? t.cond : (() => { const [, g, i] = e.id.split(":"); return `${g} ${TIER_AT[g][Number(i)]}${g === "무료 공간" ? "곳" : "회"} 이상`; })();
-        return { id: e.id, name: e.name, ic: t ? t.ic : "spark", g: e.g || null, desc, theme, lv: t ? t.lv : Number(e.id.split(":")[2]) + 1 };
+        const lv = t ? t.lv : Number(e.id.split(":")[2]) + 1;
+        return { id: e.id, name: e.name, ic: t ? t.ic : "spark", g: e.g || null, desc, theme, lv, rank: t ? (t.hidden ? "숨은 칭호 특별판" : `${"★".repeat(lv)} ${LV_NAME[lv]}`) : `${lv}단계` };
       });
     },
     celebrate(ids) {
@@ -305,7 +381,7 @@
     },
     setRep(id) { setRep(id); },
     repId() { return repId(); },
-    medal(u, size) { return u.g ? `<span class="dg-med" style="width:${size}px;height:${size}px;background:${SOFT[u.g]};--mc:${DARK[u.g]};box-shadow:inset 0 0 0 2px ${genreCol(u.g)}66">${svg("spark", Math.round(size * .46))}</span>` : `<span class="dg-med" style="width:${size}px;height:${size}px">${svg(u.ic, Math.round(size * .46))}</span>`; },
+    medal(u, size) { return u && u.id ? badgeById(u.id, size) : medal(u, size); },
     /* 월 결산용: 그 달에 연 칭호 (처음 확인한 날 기준. 이번 달이면 아직 확인 안 한 칭호도 넣는다) */
     monthNew(ym) {
       const C = compute();
@@ -314,5 +390,6 @@
     },
     countShare() { save({ shares: (store().shares || 0) + 1 }); },
     icon: svg,
+    badge: badgeById,
   };
 })();
