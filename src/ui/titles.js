@@ -312,7 +312,7 @@
         <div class="dg-grid">${shown.map(t => {
           if (t.hidden && !t.on) return `<button class="dg-tile" data-dgx="${t.id}">${extraBadge(t, 58, "q")}<b class="m">숨은 칭호</b><small>조건은 열리면 공개</small></button>`;
           return `<button class="dg-tile${t.on ? " on" : ""}" data-dgx="${t.id}">${t.on && isNew(t.id) ? '<span class="dg-new" aria-label="새 칭호"></span>' : ""}${extraBadge(t, 58, t.on ? "on" : "off")}<b>${esc(t.label)}</b>
-            ${t.on ? `<small>${C.seen[t.id] ? `${dotDay(C.seen[t.id])} 획득` : "오늘 획득"}</small>` : t.pending ? `<small>집계 준비 중</small>` : `<span class="dg-mini"><em style="width:${Math.min(100, t.v / t.goal * 100)}%"></em></span><small>${fmtV(t, t.v)} / ${fmtV(t, t.goal)}${t.won ? " 원" : ""}</small>`}</button>`;
+            ${t.on ? `<small>${C.seen[t.id] ? `${dotDay(C.seen[t.id])} 획득` : "오늘 획득"}</small>` : t.pending ? `<small>집계 준비 중</small>` : `<small>${fmtV(t, t.v)} / ${fmtV(t, t.goal)}${t.won ? " 원" : ""}</small>`}</button>`;
         }).join("")}</div>
       </section>
       <p class="note" style="margin-top:14px">칭호는 리뷰를 남긴 방문으로 계산해요. 대표 칭호는 이 기기에 저장돼요.</p>`;
